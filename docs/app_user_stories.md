@@ -1,0 +1,22 @@
+- As an admin, I want to have an exclusive view to be able to create and manage users (change usernames and passwords) and nothing else
+- As an admin, I want to log in with username and password, but not register or change password
+- As a user, I want to log in with username and password, but not register or change password
+- As a user, I want to use the app in both computer and mobile through a website
+- As a user, I want to see the current week's menu divided by days (Monday to Sunday) and meals for each day (lunch and dinner)
+- As a user, I want to click in a meal and see the detailed recipe (ingredients, tools and procedure)
+- As a user, I want to edit, remove or add a meal to a week menu day's candidates by individually by either choosing a recipe from the library, writing a new recipe from scratch or generating a new one with AI
+- As a user, I want to add a meal to the library from the week's menu to keep it for other weeks
+- As a user, I want to generate a whole meal for the week with AI by either sticking to library meals, generating entirely new meals with AI or making a mix, and add all of the meals to the respective days as candidates
+- As a user, I want to see a confirmation prompt before generating a week menu with the current general rules and an option to edit them only for the current week
+- As a user, I want the meals generated to be balanced and healthy
+- As a user, I want to see candidate meals for a certain day created by me or other users and select a candidate for it to be the definitive food for a day
+- As a user, I want to see a summary view of the selected meals for the week that I cannot edit (view only mode) and who made them definitive
+- As a user, I want to generate a new meal with AI by specifying ingredients, tools, cuisine and difficulty or selecting a library meal for reference with further user specifications
+- As a user, I want to see all of the recipes added to the library by myself or other users and be able to edit, remove or add a new one (same process as adding a dish to a menu)
+- As a user, I want to see the changes made by other users in real time to the week menu
+- As a user, I want the app to be in Castillian Spanish
+- As a user, I want to see a shopping list displaying all the items needed for the week's meals: name and quantity
+- As a user, I want to add, edit (name and quantity) and remove shopping list items
+- As a user, I want to automatically add to the shopping list the ingredients needed for the current week menu
+- As a user, I want to keep a record of all the past weeks' menus and access them any time
+- As a user, I want to specify general predefined instructions to generate week menus, which will be shared among all the users and will affect every week: number of meals with each type of ingredients (meat, fish, carbohydrates, legumes, vegeratian...), days with a specific meal from the library for lunch or dinner and disabling generating specific days. These rules must be displayed as a list in their own section and only be editable via dropdowns.
