@@ -1,8 +1,11 @@
 - As an admin, I want to have an exclusive view to be able to create and manage users (change usernames and passwords) and nothing else
 - As an admin, I want to log in with username and password, but not register or change password
+- As an admin, I want to be able to reset a user's password
+- As an admin, I want to remove a user, keeping all the content they previously authored (candidates, library recipes, definitive selections, rule edits, shopping list items) but reattributing it to a generic "unknown user" so the history stays intact without the account existing anymore
 - As a user, I want to log in with username and password, but not register or change password
 - As a user, I want to use the app in both computer and mobile through a website
 - As a user, I want to see the current week's menu divided by days (Monday to Sunday) and meals for each day (lunch and dinner)
+- As a user, I want to see and plan next week's menu in advance, with all the same features available for the current week (candidates, definitive selection, AI generation), so I can do the shopping before the week starts
 - As a user, I want to click in a meal and see the detailed recipe (ingredients, tools and procedure)
 - As a user, I want to edit, remove or add a meal to a week menu day's candidates by individually by either choosing a recipe from the library, writing a new recipe from scratch or generating a new one with AI
 - As a user, I want to add a meal to the library from the week's menu to keep it for other weeks
@@ -17,6 +20,8 @@
 - As a user, I want the app to be in Castillian Spanish
 - As a user, I want to see a shopping list displaying all the items needed for the week's meals: name and quantity
 - As a user, I want to add, edit (name and quantity) and remove shopping list items
-- As a user, I want to automatically add to the shopping list the ingredients needed for the current week menu
+- As a user, I want to add to the shopping list, by clicking a button, all the ingredients needed for the definitive meals only of the current week (only days forward from today) and next week
+- As a user, I want to check off shopping list items as I buy them, with checked items moved to a separate section below all the unchecked ones and shown greyed out, and be able to uncheck them again if needed. When a week is closed, I want the shopping list to clear itself of the already bought items from that week, while the items from the former next week (now the current week) remain
 - As a user, I want to keep a record of all the past weeks' menus and access them any time
-- As a user, I want to specify general predefined instructions to generate week menus, which will be shared among all the users and will affect every week: number of meals with each type of ingredients (meat, fish, carbohydrates, legumes, vegeratian...), days with a specific meal from the library for lunch or dinner and disabling generating specific days. These rules must be displayed as a list in their own section and only be editable via dropdowns.
+- As a user, I want to specify general predefined instructions to generate week menus, which will be shared among all the users and will affect every week: number of meals with each type of ingredients (meat, fish, eggs, carbohydrates, legumes, vegeratian...), days with a specific meal from the library for lunch or dinner and disabling generating specific days. These rules must be displayed as a list in their own section and only be editable via dropdowns.
+- As a user or an admin, I want to be able to set my password in the login screen when I'm logging in for the first time or my password has been reset by an admin
