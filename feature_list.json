@@ -1,0 +1,436 @@
+{
+  "project": "collaborative-weekly-meal-planner",
+  "description": "Collaborative weekly meal planner (AWS course final project). Requirements are frozen in docs/requirements.md; architecture is human-owned and partially pending (docs/architecture.md).",
+  "rules": {
+    "one_feature_at_a_time": true,
+    "require_tests_to_close": true,
+    "require_approved_spec_to_implement": true,
+    "requirements_are_frozen": "Never edit docs/requirements.md, app_user_stories.md, coverage_analysis.md, gaps_and_resolutions.md or gaps_pending_stakeholders.md. Every R<n> must cite an existing FR-*/NFR-* id.",
+    "architecture_is_human_owned": "Never decide anything listed in docs/architecture.md section 2. Set status blocked instead.",
+    "never_generate_iac_or_ci": "Agents never write Terraform, IaC or CI/CD files. init.sh fails if they appear.",
+    "valid_status": ["pending", "spec_ready", "in_progress", "done", "blocked"],
+    "sdd_required_when": "feature has \"sdd\": true",
+    "blocked_requires_reason": true
+  },
+  "tiers": {
+    "0": "Scaffolding. No product requirement behind it.",
+    "1": "Pure domain logic. Architecture-independent — buildable and fully testable today.",
+    "2": "Ports and application services. Needs the REST contract decided.",
+    "3": "Adapters. Blocked on the corresponding architecture decision.",
+    "4": "Frontend. Blocked on the human's initial code drop.",
+    "5": "Infrastructure and pipelines. Human-owned, never agent-generated."
+  },
+  "features": [
+    {
+      "id": 1,
+      "name": "project_scaffold",
+      "tier": 0,
+      "title": "Python project scaffold and quality toolchain",
+      "description": "uv workspace backend (core + lambda_api + lambda_ai) plus a separate frontend toolchain root, with pytest, ruff, mypy and pre-commit wired up. No product logic. Layout per docs/architecture.md section 3.",
+      "covers": [],
+      "depends_on": [],
+      "acceptance": [
+        "backend/pyproject.toml is a uv workspace root ([tool.uv.workspace] members = core, lambda_api, lambda_ai) with shared ruff/mypy/pytest config",
+        "backend/core is distribution planner-core with ZERO runtime dependencies; src-layout package planner_core with domain, application, ports subpackages (each with __init__.py)",
+        "backend/lambda_api (planner-api) and backend/lambda_ai (planner-ai) each depend on planner-core only (their AWS/AI deps are added later with their adapters, per P1/P4); src-layout packages planner_api and planner_ai exist",
+        "ruff configured (format + check, line length 100) and passing across the workspace",
+        "mypy configured in strict mode across the workspace, and passing",
+        "pytest configured with the 'aws' marker registered and deselected by default (-m 'not aws'); at least one smoke test passing in core/tests",
+        "pre-commit config running ruff format, ruff check and mypy on staged files",
+        "uv export --package planner-api --no-dev resolves the api closure without the AI SDK (verifies the split is real)",
+        "frontend/ exists as its own toolchain root, untouched by the Python gates",
+        "./init.sh detects the workspace and runs all four gates green",
+        "No Terraform, no CI workflow, and no runtime dependency on core is added"
+      ],
+      "sdd": false,
+      "status": "pending"
+    },
+    {
+      "id": 2,
+      "name": "week_calendar",
+      "tier": 1,
+      "title": "ISO week model and Europe/Madrid scoping",
+      "description": "Current/next live week computation as ISO weeks in Europe/Madrid, plus the today-onward scoping rule shared by AI generation and shopping aggregation. Time enters through a Clock port.",
+      "covers": ["FR-MENU-01", "FR-MENU-02", "FR-UX-06", "FR-AI-11", "FR-SHOP-05"],
+      "depends_on": [1],
+      "acceptance": [
+        "A Clock port exists in planner_core.ports; no domain code calls datetime.now()",
+        "current_week and next_week are computed as ISO weeks (Monday-Sunday) in Europe/Madrid",
+        "A week exposes its 7 days and, per day, the lunch and dinner slots",
+        "A week exposes its Monday-Sunday date range for UI labelling (FR-UX-06)",
+        "A today-onward scoping function returns only slots from the present day forward for the current week, and all slots for the next week",
+        "DST transitions and year boundaries are covered by tests",
+        "Tests use a fixed FakeClock; no real clock, no network"
+      ],
+      "sdd": true,
+      "status": "pending"
+    },
+    {
+      "id": 3,
+      "name": "text_and_units",
+      "tier": 1,
+      "title": "Fixed unit vocabulary and text normalization",
+      "description": "The shared kernel behind ingredient aggregation and cuisine matching: the fixed unit list plus case-, accent- and trim-insensitive normalization.",
+      "covers": ["FR-SHOP-03", "FR-LIB-05", "FR-LIB-06"],
+      "depends_on": [1],
+      "acceptance": [
+        "A fixed unit list is defined as a closed vocabulary (concrete values proposed in design.md per G-39)",
+        "normalize(name) is case-, accent- and leading/trailing-whitespace-insensitive",
+        "Normalization performs no stemming, no singular/plural folding and no synonym matching (G-56 explicitly rejects these)",
+        "Tests prove 'Tomate', 'tomate ' and 'tomate' with an accent normalize to one key",
+        "A value outside the fixed unit list is rejected with a named domain exception"
+      ],
+      "sdd": true,
+      "status": "pending"
+    },
+    {
+      "id": 4,
+      "name": "recipe_model",
+      "tier": 1,
+      "title": "Recipe entity and meal snapshots",
+      "description": "Immutable Recipe with name, ingredients (quantity + unit from the fixed list), tools, procedure, cuisine and difficulty; plus the snapshot taken when a recipe enters a week.",
+      "covers": ["FR-LIB-03", "FR-LIB-05", "FR-LIB-06", "FR-CAND-07", "FR-MENU-04"],
+      "depends_on": [3],
+      "acceptance": [
+        "Recipe is a frozen dataclass carrying name, ingredients, tools, procedure, cuisine, difficulty",
+        "Ingredient quantities only accept units from the fixed unit list (FR-LIB-05)",
+        "Difficulty is a closed predefined scale; cuisine is free text normalized for matching (FR-LIB-06)",
+        "A snapshot function produces a value object decoupled from the library entry (FR-CAND-07)",
+        "Test proves editing or deleting the library recipe leaves an existing snapshot unchanged (G-05)"
+      ],
+      "sdd": true,
+      "status": "pending"
+    },
+    {
+      "id": 5,
+      "name": "week_plan_model",
+      "tier": 1,
+      "title": "Candidates, definitive selection and attribution",
+      "description": "Slot contents for a live week: add/edit/remove candidates, promote one to definitive, clear the definitive, duplicate warnings, and author attribution with the unknown-user placeholder.",
+      "covers": ["FR-MENU-03", "FR-CAND-01", "FR-CAND-02", "FR-CAND-04", "FR-CAND-05", "FR-CAND-06", "FR-CAND-08", "FR-SUM-01", "FR-SUM-02", "FR-SUM-03", "FR-AUTH-13"],
+      "depends_on": [2, 4],
+      "acceptance": [
+        "A slot holds a list of candidates and at most one definitive (FR-MENU-03)",
+        "A candidate is constructible from any of the three authoring sources - a library recipe pick, a from-scratch recipe, or an accepted AI preview - all landing as the same snapshot-backed candidate (FR-CAND-02, FR-CAND-07)",
+        "Promoting a candidate replaces any previous definitive; clearing returns all meals to candidate status (FR-CAND-05, FR-CAND-08)",
+        "A promoted meal remains editable; edits propagate wherever it is shown (G-67)",
+        "Adding a candidate whose normalized name matches one already in the slot returns a warning but still adds it (FR-CAND-01, G-59)",
+        "Saving a meal to the library always creates a new entry and warns on same-name collision (FR-CAND-06, G-26)",
+        "Every candidate and every definitive promotion carries its author (FR-CAND-04, FR-SUM-02)",
+        "Attribution resolves to the reserved unknown-user placeholder when the author was removed (FR-SUM-03, G-29)"
+      ],
+      "sdd": true,
+      "status": "pending"
+    },
+    {
+      "id": 6,
+      "name": "rules_model",
+      "tier": 1,
+      "title": "Shared generation rules and satisfiability",
+      "description": "The dropdown-only shared rule set: ingredient-category counts, pinned library meals per slot, disabled days; plus the constraint solver that prevents contradictory combinations and the per-run override.",
+      "covers": ["FR-RULE-01", "FR-RULE-02", "FR-RULE-03", "FR-RULE-04", "FR-RULE-05", "FR-RULE-06", "FR-RULE-07"],
+      "depends_on": [2, 4],
+      "acceptance": [
+        "The three rule types are modelled: category counts, pinned meal per day/slot, disabled days (FR-RULE-04)",
+        "The ingredient-category list is a fixed predefined set (concrete values proposed in design.md per G-63)",
+        "Available options are constrained so contradictory rule sets cannot be composed: category totals exceeding available slots after disabled days, or a pin on a disabled day (FR-RULE-07)",
+        "Deleting a library recipe referenced by a pin rule surfaces a warning and removes the rule on confirmation (FR-RULE-07, G-20)",
+        "A per-run override produces an effective rule set without mutating the shared rules (FR-RULE-05, G-06)",
+        "Rule edits carry author attribution (FR-RULE-06)"
+      ],
+      "sdd": true,
+      "status": "pending"
+    },
+    {
+      "id": 7,
+      "name": "shopping_aggregation",
+      "tier": 1,
+      "title": "Deterministic ingredient aggregation",
+      "description": "Pure function from the in-scope definitive meals to the auto-item set. Matches on normalized name + unit, no cross-unit conversion, idempotent by construction.",
+      "covers": ["FR-SHOP-03", "FR-SHOP-05", "FR-SHOP-10"],
+      "depends_on": [3, 5],
+      "acceptance": [
+        "Aggregation derives only from definitive meals; candidates never contribute (FR-SHOP-05, G-04)",
+        "Scope is the current week from today onward plus the whole next week (FR-SHOP-05)",
+        "Items merge only on matching normalized name + unit; no cross-unit conversion (FR-SHOP-03)",
+        "The function is pure and deterministic: same inputs produce the same auto-item set, so repeated runs converge (FR-SHOP-10, G-54)",
+        "Each auto item records which live week(s) require it (needed by rollover cleanup, G-53)",
+        "Test proves running the aggregation twice yields an identical result"
+      ],
+      "sdd": true,
+      "status": "pending"
+    },
+    {
+      "id": 8,
+      "name": "shopping_list_state",
+      "tier": 1,
+      "title": "Shopping list state, re-sync and check-off",
+      "description": "The shared list: manual vs auto items, manual overrides, check-off, the re-sync merge rules, duplicate flagging, and the quantity-changed-while-checked flag.",
+      "covers": ["FR-SHOP-01", "FR-SHOP-02", "FR-SHOP-04", "FR-SHOP-06", "FR-SHOP-07", "FR-SHOP-08", "FR-SHOP-11"],
+      "depends_on": [7],
+      "acceptance": [
+        "One shared list; auto items are distinguishable from manual ones (FR-SHOP-01, FR-SHOP-04)",
+        "Re-sync updates quantities, adds new items and removes stale UNCHECKED auto items only (FR-SHOP-06)",
+        "Manual items, manual overrides and checked items are always preserved by re-sync (FR-SHOP-06, G-21, G-32)",
+        "Editing an auto item's name or quantity converts it into a manual override (G-21)",
+        "Items are checkable and uncheckable; checked ones sort into a separate section below (FR-SHOP-07, FR-SHOP-08)",
+        "A re-sync that changes a checked item's quantity keeps it checked and flags it as updated (FR-SHOP-08, G-44)",
+        "Manual and auto items sharing a normalized name + unit both remain but are grouped and marked as likely duplicates (FR-SHOP-11, G-55)"
+      ],
+      "sdd": true,
+      "status": "pending"
+    },
+    {
+      "id": 9,
+      "name": "password_policy",
+      "tier": 1,
+      "title": "NIST 800-63B password policy",
+      "description": "Password validation for the mandatory set-password step: length bounds, no composition rules, no rotation, and a blocklist including common Spanish passwords.",
+      "covers": ["FR-AUTH-15", "FR-AUTH-17"],
+      "depends_on": [1],
+      "acceptance": [
+        "Minimum length 10, accepted up to at least 64 characters without truncation (FR-AUTH-15)",
+        "No mandatory character-composition rules and no forced periodic rotation are enforced (FR-AUTH-15)",
+        "A common/breached-password blocklist rejects matches",
+        "The blocklist includes common Spanish-language passwords, not only English ones (G-60)",
+        "Username validation enforces uniqueness among active accounts and reserves the unknown-user placeholder name (FR-AUTH-17, G-42, G-58)",
+        "Rejection messages come from the es-ES messages module (FR-UX-03)"
+      ],
+      "sdd": true,
+      "status": "pending"
+    },
+    {
+      "id": 10,
+      "name": "generation_request",
+      "tier": 1,
+      "title": "Generation request, effective rules and idempotency key",
+      "description": "Resolves the effective rule set for a run (shared rules plus optional per-run override), determines target slots, and derives the idempotency key that prevents duplicate candidates and duplicate AI charges.",
+      "covers": ["FR-AI-03", "FR-AI-05", "FR-AI-08", "FR-AI-11"],
+      "depends_on": [6],
+      "acceptance": [
+        "Effective rules = shared rules with the per-run override applied, leaving shared rules untouched (FR-AI-05, FR-RULE-05)",
+        "Target slots exclude disabled days; pinned slots resolve to their pinned library meal (FR-AI-11)",
+        "For the current week, target slots start at today (Europe/Madrid) — never days already past (FR-AI-11, G-45)",
+        "Generation adds candidates and never removes existing candidates or definitives (FR-AI-11, G-18)",
+        "An idempotency key is derived from week + slots + effective rules (FR-AI-08)",
+        "Test proves the same request submitted twice yields one candidate set and one logical invocation",
+        "The three modes (library-only / AI-only / mix) are modelled (FR-AI-03)"
+      ],
+      "sdd": true,
+      "status": "pending"
+    },
+    {
+      "id": 11,
+      "name": "ai_prompt_builder",
+      "tier": 1,
+      "title": "AI prompt construction",
+      "description": "Provider-agnostic prompt assembly: Castilian Spanish output, configured servings, category counts as explicit instructions, the fixed unit vocabulary, and the healthy/varied-protein instruction.",
+      "covers": ["FR-AI-01", "FR-AI-02", "FR-AI-04", "FR-AI-06", "FR-AI-07", "FR-AI-13"],
+      "depends_on": [10],
+      "acceptance": [
+        "Prompts are assembled as plain data structures with no provider SDK imported (P4 is still pending)",
+        "Every prompt states the configured number of servings (FR-AI-13, G-64)",
+        "Every prompt instructs Castilian Spanish output (FR-AI-07)",
+        "Every prompt instructs healthy, balanced menus that vary protein sources, labelled non-medical (FR-AI-06)",
+        "Ingredient-category counts are passed as explicit prompt instructions, honored best-effort (FR-AI-04, G-63)",
+        "Prompts constrain ingredient units to the fixed unit list (FR-LIB-05, G-48)",
+        "Both single-recipe modes are supported: from specifications, and from a library reference plus specifications (FR-AI-01, FR-AI-02)"
+      ],
+      "sdd": true,
+      "status": "pending"
+    },
+    {
+      "id": 12,
+      "name": "ai_output_validation",
+      "tier": 1,
+      "title": "AI output validation and preview lifecycle",
+      "description": "Validates model output against the recipe schema and the fixed unit list, and models the accept/discard/regenerate preview plus per-slot failure results.",
+      "covers": ["FR-AI-10", "FR-AI-12", "FR-LIB-05"],
+      "depends_on": [11],
+      "acceptance": [
+        "Output failing the recipe schema or using a unit outside the fixed list is rejected, not silently accepted (G-48)",
+        "Single-recipe generation produces a preview that can be accepted, discarded or regenerated; nothing persists until accepted (FR-AI-10, G-17)",
+        "Regenerations count toward the generation caps (FR-AI-10, NFR-AI-01)",
+        "Per-slot results are independent: one slot failing does not abort the others and partial results are kept (FR-AI-09, FR-AI-12)",
+        "Insufficient library recipes for library-only or mix mode produces an explicit named failure, never a silent partial result (FR-AI-12, G-66)",
+        "Failure messages come from the es-ES messages module (FR-UX-03)"
+      ],
+      "sdd": true,
+      "status": "pending"
+    },
+    {
+      "id": 13,
+      "name": "rollover_job_logic",
+      "tier": 1,
+      "title": "Week rollover as an idempotent state transition",
+      "description": "The five-step rollover expressed as a pure, re-runnable transition: archive the ending week, snapshot the shopping list, promote next to current, initialize a new empty next week, clean bought items.",
+      "covers": ["FR-MENU-06", "FR-MENU-08", "FR-ARCH-01", "FR-ARCH-02", "FR-SHOP-09"],
+      "depends_on": [8],
+      "acceptance": [
+        "The five steps execute in order: archive, shopping-list snapshot, promote next to current, init empty next week, clean bought items (FR-MENU-06, G-61)",
+        "The archive snapshot is taken BEFORE the cleanup (FR-ARCH-02, G-53)",
+        "The former next week becomes the current week carrying over its candidates and definitives (FR-MENU-06, G-28)",
+        "The new next week starts empty; rules never auto-populate it (FR-MENU-06, G-15)",
+        "Cleanup removes CHECKED items unless still required by the new current week; unchecked items are untouched (FR-SHOP-09, G-53)",
+        "Archived weeks become read-only (FR-ARCH-02)",
+        "Test proves re-running after interruption at each of the five steps completes without data loss, double-archiving or double-cleanup (FR-MENU-08, G-61)"
+      ],
+      "sdd": true,
+      "status": "pending"
+    },
+    {
+      "id": 14,
+      "name": "persistence_ports",
+      "tier": 2,
+      "title": "Persistence ports and in-memory adapters",
+      "description": "Repository interfaces for accounts, recipes, weeks, rules, the shopping list and the archive, plus in-memory fakes and the contract-test harness that will later run against the real adapter.",
+      "covers": ["NFR-BKP-01"],
+      "depends_on": [5, 6, 8],
+      "acceptance": [
+        "Ports are typing.Protocol definitions in planner_core.ports with no storage technology leaking into their signatures",
+        "In-memory fakes in core/tests/support implement every port and are used by application-layer tests",
+        "A contract suite in backend/tests/contract exercises each port and is parametrized to run against any implementation (fake now, real adapter later)",
+        "No AWS SDK import anywhere in this feature"
+      ],
+      "sdd": true,
+      "status": "blocked",
+      "blocked_reason": "Architecture P1 (datastore) undecided. Port shapes depend on whether access is key-value or relational — see docs/architecture.md section 2."
+    },
+    {
+      "id": 15,
+      "name": "auth_flow",
+      "tier": 3,
+      "title": "Authentication, sessions and account lifecycle",
+      "description": "Login, the mandatory set-password step, temporary admin-assigned passwords, session lifetimes, session invalidation, admin account management and user removal.",
+      "covers": ["FR-AUTH-01", "FR-AUTH-02", "FR-AUTH-03", "FR-AUTH-04", "FR-AUTH-05", "FR-AUTH-06", "FR-AUTH-07", "FR-AUTH-08", "FR-AUTH-09", "FR-AUTH-10", "FR-AUTH-11", "FR-AUTH-12", "FR-AUTH-13", "FR-AUTH-14", "FR-AUTH-16", "FR-AUTH-18", "NFR-SEC-04"],
+      "depends_on": [9, 14],
+      "acceptance": [
+        "Deferred until the auth mechanism is chosen"
+      ],
+      "sdd": true,
+      "status": "blocked",
+      "blocked_reason": "Architecture P2 (auth mechanism) undecided. A managed identity provider would supply forced password change, session invalidation and brute-force protection natively; an application-managed design must build all three."
+    },
+    {
+      "id": 16,
+      "name": "rest_api_lambda",
+      "tier": 3,
+      "title": "REST API Lambda",
+      "description": "The api Lambda: routing, request validation, domain exception to error mapping, and wiring of application use cases.",
+      "covers": ["NFR-SEC-03", "NFR-OBS-01"],
+      "depends_on": [14],
+      "acceptance": [
+        "Deferred until the REST contract is defined"
+      ],
+      "sdd": true,
+      "status": "blocked",
+      "blocked_reason": "Architecture P5 (REST API contract) and P6 (deployment topology) undecided."
+    },
+    {
+      "id": 17,
+      "name": "ai_lambda",
+      "tier": 3,
+      "title": "AI generation Lambda",
+      "description": "The ai Lambda: provider client, per-slot concurrency, idempotent invocation, cost cap enforcement.",
+      "covers": ["FR-AI-09", "NFR-AI-01"],
+      "depends_on": [12, 14],
+      "acceptance": [
+        "Deferred until the AI provider is chosen"
+      ],
+      "sdd": true,
+      "status": "blocked",
+      "blocked_reason": "Architecture P4 (AI provider and model) undecided. The per-user daily generation cap is derived from the 50 EUR/month budget and provider pricing (G-38)."
+    },
+    {
+      "id": 18,
+      "name": "realtime_channel",
+      "tier": 3,
+      "title": "Real-time collaboration channel",
+      "description": "Broadcasting changes to both live weeks, the shopping list, the rules and the library; connection-loss indication, automatic reconnect and state re-synchronization.",
+      "covers": ["FR-RT-01", "FR-RT-02", "FR-RT-03"],
+      "depends_on": [14],
+      "acceptance": [
+        "Deferred until the real-time transport is chosen"
+      ],
+      "sdd": true,
+      "status": "blocked",
+      "blocked_reason": "Architecture P3 (real-time transport) undecided."
+    },
+    {
+      "id": 19,
+      "name": "archive_and_cold_storage",
+      "tier": 3,
+      "title": "Archive browsing and cold-storage lifecycle",
+      "description": "Reverse-chronological archive navigation, indefinite retention, and the scheduled job moving records older than ~3 months to cold storage with a restoring state in the UI.",
+      "covers": ["FR-ARCH-03", "FR-ARCH-04"],
+      "depends_on": [13, 14],
+      "acceptance": [
+        "Deferred until the datastore and cold-storage wiring are chosen"
+      ],
+      "sdd": true,
+      "status": "blocked",
+      "blocked_reason": "Architecture P1 (datastore) and P6 (cold-storage wiring) undecided."
+    },
+    {
+      "id": 20,
+      "name": "frontend_spa",
+      "tier": 4,
+      "title": "Single-page application",
+      "description": "The responsive es-ES SPA: two live weeks, candidates and the three-way authoring flow (library pick / from scratch / AI, reused by library authoring minus the self-pick), definitive selection, library, rules, shopping list, summary and archive.",
+      "covers": ["FR-MENU-04", "FR-MENU-05", "FR-MENU-07", "FR-CAND-02", "FR-CAND-03", "FR-LIB-01", "FR-LIB-02", "FR-LIB-04", "FR-UX-01", "FR-UX-02", "FR-UX-03", "FR-UX-04", "FR-UX-05", "FR-UX-06", "FR-UX-07"],
+      "depends_on": [16],
+      "acceptance": [
+        "Deferred until the initial frontend code is supplied"
+      ],
+      "sdd": true,
+      "status": "blocked",
+      "blocked_reason": "Waiting on the human's initial frontend code (architecture P7: framework identity, bootstrap idiom, test runner) and on feature 16, since the SPA needs the REST contract. The frontend stack and conventions are already specified - see docs/conventions.md section 'Frontend conventions'."
+    },
+    {
+      "id": 21,
+      "name": "infrastructure_terraform",
+      "tier": 5,
+      "title": "Terraform infrastructure",
+      "description": "All AWS infrastructure as code.",
+      "covers": ["NFR-ARCH-01", "NFR-IAC-01", "NFR-HA-01", "NFR-BKP-01", "NFR-SEC-01", "NFR-SEC-02", "NFR-SEC-03", "NFR-OBS-01", "NFR-OBS-02", "NFR-FIN-01", "NFR-FIN-02"],
+      "depends_on": [],
+      "acceptance": [
+        "Written by the human"
+      ],
+      "sdd": false,
+      "status": "blocked",
+      "blocked_reason": "HUMAN-OWNED. Agents never generate Terraform. init.sh fails if *.tf files appear while this feature is blocked."
+    },
+    {
+      "id": 22,
+      "name": "cicd_pipeline",
+      "tier": 5,
+      "title": "CI/CD pipeline",
+      "description": "Pipeline deploying the application on push to main.",
+      "covers": ["NFR-CICD-01"],
+      "depends_on": [],
+      "acceptance": [
+        "Written by the human"
+      ],
+      "sdd": false,
+      "status": "blocked",
+      "blocked_reason": "HUMAN-OWNED. Agents never generate CI/CD files. init.sh fails if .github/workflows files appear while this feature is blocked."
+    },
+    {
+      "id": 23,
+      "name": "readme_deliverable",
+      "tier": 5,
+      "title": "README course deliverable",
+      "description": "The graded README: functional description, architecture diagram, architecture-decision section, reproducible deploy steps, monthly cost estimate and teardown instructions.",
+      "covers": ["NFR-DOC-01"],
+      "depends_on": [21],
+      "acceptance": [
+        "Every section required by NFR-DOC-01 is present and accurate",
+        "The architecture-decision section reflects the human's actual decisions, not agent speculation"
+      ],
+      "sdd": false,
+      "status": "blocked",
+      "blocked_reason": "Depends on the architecture being decided and the infrastructure existing."
+    }
+  ]
+}
