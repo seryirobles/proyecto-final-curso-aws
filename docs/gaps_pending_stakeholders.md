@@ -29,7 +29,7 @@
 | PEND-09 | Does "manage users" include **removing** an account, and what happens to its authored content? | Yes — new story (US4); removed users' content is kept, reattributed to a generic "unknown user". | G-29 | FR-AUTH-12, -13, -14, FR-SUM-03 |
 | PEND-10 | Should shopping-list items be checkable (mark as bought)? | Yes — new story (US24); checked items move to a section below unchecked items, greyed out, and can be unchecked. | G-32 | FR-SHOP-07, -08 |
 | PEND-11 | Which browsers/OS versions must be supported? | Confirmed: Android + PC + iOS, main browsers including Safari and Brave (Chromium-based) explicitly. | G-33 | FR-UX-02 |
-| PEND-12 | Is library search/filter wanted as the shared library grows? | Yes — search by name, filter by cuisine/difficulty. | G-34 | FR-LIB-04 |
+| PEND-12 | Is library search/filter wanted as the shared library grows? | Yes — search by name. (Filtering by cuisine/difficulty was originally included; both attributes were later removed from the product, G-68.) | G-34, G-68 | FR-LIB-04 |
 | PEND-13 | Expected number of users? | Confirmed: household/small-team scale (~2–10 users), as already assumed. | G-35 | (confirms NFR-AI-01, NFR-FIN-02 assumptions) |
 
 ## Resolved 2026-07-03 (confirmed the existing working assumption, no change)

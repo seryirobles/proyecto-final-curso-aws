@@ -171,14 +171,23 @@ if ci_files and _status_of("cicd_pipeline") == "blocked":
 # Guardrail: feature_list.json is the source of truth for implementation.
 # Every requirement id defined in docs/requirements.md must be covered by at
 # least one feature, and no feature may claim an id that does not exist.
+#
+# A requirement retired by a gap resolution keeps its row (struck through and
+# annotated "**Removed**") so the id is never silently reused -- see FR-LIB-06
+# (G-68) and FR-SHOP-11 (G-74). Those rows are not live requirements and must
+# not be reported as a coverage regression, but they stay valid ids so a stale
+# "covers" entry is still caught as a typo below.
 req_ids = set()
+removed_ids = set()
 with open("docs/requirements.md", encoding="utf-8") as fh:
     for line in fh:
         m = re.match(r"^\|\s*((?:FR|NFR)-[A-Z]+-\d{2})\s*\|", line)
         if m:
             req_ids.add(m.group(1))
+            if "**Removed**" in line:
+                removed_ids.add(m.group(1))
 covered = {rid for f in features for rid in f.get("covers", [])}
-for rid in sorted(req_ids - covered):
+for rid in sorted(req_ids - covered - removed_ids):
     FAILURES.append(f"requirement {rid} is covered by no feature (coverage regression)")
 for rid in sorted(covered - req_ids):
     FAILURES.append(f"covers cites unknown requirement id {rid} (typo?)")

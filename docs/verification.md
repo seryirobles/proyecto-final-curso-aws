@@ -70,7 +70,7 @@ must exercise the property, not just the happy path:
 |---|---|
 | Idempotency (`FR-AI-08`, `FR-SHOP-10`, `FR-MENU-08`) | Run the operation **twice**; assert the second run changes nothing. |
 | Re-runnable after partial failure (`FR-MENU-08`, `G-61`) | Interrupt mid-sequence, re-run, assert no double-archive / double-cleanup. |
-| Never undo the user's reality (`G-32`, `G-44`, `G-53`) | Check an item, force a recompute that changes it, assert it stays checked and gets flagged. |
+| Never undo the user's reality (`G-32`, `G-77`, `G-73`) | Check an item, force a recompute that raises the requirement above it, assert the checked item is **byte-for-byte untouched** and that a **new unchecked item** appears carrying the remainder — not the gross amount. |
 | Additive bulk ops (`FR-AI-11`, `G-18`) | Pre-populate candidates and a definitive, generate, assert nothing was removed. |
 | Snapshots (`FR-CAND-07`, `G-05`) | Add a recipe to a week, edit the library entry, assert the week is unchanged. |
 | Normalised matching (`G-56`) | Assert `"Tomate"`, `"tomate "` and `"tomáte"` aggregate as one item. |

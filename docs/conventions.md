@@ -130,8 +130,8 @@ is surprising. Names do the rest.
 The exception worth making: when code implements a specific resolved gap, cite it.
 
 ```python
-# Checked items survive re-sync even when the quantity grows (G-44):
-# auto-unchecking would erase a purchase the user actually made.
+# Re-sync never writes to a checked item (G-77): the row records a purchase
+# the user actually made. A later shortfall becomes its own unchecked item.
 ```
 
 ## Frontend conventions

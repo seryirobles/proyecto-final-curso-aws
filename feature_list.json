@@ -70,8 +70,8 @@
       "name": "text_and_units",
       "tier": 1,
       "title": "Fixed unit vocabulary and text normalization",
-      "description": "The shared kernel behind ingredient aggregation and cuisine matching: the fixed unit list plus case-, accent- and trim-insensitive normalization.",
-      "covers": ["FR-SHOP-03", "FR-LIB-05", "FR-LIB-06"],
+      "description": "The shared kernel behind ingredient aggregation: the fixed unit list plus case-, accent- and trim-insensitive normalization.",
+      "covers": ["FR-SHOP-03", "FR-LIB-05"],
       "depends_on": [1],
       "acceptance": [
         "A fixed unit list is defined as a closed vocabulary (concrete values proposed in design.md per G-39)",
@@ -88,13 +88,14 @@
       "name": "recipe_model",
       "tier": 1,
       "title": "Recipe entity and meal snapshots",
-      "description": "Immutable Recipe with name, ingredients (quantity + unit from the fixed list), tools, procedure, cuisine and difficulty; plus the snapshot taken when a recipe enters a week.",
-      "covers": ["FR-LIB-03", "FR-LIB-05", "FR-LIB-06", "FR-CAND-07", "FR-MENU-04"],
+      "description": "Immutable Recipe with name, ingredients (quantity + unit from the fixed list), tools and procedure; plus the snapshot taken when a recipe enters a week.",
+      "covers": ["FR-LIB-03", "FR-LIB-05", "FR-CAND-07", "FR-MENU-04"],
       "depends_on": [3],
       "acceptance": [
-        "Recipe is a frozen dataclass carrying name, ingredients, tools, procedure, cuisine, difficulty",
+        "Recipe is a frozen dataclass carrying name, ingredients, tools, procedure",
+        "Recipe carries exactly one tipoAlimento — the predominant ingredient category, from the fixed FR-RULE-04 set (FR-LIB-03, G-69)",
+        "Recipe carries no cuisine, difficulty or kcal attribute (G-68, G-36)",
         "Ingredient quantities only accept units from the fixed unit list (FR-LIB-05)",
-        "Difficulty is a closed predefined scale; cuisine is free text normalized for matching (FR-LIB-06)",
         "A snapshot function produces a value object decoupled from the library entry (FR-CAND-07)",
         "Test proves editing or deleting the library recipe leaves an existing snapshot unchanged (G-05)"
       ],
@@ -107,7 +108,7 @@
       "tier": 1,
       "title": "Candidates, definitive selection and attribution",
       "description": "Slot contents for a live week: add/edit/remove candidates, promote one to definitive, clear the definitive, duplicate warnings, and author attribution with the unknown-user placeholder.",
-      "covers": ["FR-MENU-03", "FR-CAND-01", "FR-CAND-02", "FR-CAND-04", "FR-CAND-05", "FR-CAND-06", "FR-CAND-08", "FR-SUM-01", "FR-SUM-02", "FR-SUM-03", "FR-AUTH-13"],
+      "covers": ["FR-MENU-03", "FR-CAND-01", "FR-CAND-02", "FR-CAND-04", "FR-CAND-05", "FR-CAND-06", "FR-CAND-08", "FR-SUM-01", "FR-SUM-03", "FR-AUTH-13"],
       "depends_on": [2, 4],
       "acceptance": [
         "A slot holds a list of candidates and at most one definitive (FR-MENU-03)",
@@ -116,7 +117,7 @@
         "A promoted meal remains editable; edits propagate wherever it is shown (G-67)",
         "Adding a candidate whose normalized name matches one already in the slot returns a warning but still adds it (FR-CAND-01, G-59)",
         "Saving a meal to the library always creates a new entry and warns on same-name collision (FR-CAND-06, G-26)",
-        "Every candidate and every definitive promotion carries its author (FR-CAND-04, FR-SUM-02)",
+        "Every candidate carries its author; promotion records no separate attribution - FR-SUM-02 was removed (FR-CAND-04, G-79)",
         "Attribution resolves to the reserved unknown-user placeholder when the author was removed (FR-SUM-03, G-29)"
       ],
       "sdd": true,
@@ -153,8 +154,8 @@
         "Aggregation derives only from definitive meals; candidates never contribute (FR-SHOP-05, G-04)",
         "Scope is the current week from today onward plus the whole next week (FR-SHOP-05)",
         "Items merge only on matching normalized name + unit; no cross-unit conversion (FR-SHOP-03)",
-        "The function is pure and deterministic: same inputs produce the same auto-item set, so repeated runs converge (FR-SHOP-10, G-54)",
-        "Each auto item records which live week(s) require it (needed by rollover cleanup, G-53)",
+        "The function is pure and deterministic: same inputs produce the same required-item set, so repeated runs converge (FR-SHOP-10, G-54)",
+        "Items carry no provenance: no auto/manual marker, no override state and no record of which week requires them (G-72, G-73)",
         "Test proves running the aggregation twice yields an identical result"
       ],
       "sdd": true,
@@ -165,17 +166,19 @@
       "name": "shopping_list_state",
       "tier": 1,
       "title": "Shopping list state, re-sync and check-off",
-      "description": "The shared list: manual vs auto items, manual overrides, check-off, the re-sync merge rules, duplicate flagging, and the quantity-changed-while-checked flag.",
-      "covers": ["FR-SHOP-01", "FR-SHOP-02", "FR-SHOP-04", "FR-SHOP-06", "FR-SHOP-07", "FR-SHOP-08", "FR-SHOP-11"],
+      "description": "The shared list: one flat item shape with no provenance, additive re-sync merge, check-off, and the quantity-changed-while-checked flag.",
+      "covers": ["FR-SHOP-01", "FR-SHOP-02", "FR-SHOP-04", "FR-SHOP-06", "FR-SHOP-07", "FR-SHOP-08"],
       "depends_on": [7],
       "acceptance": [
-        "One shared list; auto items are distinguishable from manual ones (FR-SHOP-01, FR-SHOP-04)",
-        "Re-sync updates quantities, adds new items and removes stale UNCHECKED auto items only (FR-SHOP-06)",
-        "Manual items, manual overrides and checked items are always preserved by re-sync (FR-SHOP-06, G-21, G-32)",
-        "Editing an auto item's name or quantity converts it into a manual override (G-21)",
+        "One shared list; an item is a name, quantity, unit and check state, with NO auto/manual marker and no override state (FR-SHOP-01, FR-SHOP-04, G-72)",
+        "Re-sync is purely additive: per normalized name + unit it computes the outstanding amount (required minus what checked items already carry) and writes it to the matching unchecked item, adding one if none exists (FR-SHOP-06, G-72, G-77)",
+        "Re-sync never removes anything - stale, manual and checked items all survive it (FR-SHOP-04, FR-SHOP-06, G-72)",
+        "Test proves two consecutive presses produce an identical list, and that a manual item absent from the computed set is still present afterwards (FR-SHOP-10)",
         "Items are checkable and uncheckable; checked ones sort into a separate section below (FR-SHOP-07, FR-SHOP-08)",
-        "A re-sync that changes a checked item's quantity keeps it checked and flags it as updated (FR-SHOP-08, G-44)",
-        "Manual and auto items sharing a normalized name + unit both remain but are grouped and marked as likely duplicates (FR-SHOP-11, G-55)"
+        "Re-sync never writes to a checked item at all - neither its state nor its quantity; no updated-since-checked flag exists (FR-SHOP-08, G-77, supersedes G-44)",
+        "Test proves that raising the requirement above what a checked item covers leaves that item untouched and produces a NEW unchecked item carrying the remainder, not the gross amount (FR-SHOP-06, FR-SHOP-08, G-77)",
+        "A checked item and an unchecked item may share a normalized name + unit; this is a purchase plus a remainder, not a duplicate (FR-SHOP-10, G-77)",
+        "No duplicate-grouping behaviour is implemented - FR-SHOP-11 was removed (G-74)"
       ],
       "sdd": true,
       "status": "pending"
@@ -210,6 +213,8 @@
       "acceptance": [
         "Effective rules = shared rules with the per-run override applied, leaving shared rules untouched (FR-AI-05, FR-RULE-05)",
         "Target slots exclude disabled days; pinned slots resolve to their pinned library meal (FR-AI-11)",
+        "Slots already holding a definitive meal are skipped entirely; an existing definitive outranks a pin rule, and the skipped pin is reported rather than applied silently (FR-AI-11, G-71)",
+        "Ingredient-category counts describe the week's final state: meals already present count toward each total and generation supplies only the remainder (FR-AI-11, G-71)",
         "For the current week, target slots start at today (Europe/Madrid) — never days already past (FR-AI-11, G-45)",
         "Generation adds candidates and never removes existing candidates or definitives (FR-AI-11, G-18)",
         "An idempotency key is derived from week + slots + effective rules (FR-AI-08)",
@@ -232,7 +237,7 @@
         "Every prompt states the configured number of servings (FR-AI-13, G-64)",
         "Every prompt instructs Castilian Spanish output (FR-AI-07)",
         "Every prompt instructs healthy, balanced menus that vary protein sources, labelled non-medical (FR-AI-06)",
-        "Ingredient-category counts are passed as explicit prompt instructions, honored best-effort (FR-AI-04, G-63)",
+        "Ingredient-category counts are passed as explicit prompt instructions, and are verifiable after generation against each recipe's stored tipoAlimento (FR-AI-04, G-69, supersedes G-63)",
         "Prompts constrain ingredient units to the fixed unit list (FR-LIB-05, G-48)",
         "Both single-recipe modes are supported: from specifications, and from a library reference plus specifications (FR-AI-01, FR-AI-02)"
       ],
@@ -250,7 +255,7 @@
       "acceptance": [
         "Output failing the recipe schema or using a unit outside the fixed list is rejected, not silently accepted (G-48)",
         "Single-recipe generation produces a preview that can be accepted, discarded or regenerated; nothing persists until accepted (FR-AI-10, G-17)",
-        "Regenerations count toward the generation caps (FR-AI-10, NFR-AI-01)",
+        "Each regeneration is a fresh AI invocation consuming the global budget; no per-user quota is counted (FR-AI-10, NFR-AI-01, G-70)",
         "Per-slot results are independent: one slot failing does not abort the others and partial results are kept (FR-AI-09, FR-AI-12)",
         "Insufficient library recipes for library-only or mix mode produces an explicit named failure, never a silent partial result (FR-AI-12, G-66)",
         "Failure messages come from the es-ES messages module (FR-UX-03)"
@@ -271,7 +276,7 @@
         "The archive snapshot is taken BEFORE the cleanup (FR-ARCH-02, G-53)",
         "The former next week becomes the current week carrying over its candidates and definitives (FR-MENU-06, G-28)",
         "The new next week starts empty; rules never auto-populate it (FR-MENU-06, G-15)",
-        "Cleanup removes CHECKED items unless still required by the new current week; unchecked items are untouched (FR-SHOP-09, G-53)",
+        "Cleanup removes every CHECKED item unconditionally; all unchecked items are untouched and keep their state (FR-SHOP-09, G-73)",
         "Archived weeks become read-only (FR-ARCH-02)",
         "Test proves re-running after interruption at each of the five steps completes without data loss, double-archiving or double-cleanup (FR-MENU-08, G-61)"
       ],
@@ -339,7 +344,7 @@
       ],
       "sdd": true,
       "status": "blocked",
-      "blocked_reason": "Architecture P4 (AI provider and model) undecided. The per-user daily generation cap is derived from the 50 EUR/month budget and provider pricing (G-38)."
+      "blocked_reason": "Architecture P4 (AI provider and model) undecided. Cost-cap enforcement is global via AWS cost tooling, not a per-user quota (NFR-AI-01, G-70, supersedes G-38) — the application stores no counter."
     },
     {
       "id": 18,

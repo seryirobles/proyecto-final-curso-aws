@@ -14,14 +14,14 @@
 - As a user, I want the meals generated to be balanced and healthy
 - As a user, I want to see candidate meals for a certain day created by me or other users and select a candidate for it to be the definitive food for a day
 - As a user, I want to see a summary view of the selected meals for the week that I cannot edit (view only mode) and who made them definitive
-- As a user, I want to generate a new meal with AI by specifying ingredients, tools, cuisine and difficulty or selecting a library meal for reference with further user specifications
+- As a user, I want to generate a new meal with AI by specifying ingredients and tools, or selecting a library meal for reference with further user specifications <!-- amended: "cuisine and difficulty" removed from scope, see G-68 -->
 - As a user, I want to see all of the recipes added to the library by myself or other users and be able to edit, remove or add a new one (same process as adding a dish to a menu)
 - As a user, I want to see the changes made by other users in real time to the week menu
 - As a user, I want the app to be in Castillian Spanish
 - As a user, I want to see a shopping list displaying all the items needed for the week's meals: name and quantity
 - As a user, I want to add, edit (name and quantity) and remove shopping list items
 - As a user, I want to add to the shopping list, by clicking a button, all the ingredients needed for the definitive meals only of the current week (only days forward from today) and next week
-- As a user, I want to check off shopping list items as I buy them, with checked items moved to a separate section below all the unchecked ones and shown greyed out, and be able to uncheck them again if needed. When a week is closed, I want the shopping list to clear itself of the already bought items from that week, while the items from the former next week (now the current week) remain
+- As a user, I want to check off shopping list items as I buy them, with checked items moved to a separate section below all the unchecked ones and shown greyed out, and be able to uncheck them again if needed. When a week is closed, I want the shopping list to clear itself of everything I have already bought, while everything still pending remains <!-- amended: cleanup is unconditional on all checked items; the "still needed by the former next week" exception removed, see G-73 -->
 - As a user, I want to keep a record of all the past weeks' menus and access them any time
 - As a user, I want to specify general predefined instructions to generate week menus, which will be shared among all the users and will affect every week: number of meals with each type of ingredients (meat, fish, eggs, carbohydrates, legumes, vegeratian...), days with a specific meal from the library for lunch or dinner and disabling generating specific days. These rules must be displayed as a list in their own section and only be editable via dropdowns.
 - As a user or an admin, I want to be able to set my password in the login screen when I'm logging in for the first time or my password has been reset by an admin

@@ -248,6 +248,7 @@ header note).
 - **Decision:** Add search by recipe name and filtering by cuisine and/or difficulty.
 - **Reasoning:** This is UX support for a capability the stories already grant (viewing and using the shared library), not new product scope — "seeing all recipes" stops meaning anything once the count exceeds what fits on a screen. Cuisine and difficulty require no new data since library recipes already store them (FR-LIB-03) for AI-generation purposes; reusing them for filtering is free.
 - **Requirements:** FR-LIB-04.
+- **Amended by G-68:** the cuisine/difficulty **filters** are removed with the attributes themselves. Search by recipe name survives and remains the answer to this gap.
 
 ### G-35 · Expected scale confirmed (closes PEND-13)
 - **Gap:** Real-time fan-out (FR-RT-01), the AI cost cap (NFR-AI-01), and infrastructure sizing (NFR-FIN-02) all depend on how many users the app serves.
@@ -323,7 +324,13 @@ found and resolved; one new business question (PEND-14) was raised.
 - **Reasoning:** US1 scopes the admin view to user management "and nothing else" — an admin-creation UI was never asked for, and IaC provisioning is already the accepted pattern for admin lifecycle (FR-AUTH-08). Reset-each-other must be exposed in the UI because it is the stated rationale of FR-AUTH-07 itself; without it, multi-admin support is dead weight. Blocking in-app admin removal prevents the last-admin-removes-themselves lockout, and costs nothing functionally: admins author no planning content (FR-AUTH-05), so the reattribution machinery of FR-AUTH-13 has nothing to do for them anyway.
 - **Requirements:** FR-AUTH-18; FR-AUTH-12 already lists all accounts including admins.
 
-### G-44 · A checked item whose quantity grows is silently wrong
+### G-44 · A checked item whose quantity grows is silently wrong — **SUPERSEDED by G-77 (2026-08-14)**
+
+> **Superseded.** The gap below is real and its statement still stands; the
+> *decision* has been replaced. G-44 resolved it by updating the checked item
+> and flagging it; G-77 resolves it by never touching the checked item and
+> adding a new unchecked item for the outstanding amount. Kept for the record.
+
 - **Gap:** FR-SHOP-08 correctly preserves check state across re-sync, but consider: a user buys 500 g of rice and checks the item; a new definitive meal raises the requirement to 800 g. The quantity updates on an item the user has already marked as bought — the fact that **more must be bought** is invisible.
 - **Decision:** The quantity change is applied, the item stays checked, and the item is visually flagged as updated since it was checked.
 - **Reasoning:** The two naive options each destroy information: auto-unchecking erases the user's real-world action (they *did* buy rice — the exact failure G-32 forbids), while silently updating hides the shortfall. Flag-without-uncheck preserves both truths and lets the user decide (uncheck to re-buy the difference, or ignore). This is the same "never silently undo the user's reality" principle already applied in G-04, G-21 and G-32.
@@ -340,6 +347,7 @@ found and resolved; one new business question (PEND-14) was raised.
 - **Decision:** The same search-by-name and cuisine/difficulty filters are available in every library-picking context.
 - **Reasoning:** Same problem, same fix; solving it in one surface and not the others just moves the frustration to wherever the user actually needs a recipe. The rule-pinning dropdown is the most urgent case: US26 mandates dropdown-only editing, and an unsearchable dropdown over a growing library degrades into scrolling through hundreds of entries.
 - **Requirements:** FR-LIB-04 (amended).
+- **Amended by G-68:** what propagates to the three picking flows is now **search by name** only; the filters are gone. The rule-pinning dropdown concern is unchanged.
 
 ### G-47 · Library changes were missing from the real-time broadcast list
 - **Gap:** FR-RT-01 enumerated candidates, definitive selections, shopping lists and rules — but not the **library**, even though FR-RT-02 declares it fully shared-editable. Two users browsing simultaneously would see stale libraries; worse, one could pick or pin a recipe another user just deleted.
@@ -358,6 +366,7 @@ found and resolved; one new business question (PEND-14) was raised.
 - **Decision:** Difficulty becomes a predefined dropdown scale (e.g. fácil/media/difícil); cuisine stays free text but with suggestions drawn from values already in the library.
 - **Reasoning:** Difficulty has a naturally small, closed vocabulary — a dropdown costs nothing and guarantees filterability, consistent with the dropdown-only philosophy the stories already embrace for rules (US26). Cuisine is genuinely open-ended (any cuisine on earth may appear), so closing it would wrongly reject valid values; suggestions-from-existing-values nudges users toward convergence ("Italiana", not "italiana"/"Italian") without forbidding anything.
 - **Requirements:** FR-LIB-06.
+- **Superseded by G-68:** moot. Cuisine and difficulty no longer exist, so there is nothing left to normalize or constrain to a scale, and FR-LIB-06 is removed. Retained here for the audit trail.
 
 ### G-50 · Candidates stored their author but never displayed it
 - **Gap:** US15 reads "candidate meals … created by me or other users" — a distinction the user can only make if the author is **shown**. Attribution was stored (it powers FR-SUM-02 and FR-RT-02) but no requirement put it on the candidate itself.
@@ -407,6 +416,7 @@ see G-52.**
   - The archive snapshot (FR-ARCH-02) is taken **before** the cleanup, so the historical record of the closed week shows what was actually bought.
 - **Reasoning:** Rollover is the natural end of a purchase's purpose — clearing bought items then keeps the greyed section from growing without bound, with zero user chores. Sparing everything the former next week needs protects exactly the behavior next-week planning exists for (G-28): shopping in advance — wiping those items would mark real purchases as forgotten. Restricting the cleanup to *checked* items follows the established "never silently discard something the user may still act on" principle (G-04, G-21, G-32): only a bought item's job can be finished. Snapshot-before-cleanup preserves record fidelity (US25) at no cost.
 - **Requirements:** FR-SHOP-09 (new); FR-MENU-06, FR-ARCH-02 (amended); US24 extended in `app_user_stories.md`.
+- **Superseded (2026-08-09) by G-73.** The conditional half of this decision is gone: rollover now clears **every** checked item unconditionally and keeps every unchecked one, so the per-item week attribution in the second bullet is not stored. What survives unchanged is the rest — unchecked items untouched, checked manual items cleared alongside the others, and the archive snapshot taken before the cleanup.
 
 ---
 
@@ -434,6 +444,7 @@ business question raised (PEND-15).
 - **Decision:** Name matching for aggregation — and cuisine matching for filters/suggestions — is case-, accent- and leading/trailing-whitespace-insensitive. No further fuzzy matching (singular/plural, synonyms) in the MVP.
 - **Reasoning:** Case/accent/trim normalization is deterministic, cheap, and captures the overwhelming majority of accidental mismatches in Spanish text ("Jamón"/"jamon"). Singular/plural stemming and synonym matching ("tomate cherry" vs "tomatitos") are genuinely hard, error-prone, and were already implicitly rejected with cross-unit conversion (G-39) — the fixed-vocabulary philosophy stops at what can be normalized losslessly.
 - **Requirements:** FR-SHOP-03 (amended), FR-LIB-06 (amended).
+- **Amended by G-68:** the cuisine half of this rule is removed with the attribute. Case-/accent-/whitespace-insensitive matching still governs **ingredient names** for shopping aggregation (FR-SHOP-03), which was always the load-bearing case.
 
 ### G-57 · Two live weeks created a mis-targeting hazard the UI never addressed
 - **Gap:** Since G-28 every planning action has a target week, but no requirement made the active week visible — a user believing they're filling next week could add candidates, promote definitives, or launch a 14-slot AI generation into the wrong week. The generation confirmation prompt (FR-AI-05) showed the rules but not **which week** it was about to fill.
@@ -523,6 +534,12 @@ features (G-63, G-64), three smaller completeness fixes (G-65 to G-67), and
 - **Reasoning:** Households adjust ("add more rice, my parents are coming") right up until cooking; forcing a clear-reselect-repromote dance (FR-CAND-08 + FR-CAND-05) to fix a typo would punish the normal case. The collaborative safety net for content edits is the same as everywhere else: attribution, real-time broadcast, and confirmations (G-07, G-24). The record only needs to be immutable once the week is history, which FR-ARCH-02 already guarantees.
 - **Requirements:** FR-CAND-05 (amended).
 
+### G-68 · Cuisine and difficulty were scope the household never asked for
+- **Gap:** Recipes carried two classification attributes — **cuisine** and **difficulty** — introduced as AI-generation inputs (FR-AI-01) and then reused as library filters (G-34, G-46). Each one dragged a tail behind it: a closed difficulty vocabulary to agree on (G-49), accent-insensitive cuisine normalization (G-56), two extra fields in every authoring flow, and a pending architecture decision on the scale's literal values. No user story asks to plan meals *by* cuisine or difficulty; they entered as prompt-flavoring metadata and were promoted to first-class data by the filter requirement, not by a stated need.
+- **Decision:** Both attributes are **removed from the product**. Recipes no longer store cuisine or difficulty; AI single-recipe generation takes ingredients and tools only; library discovery is **search by name** alone. FR-LIB-06 is removed outright. A per-recipe **kcal/calorie** attribute was never in scope and remains out (G-36).
+- **Reasoning:** For a household of 2–10 people the library is small enough that name search carries it, and the two fields cost more than they returned: they were the *sole* justification for the difficulty scale decision (G-49), for half of the text-normalization rule (G-56), and for a pending architecture decision (`docs/architecture.md` §2). Removing them retires all three at once and shortens both authoring flows. The accepted cost is discovery UX at scale — once the library passes roughly 80 recipes, name search alone gets thin, and the remedy then is a proper tag/search facet driven by an actual story rather than two fields inherited from a prompt form.
+- **Requirements:** FR-LIB-06 (removed); FR-CAND-03, FR-LIB-03, FR-LIB-04, FR-AI-01 (amended). Supersedes G-49; amends G-34, G-46, G-56.
+
 ### Examined and rejected in this sweep (recorded for auditability)
 - **Offline support for in-store shopping** — real value, but a service-worker/sync architecture is far beyond "basic core functionality"; stores have connectivity and the list is a lightweight page.
 - **GDPR/data-protection formalities** — a private household app storing only usernames; user removal (G-29) already provides practical erasure. Compliance paperwork is not MVP scope.
@@ -533,3 +550,139 @@ features (G-63, G-64), three smaller completeness fixes (G-65 to G-67), and
 - **AI content-safety guardrails beyond the non-medical label** — recipe generation with fixed input dimensions is a low-risk domain; the non-medical labelling (FR-AI-06) covers the realistic concern.
 - **Field-level validation minutiae** (name lengths, quantity bounds, item ordering within shopping sections) — implementation details below requirement granularity; es-ES validation messaging is already required (FR-UX-03).
 - **Session-keepalive semantics of the real-time connection** (does an open WebSocket count as activity for FR-AUTH-16?) — implementation detail with no user-visible ambiguity worth legislating.
+
+---
+
+## Part I — Access-pattern review reversals (2026-08-03)
+
+While drafting the access-pattern catalogue (`lab-final-patrones-acceso.xlsx`),
+two requirements were found to be wrong **as authored**, not merely ambiguous.
+Both were reversed by direct decision of the requirements owner, who authored
+the originals. Recorded here because each **supersedes an earlier resolution**
+that argued the opposite case — the reasoning below is what changed, not the
+process.
+
+### G-69 · Recipes need a stored ingredient category after all (supersedes G-63)
+- **Gap:** G-63 decided the MVP would store **no** per-recipe ingredient category, leaving FR-RULE-04's category counts to be honored best-effort by the AI from raw ingredients. That made the library's only discovery mechanism name search (G-68), and made post-generation verification of the rules impossible by construction. Once the access patterns were written down, the consequence became concrete: the library-read pattern ("Obtener biblioteca") was drafted with a `tipoAlimento` filter parameter that no stored attribute could satisfy.
+- **Decision:** Every recipe stores exactly **one** ingredient category (`tipoAlimento`) — the one that **predominates** in the dish — drawn from the same fixed set FR-RULE-04 already defines for the rules. It is captured in every authoring flow via dropdown; AI output is instructed and validated against the same set. The library gains a **filter by category** alongside name search. Category counts become verifiable after generation instead of best-effort only.
+- **Reasoning:** G-63 rejected the attribute on three grounds, and two of them have weakened. (1) *Authoring burden*: a single dropdown, in flows that already carry a dropdown for units (FR-LIB-05) — marginal. (2) *Wrongness at the edges*: real, and explicitly accepted — "lentejas con chorizo" is filed under whichever category prevails, so the counts approximate composition and are **not** a nutritional measure. FR-AI-04 now says so out loud rather than leaving readers to assume precision. (3) *Enables verification nobody asked for*: the owner is now asking for it. The compensating gain G-63 could not have priced is that the household regains a discovery axis the library lost entirely in G-68, at the cost of one enum instead of the two free-form attributes that removal retired.
+- **Requirements:** FR-LIB-03, FR-LIB-04, FR-AI-04, FR-RULE-04 (amended). **Supersedes G-63**; reverses the "per-recipe ingredient-category attribute" rejection recorded in the Part H negative space.
+
+### G-70 · The AI cost cap is global, not per-user (supersedes G-38)
+- **Gap:** G-38 enforced the €50/month AI budget through a **per-user daily generation cap**. That obliged the application to store and atomically increment a per-user-per-day counter — a persistence access pattern, a concurrency problem, and a figure to derive from provider pricing (listed as open work in `architecture.md` §2.1) — all to ration a resource among 2–10 trusted members of one household.
+- **Decision:** The cap is enforced **globally for the deployment** through AWS cost-control tooling. The application stores **no** per-user quota and performs no counting. It surfaces a friendly es-ES message when generation is unavailable because the cap is reached.
+- **Reasoning:** Per-user fairness is a mechanism for defending a shared budget against untrusted or adversarial consumers. This household is neither: the members share a kitchen, and the failure mode the cap actually guards against is a runaway loop or a pricing surprise, which a global ceiling catches and a per-user quota does not catch any sooner. Removing it deletes a counter, an atomicity requirement, and a pending numeric decision. **The accepted cost is stated deliberately:** one enthusiastic user can exhaust the month's budget for everyone, with no in-app remedy. **The known hazard is also stated:** AWS Budgets *alert*; they do not *stop* spend. A budget alarm alone satisfies the letter of this requirement while still permitting an unbounded bill, so NFR-AI-01 now requires an actual enforcing path (Budget action or equivalent), not merely notification.
+- **Requirements:** NFR-AI-01, FR-AI-10 (amended). **Supersedes G-38.** FR-AI-10 still said regenerations "count toward the generation caps", a dangling reference to the per-user counter this decision removes; it now states that each regeneration is a fresh invocation consuming the global budget. Obsoletes the "per-user daily generation cap" references in `docs/architecture.md` (the P4 row in §2 and the §2.1 item) and the PEND-03 answer in `docs/gaps_pending_stakeholders.md` — both files were left untouched, the first because it is human-owned, the second because it is a frozen record of what the stakeholder was actually asked. See the desync register in `docs/access_patterns_review.md` §8.
+
+### G-71 · Whole-week generation ignored the week it was generating into
+- **Gap:** FR-AI-11 defined generation's targeting from the **rules and the clock** only — disabled days, pinned slots, days already past. Nothing consulted the **current contents** of the week, which left two behaviours undefined. (1) A slot already holding a **definitive** meal was still a target, so generation would pile candidates underneath a decision the household had already made. (2) The weekly ingredient-category counts of FR-RULE-04 did not say whether they described the week's **final state** or merely the **generated output** — so with a "3 fish meals" rule and two fish meals already planned, an implementer could defensibly add one or add three. The clause "as far as the remaining slots allow" implied the former; the requirement never said it.
+- **Decision:** Both resolved toward the week's actual state. Slots holding a definitive are **skipped entirely**, and an existing definitive **outranks a pin rule** — the skipped pin is reported through the existing per-slot messaging (FR-AI-12) rather than applied silently. Category counts describe the **week's final state**: existing meals count toward each total and generation supplies only the remainder.
+- **Reasoning:** Both fall straight out of invariant #2 — *never silently undo the user's reality*. A definitive meal is the strongest signal of intent in the product (FR-CAND-05); burying it under generated candidates, or overwriting it because a rule was written weeks earlier, inverts the priority between a standing preference and a present decision. Reporting the skipped pin rather than swallowing it follows the same "flag it, keep both, let the human resolve" clause. On the counts, final-state semantics is the only reading under which the rules mean what a household thinks they mean; the alternative makes the totals a property of one button press rather than of the week, and lets repeated presses compound past any limit. The cost is that generation must now **read the week** before targeting — a projection of name, category and definitive-status per slot, the same shape the week grid and the library index already need.
+- **Requirements:** FR-AI-11 (amended). Depends on the per-recipe category introduced by G-69 — final-state counting is only computable because meals now carry `tipoAlimento`. FR-RULE-07 is unchanged: rule-set satisfiability is still validated against the **rules** at edit time; a runtime shortfall caused by occupied slots remains an FR-AI-12 per-slot message.
+
+---
+
+## Part J — Shopping-list MVP simplification (2026-08-09)
+
+Continuing the access-pattern review, the shopping-list requirements were
+re-examined against the attributes an item would actually have to carry. The
+requirements owner judged the accumulated behaviour to be **over-specified for
+the MVP** and cut it back. All three entries below are owner decisions
+overriding the freeze in `CLAUDE.md`, in the same manner as Part I, and each
+**supersedes an earlier resolution** that argued for the machinery now removed.
+
+The three cuts are one idea seen from three sides: **the shopping list stores
+no provenance.** An item is a name, a quantity, a unit and a checkbox. Every
+behaviour that required knowing *where an item came from* — override
+protection, stale-item removal, week attribution, duplicate marking — is gone
+with it.
+
+### G-72 · Re-sync is additive, which deletes the whole provenance model (supersedes G-21)
+- **Gap:** FR-SHOP-06 made the button a read-reconcile-write: update quantities, add new items, and **remove** stale unchecked auto items while preserving manual items, manual overrides and checked items. Removal is the expensive half. To delete safely it must distinguish auto from manual (FR-SHOP-04) and must further distinguish an auto item a user had edited — a **third** state, since neither boolean covers it (G-21). That is a provenance attribute on every row, an override transition on every edit, and a destructive branch that must be right every time, all so the list can tidy itself.
+- **Decision:** Re-sync is **purely additive**. It adds ingredients not yet present and updates the quantity of ones already present under the same normalized name + unit. **It never removes anything.** The MVP stores no auto/manual marker and no manual-override state. A user edit to a quantity re-sync also derives may be overwritten by a later press; a no-longer-needed item stays on the list until someone deletes it (FR-SHOP-02) or buys it and rollover clears it (FR-SHOP-09).
+- **Reasoning:** The destructive branch was carrying the entire data model. Removing it makes FR-SHOP-04's guarantee — re-sync must not delete manual items — true *by construction* rather than by an attribute that has to be maintained correctly across three flows. It also makes FR-SHOP-10's idempotence nearly free: an additive merge keyed on normalized name + unit is convergent by definition, so concurrent presses cannot duplicate or race on removals. **The accepted costs are stated deliberately.** (1) The list accumulates: uncheck-and-forget items and ingredients from meals later un-promoted linger until removed by hand. In a household list that a human reads weekly, that is a chore, not a defect. (2) A deliberate manual edit ("we already have rice, buy 1 not 3") can be silently reverted by the next press — the exact failure G-21 was written to prevent. The judgement is that a household of 2–10 people re-editing one row occasionally is cheaper than a three-state provenance model, and that FR-SHOP-02's manual delete is the remedy when it matters.
+- **Requirements:** FR-SHOP-04, FR-SHOP-06, FR-SHOP-10 (amended). **Supersedes G-21**'s preserve-on-edit principle for the shopping list specifically; the same principle stands untouched everywhere else it applies (G-04, G-32, ~~G-44~~ → **G-77**, which supersedes G-44 and applies the principle more strictly still: a checked item is not merely preserved, it is never written to at all).
+
+### G-73 · Rollover clears bought items unconditionally (supersedes G-53)
+- **Gap:** FR-SHOP-09 cleared checked items *except* those still required by a definitive meal of the new current week. That exception is the sole reason the requirement went on to demand that auto items **record which live week(s) require them** — a stored attribute existing entirely to answer one question, once a week, in a job that already reads the new current week anyway.
+- **Decision:** At rollover the list is cleared of **every checked item**, with no requirement test. **All unchecked items remain**: an unchecked item is shopping still pending, and pending shopping does not expire because the calendar turned over. The per-item week attribution that the old FR-SHOP-09 required — "auto items shall record **which live week(s)** require them" — is therefore not stored at all. No attribute name was ever assigned to it; it is simply gone.
+- **Reasoning:** The check state already carries the meaning the week attribution was reconstructing. Checked means bought; a bought item has served its purpose and the household will re-add it via the button if the new week needs it again — which is exactly what the button is for, and FR-SHOP-06's additive merge now makes that safe. Unchecked means not yet bought, and that is true regardless of which week motivated it. The discarded case is an item bought in advance for the incoming week and then cleared, forcing one button press to restore it; against that, the model loses an attribute, the rollover job loses a read-and-compare step, and FR-MENU-08's idempotence gets easier, because "delete all checked" is naturally re-runnable while a conditional delete is not.
+- **Requirements:** FR-SHOP-09, FR-MENU-06 (amended). **Supersedes G-53.** FR-MENU-08 is unchanged and gets simpler to satisfy.
+
+### G-74 · Duplicate grouping was machinery for a case that no longer arises (supersedes G-55)
+- **Gap:** FR-SHOP-11 required an auto item and a manual item sharing a normalized name + unit to both remain, but be **grouped and visually marked as likely duplicates**. It was written when re-sync appended alongside manual items rather than merging with them, and it depends on the auto/manual distinction G-72 has now removed.
+- **Decision:** FR-SHOP-11 is **removed from the product**. Re-sync merges on normalized name + unit (FR-SHOP-06), so an exact match produces one row, not two. Entries differing only by a form the normalization deliberately declines to fold — "tomate" versus "tomates", per the singular/plural exclusion in FR-SHOP-03 and G-56 — simply sit next to each other with no special treatment.
+- **Reasoning:** With merge-on-match there is no duplicate to group in the case the requirement actually named. What survives is near-duplicates that differ textually, and the honest position is that the MVP does not detect those: FR-SHOP-03 already refused stemming and synonym matching as error-prone (G-56), so a "likely duplicate" marker would have to be driven by the same matching that requirement rejected, or by provenance that G-72 has deleted. A user seeing two similar lines edits or removes one with FR-SHOP-02, which is the same remedy the requirement prescribed, minus the UI that pointed at them.
+- **Requirements:** FR-SHOP-11 (removed). **Supersedes G-55.** Follows the FR-LIB-06 precedent of G-68: the requirement row is kept, struck through, and annotated rather than deleted, so the id never silently disappears.
+- **Reasoning corrected 2026-08-14 by G-77 — the outcome stands, the argument does not.** The claim above that "re-sync merges on normalized name + unit, so an exact match produces one row, not two" is **no longer true**: under G-77 a checked item and an unchecked item deliberately share a normalized name + unit, because the outstanding amount is carried by a new row rather than by modifying a purchase. FR-SHOP-11 stays removed, on a narrower argument: the two rows are **not duplicates**, they are a purchase and a remainder, and they read correctly precisely because the check state already separates them into two sections on screen (FR-SHOP-08). Grouping them would obscure the distinction the user needs. What G-74 originally denied — a *grouping and marking* UI for likely duplicates — is still not wanted, and the near-duplicate case it also covered ("tomate"/"tomates") is unaffected.
+
+---
+
+## Part K — Compliance-pass corrections (2026-08-13)
+
+Raised by the access-pattern compliance pass of AP1–AP23 against this
+specification (`docs/access_patterns_review.md` §9). The entry below is an owner
+decision overriding the freeze in `CLAUDE.md`, in the same manner as Parts I and
+J, and was directed explicitly.
+
+### G-75 · FR-AUTH-13 still claimed shopping-list items are authored content
+- **Gap:** FR-AUTH-13 requires content authored by a removed account to be retained and reattributed to the "unknown user" placeholder, and enumerates that content as "candidate meals, library recipes, definitive-meal promotions, rule edits, **shopping-list items**". Since G-72 a shopping-list item is a name, a quantity, a unit and a checkbox — it stores **no author**. The clause names an attribution that does not exist, so it is not merely unimplemented but unimplementable, and a reviewer checking FR-AUTH-13 against the access-pattern catalogue would correctly report the catalogue as non-compliant against a requirement that cannot be met by any catalogue.
+- **Decision:** Remove **shopping-list items** from the FR-AUTH-13 enumeration. The remaining four categories are unaffected and keep the render-time resolution of G-29. The struck-through phrase is kept inline with an annotation, following the FR-LIB-06 / FR-SHOP-11 precedent, so the cut stays visible rather than silently disappearing.
+- **Reasoning:** This is a leftover, not a change of intent. Part J removed provenance from the shopping list without revisiting the requirements that referenced it from elsewhere — the same class of desync that `docs/access_patterns_review.md` §8 was created to track, found this time in a frozen document rather than a derived artifact. No behaviour changes: nothing today writes an author onto a shopping item, so nothing stops doing so. What changes is that the specification stops asking for something the data model deliberately does not carry.
+- **Requirements:** FR-AUTH-13 (amended). Consistent with G-72; no supersession — G-29 stands, with a shorter list.
+
+---
+
+## Part L — Rule attribution removed from the MVP (2026-08-13)
+
+Directed by the requirements owner during the access-pattern compliance pass,
+overriding the freeze in `CLAUDE.md` in the same manner as Parts I, J and K.
+
+### G-76 · Rule edits are not attributed in the MVP
+- **Gap:** FR-RULE-06 required every shared-rule edit to be **attributed**, and FR-SUM-03 named "rule edits (FR-RULE-06)" among the attributions that must fall back to the "unknown user" placeholder; FR-AUTH-13 likewise listed "rule edits" among the content a removed account leaves behind. The access-pattern catalogue carries no author on either rules pattern, so the compliance pass reported the catalogue non-compliant against three requirements at once.
+- **Decision:** **Rule attribution is out of MVP scope.** A rule stores no author. FR-RULE-06 keeps "any user may edit" and the real-time broadcast, and drops the attribution clause. FR-SUM-03 drops rule edits from its enumeration. FR-AUTH-13 drops "rule edits" from the content it reattributes. Struck-through inline with an annotation, following the FR-LIB-06 / FR-SHOP-11 / G-75 precedent.
+- **Reasoning:** Attribution earns its place where the product actually shows it. A candidate meal displays its author (FR-CAND-04) and the summary shows who promoted a meal (FR-SUM-02) — both are on screen, both change how the household reads the plan. Rules are a dozen dropdown-selected rows in a shared settings screen that anyone may edit by design (G-37, no owner/governance role); nothing in the product surfaces who last touched one. Carrying an author on every rule write, plus the removed-user resolution path behind it, buys a field no view renders. Same judgement as Part J's provenance cut, applied to a different collection.
+- **Requirements:** FR-RULE-06, FR-SUM-03, FR-AUTH-13 (all amended). Does not supersede G-37 or G-29, which stand with narrower scope.
+- **Flagged, not changed — outside the instruction given:** **FR-RT-02** still reads "any user may view and edit candidates, the library, and **the shared rules**. Concurrent edits resolve last-write-wins **with author attribution**." Its last-write-wins clause is unaffected, but the attribution half no longer holds for the rules third of that sentence. Left for an explicit decision rather than extended silently. Derived artifacts (`docs/coverage_analysis.md`, `docs/app_user_stories.md` US26) not yet re-synced for G-76.
+
+---
+
+## Part M — The remainder is a new item, not an edit to a purchase (2026-08-14)
+
+Directed by the requirements owner during the access-pattern compliance pass,
+overriding the freeze in `CLAUDE.md` in the same manner as Parts I, J, K and L.
+
+### G-77 · A checked item is never written to; the shortfall becomes its own item (supersedes G-44)
+- **Gap:** G-44 handled the case where a user buys 500 g of rice, checks it, and a newly promoted meal raises the week's requirement to 800 g. Its decision was to update the checked item to 800 g, keep it checked, and **visually flag it as updated since it was checked**. That flag is not renderable from the data the MVP stores: "updated since checked" compares the quantity **at check time** against the quantity **now**, and the item carries only the latter — the re-sync write overwrote the former. Delivering G-44 therefore required a new stored attribute on every shopping item, which is the provenance Part J had just finished removing.
+- **Decision:** **Re-sync never modifies a checked item at all** — not its state, not its quantity. Per normalized name + unit it computes the **outstanding** amount (required by the in-scope definitive meals, minus whatever checked items already carry) and writes that to the matching **unchecked** item, creating one if none exists. When the outstanding amount is zero or less, nothing is added. In the rice case the checked `arroz 500 g` is left alone and a new unchecked `arroz 300 g` appears — the amount still to buy, not the gross requirement. A checked item and an unchecked item may therefore share a normalized name + unit; the surrogate `idIngrediente` already permits this.
+- **Reasoning:** The shortfall is not a property of the purchase, so it does not belong on the purchase's row. It is a new thing to buy, and the list already has a perfectly good way to express a new thing to buy — a new unchecked item, which surfaces in the section the user actually shops from. This is the "never silently undo the user's reality" principle (G-04, G-32) taken further than G-44 took it: G-44 still wrote to the row recording a real-world purchase and then papered over the write with a flag; G-77 does not write to it. **It also costs the data model nothing** — no new attribute, no conditional write, and no access pattern: re-sync already reads checked quantities through "Obtener lista de la compra", and the per-item write already creates rows. The alternative designs considered — a stored `isActualizadoDesdeCompra` boolean, or storing the quantity at check time and deriving the flag — were both rejected as machinery for a flag the product does not need. **The quantity written is the remainder, not the gross requirement**, because a user shown `arroz 800 g` after buying 500 g would buy 800 more.
+- **Requirements:** FR-SHOP-06, FR-SHOP-08, FR-SHOP-10 (amended). **Supersedes G-44.** FR-SHOP-03 is unchanged: it defines the required set computed from meals, not how that set is applied to the list.
+- **Corrects G-74's reasoning without reopening it:** FR-SHOP-11 stays removed, but G-74's argument — "an exact match produces one row, not two" — is now false. The replacement argument is recorded on G-74 itself: the two rows are a purchase and a remainder, not duplicates, and FR-SHOP-08's two-section display already separates them.
+- **Left unresolved, deliberately:** FR-SHOP-10 keeps the word **serialized**. Two concurrent presses can still both compute the same outstanding amount and both create a row. That is a concurrency-control question for the data-structure pass, not for the access-pattern catalogue, and the owner parked it explicitly.
+
+---
+
+## Part N — Completing the rule-attribution cut (2026-08-14)
+
+Directed by the requirements owner, overriding the freeze in `CLAUDE.md` in the
+same manner as Parts I, J, K, L and M.
+
+### G-78 · FR-RT-02 still attributed rule edits (completes G-76)
+- **Gap:** G-76 removed rule authorship from FR-RULE-06, FR-SUM-03 and FR-AUTH-13, and Part L flagged that **FR-RT-02** was left asserting the same thing: "any user may view and edit candidates, the library, and **the shared rules**. Concurrent edits resolve last-write-wins **with author attribution**." One sentence covering three collections, of which only two still have authors.
+- **Decision:** FR-RT-02's last-write-wins clause is unchanged for all three collections. **Author attribution is scoped to candidates and library recipes only**; a rule edit is last-write-wins with no author recorded.
+- **Reasoning:** Completes G-76 rather than adding to it. Last-write-wins and attribution are independent concerns — the first is a conflict-resolution policy that needs no author, the second is a display concern that does. The original sentence bundled them, which is why removing rule authorship left the requirement half-true.
+- **Requirements:** FR-RT-02 (amended). Completes G-76; supersedes nothing.
+
+---
+
+## Part O — Promotion attribution removed from the MVP (2026-08-14)
+
+Directed by the requirements owner, overriding the freeze in `CLAUDE.md` in the
+same manner as Parts I through N.
+
+### G-79 · Who promoted a meal is not recorded
+- **Gap:** FR-SUM-02 required the weekly summary to display **who made each meal definitive**. That is a second, distinct attribution: FR-CAND-04 already requires each candidate to display **its author**, and the two are routinely different people — one household member proposes a dish, another promotes it. The access-pattern catalogue carries exactly one attribution per meal, `añadidoPor`, so the compliance pass reported FR-SUM-02 as unsatisfiable without a second attribute plus its own removed-user resolution path (FR-SUM-03).
+- **Decision:** **Promotion attribution is out of MVP scope.** FR-SUM-02 is removed. The meal's existing author (`añadidoPor`, FR-CAND-04) is what the summary displays; nothing records who promoted it. FR-SUM-03 drops the promotion clause, and FR-AUTH-13 drops "definitive-meal promotions" from the content it reattributes, leaving candidate meals and library recipes.
+- **Reasoning:** Same judgement as G-76 applied to a different collection: an attribute is worth carrying when a view depends on it and the household reads it. "Who proposed this dish" is the interesting question and it is already answered. "Who clicked promote" is a second field, a second write path, and a second removed-user fallback, to distinguish an action that in a 2–10 person household is usually visible in conversation and rarely disputed. The requirement row is kept, struck through and annotated, following the FR-LIB-06 / FR-SHOP-11 precedent.
+- **Requirements:** FR-SUM-02 (removed), FR-SUM-03, FR-AUTH-13 (amended). Narrows G-29 without superseding it.
+- **Note on FR-SUM-03's rewrite:** with both rule edits (G-76) and promotions (G-79) gone, its enumeration would have been left citing only FR-RT-02. It now names **candidate authorship (FR-CAND-04)** and **library-recipe authorship** explicitly. This is a clarification, not a new requirement — FR-AUTH-13 already required exactly those two to be reattributed to the placeholder.

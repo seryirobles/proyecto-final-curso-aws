@@ -89,7 +89,7 @@ Hitting any of these means: mark the feature `blocked`, write the reason in
 | P1 | **Datastore** (DynamoDB? Aurora/RDS? something else) | persistence adapters, all reads/writes |
 | P2 | **Auth mechanism** (Cognito? application-managed?) | the whole `FR-AUTH-*` family |
 | P3 | **Real-time transport** (WebSocket API? AppSync? polling?) | `FR-RT-01`–`-03` |
-| P4 | **AI provider and model** (Bedrock? external API?) | `ai` Lambda, the per-user daily cap derived from €50 (`G-38`) |
+| P4 | **AI provider and model** (Bedrock? external API?) | `ai` Lambda, and the enforcing path for the €50/month **global** cap (`G-70`, supersedes `G-38`) |
 | P5 | **REST API contract** (resources, verbs, payload shapes, error format) | `api` Lambda handlers |
 | P6 | **Deployment topology** (API Gateway config, VPC, cold-storage wiring) | anything touching AWS |
 | P7 | **Frontend framework identity, bootstrap idiom and test runner** — the stack is specified (§1.1); only these are pinned down from the human's initial code drop | `frontend_spa` |
@@ -101,10 +101,9 @@ These read like open questions but the requirements explicitly classify them as
 `design.md`; the human approves them at the normal spec gate:
 
 - The literal **unit list** for ingredients/shopping (`G-39`, `FR-SHOP-03`).
-- The literal **ingredient-category list** for the rules (`G-63`, `FR-RULE-04`).
-- The **difficulty scale** values (`G-49`, `FR-LIB-06`).
+- The literal **ingredient-category list** for the rules (`G-69`, supersedes `G-63`; `FR-RULE-04`). It is the same set stored per recipe as `tipoAlimento` (`FR-LIB-03`).
 - The configured **servings count** for AI prompts (`G-64`, `FR-AI-13`).
-- The **per-user daily generation cap** figure, once P4 is decided (`G-38`).
+- ~~The **per-user daily generation cap** figure, once P4 is decided (`G-38`).~~ **Removed** by `G-70`: the cap is **global** for the whole deployment, enforced through AWS cost tooling. The application stores and enforces **no per-user quota**. What remains open is the *enforcing path* (a Budget action or equivalent), since Budgets alert but do not stop spend — an infrastructure question, not an access pattern.
 
 ---
 
@@ -212,15 +211,31 @@ review rejection, regardless of whether a test catches it.
    mutate a live or archived week. (`FR-CAND-07`, `G-05`)
 
 2. **Never silently undo the user's reality.** This is the single most repeated
-   principle in the requirements — it decided five separate gaps
-   (`G-04`, `G-21`, `G-32`, `G-44`, `G-53`). A recompute may update quantities;
-   it must never un-check an item someone bought, discard a manual entry, or
-   overwrite a deliberate edit. When new data conflicts with a user action,
-   **flag it, keep both, let the human resolve**.
+   principle in the requirements — it decided `G-04`, `G-32`, `G-73` and `G-77`.
+   A recompute must never un-check an item someone bought or discard a manual
+   entry. When new data conflicts with a user action, **keep both** — as two
+   rows, not as one row plus a marker.
+
+   The MVP draws the line more sharply than earlier drafts did, and in two
+   directions. **Stricter on purchases:** a checked shopping item is not merely
+   preserved, it is **never written to at all**; a later shortfall arrives as
+   its own new unchecked item carrying the remainder (`G-77`, supersedes
+   `G-44`). **Looser on edits:** the principle no longer protects a deliberate
+   edit to an *unchecked* quantity — `G-72` accepted that a later re-sync press
+   may overwrite it, and made manual delete the remedy, because the alternative
+   was a three-state provenance model on every row (`G-21`, superseded).
+   Do not reintroduce a "flag it" marker to bridge the two: every flag proposed
+   so far turned out to need an attribute recording state at a past moment,
+   which is the provenance the shopping list deliberately does not carry.
 
 3. **Warn, do not block, on duplicates.** Same-name library recipe (`G-26`),
-   same-name candidate in a slot (`G-59`), manual/auto shopping item collision
-   (`G-55`): surface it, allow it, never reject it.
+   same-name candidate in a slot (`G-59`): surface it, allow it, never reject
+   it. ~~manual/auto shopping item collision (`G-55`)~~ — the shopping list is
+   the **exception** and carries no duplicate handling at all: `G-74` removed
+   `FR-SHOP-11`, and under `G-77` a checked and an unchecked item may share a
+   normalized name + unit **by design**. They are a purchase and a remainder,
+   not a duplicate, and `FR-SHOP-08`'s two-section display already tells them
+   apart. Do not warn on them.
 
 4. **Bulk operations are additive.** Whole-week AI generation *adds* candidates.
    It never removes existing candidates or definitive selections. (`FR-AI-11`, `G-18`)
@@ -245,8 +260,8 @@ review rejection, regardless of whether a test catches it.
    (`FR-AUTH-13`, `FR-SUM-03`, `G-29`, `G-58`)
 
 10. **Text matching is normalised.** Case-, accent- and trim-insensitive for
-    ingredient aggregation and cuisine values. No fuzzy matching beyond that —
-    no stemming, no synonyms. (`FR-SHOP-03`, `FR-LIB-06`, `G-56`)
+    ingredient aggregation. No fuzzy matching beyond that —
+    no stemming, no synonyms. (`FR-SHOP-03`, `G-56`, `G-68`)
 
 11. **Content freezes only at archival.** A definitive meal stays editable like
     any candidate until its week is archived. (`FR-CAND-05`, `G-67`)
