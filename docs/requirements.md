@@ -207,6 +207,13 @@ users.
 
 ## 13. Traceability matrix (user story → requirements)
 
+> **Removed requirements are dropped from this matrix, not struck through.** The
+> requirement's own row above carries the strike-through and the reason; listing
+> a dead id here would make the matrix disagree with it. Convention set by G-68
+> (`FR-LIB-06` dropped from US17 and US18) and applied retroactively by **G-80**
+> to `FR-SHOP-11` (US22, US23 — G-74) and `FR-SUM-02` (US16 — G-79), which had
+> been struck in their own rows but left in the matrix.
+
 | US | Covered by |
 |----|------------|
 | US1 | FR-AUTH-01, -03, -05, -06, -07, -12, -17, -18 |
@@ -224,14 +231,14 @@ users.
 | US13 | FR-AI-04, -05, FR-RULE-05 |
 | US14 | FR-AI-06 |
 | US15 | FR-MENU-03, FR-CAND-04, -05, -08, FR-RT-02 |
-| US16 | FR-SUM-01, -02, -03 |
+| US16 | FR-SUM-01, -03 |
 | US17 | FR-CAND-02, -03, FR-LIB-03, -05, FR-AI-01, -02, -08, -09, -10, -12, -13, NFR-AI-01 |
 | US18 | FR-CAND-03, -07, FR-LIB-01, -02, -04, -05, FR-RULE-07, FR-RT-02 |
 | US19 | FR-AI-09, FR-RT-01, -02, -03 |
 | US20 | FR-AI-07, FR-UX-01, -03 |
 | US21 | FR-SHOP-01, -05 |
-| US22 | FR-SHOP-02, -04, -06, -11 |
-| US23 | FR-SHOP-03, -04, -05, -06, -09, -10, -11, FR-LIB-05 |
+| US22 | FR-SHOP-02, -04, -06 |
+| US23 | FR-SHOP-03, -04, -05, -06, -09, -10, FR-LIB-05 |
 | US24 | FR-SHOP-07, -08, -09 |
 | US25 | FR-ARCH-01, -02, -03, -04, FR-MENU-08 |
 | US26 | FR-MENU-06, FR-AI-04, -11, FR-RULE-01, -02, -03, -04, -06, -07, FR-LIB-04 |

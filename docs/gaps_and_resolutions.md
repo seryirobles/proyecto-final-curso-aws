@@ -686,3 +686,120 @@ same manner as Parts I through N.
 - **Reasoning:** Same judgement as G-76 applied to a different collection: an attribute is worth carrying when a view depends on it and the household reads it. "Who proposed this dish" is the interesting question and it is already answered. "Who clicked promote" is a second field, a second write path, and a second removed-user fallback, to distinguish an action that in a 2–10 person household is usually visible in conversation and rarely disputed. The requirement row is kept, struck through and annotated, following the FR-LIB-06 / FR-SHOP-11 precedent.
 - **Requirements:** FR-SUM-02 (removed), FR-SUM-03, FR-AUTH-13 (amended). Narrows G-29 without superseding it.
 - **Note on FR-SUM-03's rewrite:** with both rule edits (G-76) and promotions (G-79) gone, its enumeration would have been left citing only FR-RT-02. It now names **candidate authorship (FR-CAND-04)** and **library-recipe authorship** explicitly. This is a clarification, not a new requirement — FR-AUTH-13 already required exactly those two to be reattributed to the placeholder.
+
+---
+
+## Part P — Derived-artifact resync after the attribution cuts (2026-08-16)
+
+Directed by the requirements owner, overriding the freeze in `CLAUDE.md` in the
+same manner as Parts I through O. Two separate approvals were given: one for
+`app_user_stories.md`, one for the `requirements.md` traceability matrix.
+
+This Part adds **no new decision.** Every change below propagates a decision
+already taken (G-74, G-75, G-76, G-79) into a derived artifact that was missed
+when that decision landed. Recorded as a numbered gap rather than a silent edit
+because the artifacts are frozen and the edits are not reversible by inspection.
+
+### G-80 · Four user stories and the traceability matrix still asserted removed behaviour
+- **Gap:** The attribution and shopping cuts amended the requirement rows they
+  touched but left two classes of derived artifact behind.
+
+  **(a) `app_user_stories.md`.** **US4** listed five kinds of content to
+  reattribute on user removal — "candidates, library recipes, definitive
+  selections, rule edits, shopping list items" — of which **three no longer
+  carry an author at all**: definitive selections (G-79), rule edits (G-76) and
+  shopping list items (G-75). **US16** asked for a summary showing "who made
+  them definitive", which *is* FR-SUM-02, removed by G-79. Both stories
+  therefore promised behaviour the MVP will not have.
+
+  **(b) `requirements.md` §13 traceability matrix.** Three rows cited
+  requirement ids that had been removed: US16 → `FR-SUM-02` (G-79), and
+  US22 / US23 → `FR-SHOP-11` (G-74). The matrix disagreed with the requirement
+  rows above it, which correctly carry the strike-through.
+
+- **Decision:** Strike the affected clauses in US4 and US16 inline, annotated
+  with the gap that removed each one. Drop the three dead ids from the
+  traceability matrix. Add a note to §13 recording that removed requirements are
+  **dropped** from the matrix rather than struck, so the convention is written
+  down rather than inferred.
+
+- **Reasoning:** The convention was already set and simply not applied
+  consistently. **G-68 dropped `FR-LIB-06` from the US17 and US18 matrix rows
+  when it removed that requirement**; G-74 and G-79 struck their requirement
+  rows but never cleaned the matrix. Applying the existing rule retroactively is
+  the smallest change that makes the document self-consistent, and it is why
+  this is bookkeeping rather than a decision.
+
+  The user stories are handled the other way round — struck **inline** rather
+  than dropped — following the FR-LIB-06 / FR-SHOP-11 / G-75 precedent, because
+  a story is a historical record of what was asked for. What the household
+  originally wanted is worth keeping visible; what the MVP will build is what
+  the annotation clarifies. A matrix row, by contrast, is a pure index with no
+  historical value, so a dead entry in it is simply wrong.
+
+- **Requirements:** **None amended.** No `FR-*`/`NFR-*` row changes in this
+  Part. `docs/app_user_stories.md` US4 and US16 amended;
+  `docs/requirements.md` §13 matrix rows US16, US22 and US23 amended plus a
+  convention note added. Propagates G-74, G-75, G-76 and G-79; supersedes
+  nothing.
+
+- **Not changed, and why:** `docs/coverage_analysis.md` was checked row by row
+  and is already current — its US4 and US16 rows both record the amendments, and
+  its gap index carries G-74 through G-79 correctly. Only its closing
+  "G-01 to G-79, Parts A–O" counter needed advancing.
+
+- **Correction to Part L's flag.** Part L predicted this desync but named the
+  wrong artifacts: it flagged `coverage_analysis.md` and `app_user_stories.md`
+  **US26** as un-synced for G-76. Both are in fact clean — US26 makes no
+  attribution claim. The stories that drifted are **US4** and **US16**.
+
+---
+
+## Part Q — Repointing a reference into a deleted document (2026-08-16)
+
+Directed by the requirements owner, overriding the freeze in `CLAUDE.md` in the
+same manner as Parts I through P. Granted for `coverage_analysis.md` only.
+
+Like Part P, this Part adds **no new decision.** It repairs one cross-reference
+that the owner's deletion of the working review records would otherwise have
+left pointing at nothing.
+
+### G-81 · The `NFR-AI-01` open question deferred to a document that no longer exists
+- **Gap:** `docs/coverage_analysis.md` §4 closed with the project's one
+  outstanding human-owned question — `NFR-AI-01` requires an *enforcing* path for
+  the AI cost cap, but AWS Budgets only alert, they do not stop spend (G-70) —
+  and then deferred the detail with "See `access_patterns_review.md` §7". The
+  owner deleted `access_patterns_review.md` and `data_structure_review.md` on
+  2026-08-16, having extracted their durable content into `docs/data_model.md`.
+  **The question is still open**, so unlike the other surviving references to
+  those files this one was not merely historical: it pointed a reader at the
+  reasoning for a live decision, and the reasoning was about to vanish.
+
+- **Decision:** Make the paragraph **self-contained** — state the question, its
+  cause and its one code consequence inline — and track it against
+  **`feature_list.json` #17 `ai_lambda`**, the feature whose implementation the
+  answer changes. The `ai` Lambda is already `blocked` on architecture P4, so the
+  question now sits with the work that cannot start without it.
+
+- **Reasoning:** An open question needs an owner and a home, and a review
+  document was never a good home for either — it is a working record, deleted
+  when the work finishes, which is exactly what happened. The backlog entry is
+  durable, is read at the start of every session via `init.sh`, and sits next to
+  the code that depends on the answer. Restating the question inline rather than
+  adding a second pointer also avoids recreating the same failure one level
+  further along.
+
+  Recorded as a numbered gap rather than a silent edit only because
+  `coverage_analysis.md` is frozen. **Nothing about the question itself changed.**
+
+- **Requirements:** **None amended.** No `FR-*`/`NFR-*` row changes.
+  `docs/coverage_analysis.md` §4 amended; `feature_list.json` #17
+  `blocked_reason` extended to carry the open question. Supersedes nothing.
+
+- **Deliberately not changed:** three further references to the deleted review
+  documents remain in **this file**, at the Part I (`G-70`), Part K and Part L
+  entries. They are **historical citations inside dated records** — accurate
+  statements about where reasoning lived when each decision was taken, not
+  live pointers a reader must follow. Rewriting them would falsify the record.
+  A dangling reference in a historical log is correct; one attached to an open
+  question is not. That distinction is the whole of this Part.

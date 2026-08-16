@@ -156,3 +156,106 @@ Derived artifacts re-synced each time: `docs/coverage_analysis.md`,
   `decisiones_arquitectura.md` as unblocking anything.
 - **`NFR-AI-01`** wants a real enforcing path — infrastructure, not a pattern.
 - **`Frecuencia`'s unstated basis** — ignored deliberately.
+
+---
+
+## Session — 2026-08-16 · Data-model closure, P1, and both reviews brought current
+
+**Agent:** leader, acting directly (docs-only work, permitted by `CLAUDE.md`).
+**Feature in progress:** none. No feature from `feature_list.json` was started —
+the owner explicitly said not to.
+
+### Goal
+
+Re-audit everything from the previous sessions and answer whether the data model
+is correct and compliant. It ended up closing the model, closing an architecture
+decision, and bringing both review documents current.
+
+### Result
+
+**The data model is closed and verified compliant.** Nine item types in one
+`data` table serving all 27 access patterns. Verified by re-parsing the sheet
+from disk three times across the session — it changed twice while we worked.
+
+**P1 (datastore) closed: DynamoDB, single table.** Written up as
+`docs/architecture.md` §1.2.1; §2's P1 row struck through.
+`feature_list.json` #14 `persistence_ports` moved `blocked` → `pending`;
+#19's reason narrowed to P6 alone. `./init.sh` green — 9 blocked, 14 pending.
+
+> **The owner granted a one-time, this-decision-only exception** to the
+> "agents must not decide architecture" rule, so the already-made decision could
+> be recorded. Verbatim: *"DynamoDb, yes, i think thats obvious. Close it. I
+> allow you, this one only."* **P2–P7 remain human-owned. Not standing
+> permission.**
+
+### Findings closed this session
+
+| # | Finding | Outcome |
+|---|---|---|
+| **D31** | A user rename leaked its old `NOMBRE#` reservation — old username stayed a working login and could never be reused, contradicting `FR-AUTH-17` | **Look the reservation key up** (`begins_with(SK,'NOMBRE#')`, match `idUsuario`) and delete it by the SK it actually has. Never re-fold the old name. No normalized attribute stored |
+| **D32** | `LockLista` shared the shopping partition and would read back as a blank shopping row | Owner moved it out, then chose consistency instead — see D34 |
+| **D34** | The lock's move left `LISTA#<idLista>` and `COMPRA#<idLista>` naming one entity | **`COMPRA#` for both.** The lock returns to the items partition; the two list reads use `begins_with(SK,'INGREDIENTE#')`, which is a *key condition* and costs nothing |
+| **D33** | AP8 reads full recipe content it does not return | Measured, inside one 1MB page. Recorded, not fixed. Do not build a thin index item |
+| **D21** | The `Índices secundarios` column was blank | **Blank is the finished answer** — no index is required anywhere. Stated in prose rather than annotated in the sheet, per D28 |
+
+### Two corrections to this reviewer's own earlier verdict
+
+1. **"All 27 patterns resolve to a single `GetItem`/`Query`/`TransactWriteItems`"
+   was overstated.** Four take a second read *by design*: AP3/AP6 (login
+   two-hop), AP22 (`nombrePlato` resolved from the library, because B2
+   deliberately removed it from storage), AP8/AP9 (`añadidoPor` is an id). Every
+   second read is itself a key lookup. **The no-index result survives; the "one
+   operation" phrasing does not.** Use *"no secondary indexes, and no access path
+   that is not a key lookup or a single-partition `Query`."*
+2. **D23's note named AP8, AP9 and AP10** as needing `idPlatoDefinitivo`
+   validation. AP10 returns a single meal and no `idPlatoDefinitivo` — nothing to
+   validate. AP8 and AP9 only.
+
+### Structural properties confirmed (recorded in `data_structure_review.md` §7.2)
+
+- **Both `ttl` users share the attribute name** — mandatory, since DynamoDB TTL
+  is configured on exactly one attribute per table. No other item type carries
+  `ttl`, so nothing expires by accident.
+- **The 10GB item-collection limit does not apply** — it exists only for tables
+  with an LSI, and there are none. This retires the last objection to D20.
+- **Two dangling-reference cases exist by design**, both resolved at read time:
+  `idPlatoDefinitivo` (D23) and removed authors (`FR-SUM-03`). Deleting a library
+  recipe **cannot** dangle a week meal — week meals are snapshots
+  (`FR-CAND-07`), not references.
+
+### Documents brought current
+
+- **`docs/data_structure_review.md`** — §1 refreshed to the live model on every
+  re-parse; §1.0.1 (shared-partition sort order) and §7.2 (full AP→operation
+  compliance matrix) added; `idPlato` added to §1.1; §3.9's status tables rebuilt
+  (they had listed six findings as both closed and open).
+- **`docs/access_patterns_review.md`** — §0 still claimed data structures were
+  "the next pass"; §4/§5/§6/§7 headings still said "open"; **Appendix A was a
+  stale 23-pattern snapshot using superseded numbering**, replaced with the live
+  27. §9.0 final verdict added, §10 carries the data model, §8.3 notes the P1
+  closure.
+
+### Method lessons
+
+- **State the defect in one sentence before the fix.** The owner asked "what is
+  the issue" three times on D31 because each answer led with the remedy and the
+  trade-off. The sentence that worked: *"to rename a user you must delete the old
+  `NOMBRE#` item, to delete an item you need its key, its key is the folded name,
+  and nothing stores the folded name."*
+- **Check whether a value needs reconstructing at all** before debating how to
+  reconstruct it. D31 was framed as store-vs-re-derive; both were wrong.
+- **Doc drift is agent work, not a finding to hand the owner.**
+
+### Housekeeping
+
+An early `unzip` landed in the repo root instead of the scratchpad, leaving
+`xl/`, `_rels/`, `docProps/`, `[Content_Types].xml` and `sheet.xlsx` untracked.
+Removed. **Always unzip the workbook inside the scratchpad with an absolute
+path** — `cd "$TMPDIR" || cd <scratchpad>` silently resolved elsewhere.
+
+### Noticed, not opened
+
+`frontend/src/Sobremesa.dc.html` and `frontend/src/support.js` appeared untracked
+during the session. These look like the **initial frontend code drop** that P7
+and feature 20 are waiting on. The owner was told and has not yet said to read
+them.

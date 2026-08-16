@@ -49,6 +49,39 @@ Exactly **two Lambdas**, no more:
   own dependency closure, so the `api` artifact never ships the AI provider SDK
   and never pays its cold-start cost. Packaging is covered in §3.2.
 
+### 1.2.1 Datastore — DynamoDB, single table (was P1)
+
+**Decided by the human 2026-08-16.** Formerly P1.
+
+**Amazon DynamoDB**, in a **single-table design**. One table named `data`, nine
+item types, serving all 27 access patterns.
+
+> **Where to read the model and the catalogue.** Both are in
+> **`docs/data_model.md`** — the persistence source of truth. The owner authors
+> the catalogue in `Desktop/lab-final-patrones-acceso.xlsx`, which is **outside
+> the repo and not in git**; do not assume it is present. Work from
+> `data_model.md` unless you have the spreadsheet in front of you, in which case
+> it wins.
+
+- **No secondary indexes anywhere.** Every access pattern resolves to a
+  `GetItem`, a `Query` on a single partition, or a `TransactWriteItems`. No
+  index storage, no duplicated writes, no eventual consistency on any path
+  including login.
+- The authoritative key design, item types and attribute names are
+  `docs/data_model.md` **§1**.
+- **The key *formats* are §2 of that document and exist nowhere else** —
+  `idSemana`, `idPlato`, `numeroDia`, `numeroComida`, `idPeticionIA` and the
+  username fold. Four carry a documented trap. Read §2 before writing any
+  persistence code.
+- Concurrency primitives already settled there and not to be re-derived (§5):
+  the `FR-AUTH-17` uniqueness reservation, the rename-releases-its-reservation
+  lookup, the `FR-SHOP-10` re-sync lock and its TTL trap, and read-time
+  resolution of dangling references.
+
+This closes P1 and unblocks `persistence_ports` (feature 14). It does **not**
+decide P6 — DynamoDB TTL configuration, cold-storage wiring and table
+provisioning remain deployment topology, and remain human-owned.
+
 ### 1.3 Toolchain
 
 | Concern | Tool |
@@ -86,7 +119,7 @@ Hitting any of these means: mark the feature `blocked`, write the reason in
 
 | # | Undecided | Blocks |
 |---|---|---|
-| P1 | **Datastore** (DynamoDB? Aurora/RDS? something else) | persistence adapters, all reads/writes |
+| ~~P1~~ | ~~**Datastore**~~ — **DECIDED 2026-08-16: DynamoDB, single table. See §1.2.1.** | — |
 | P2 | **Auth mechanism** (Cognito? application-managed?) | the whole `FR-AUTH-*` family |
 | P3 | **Real-time transport** (WebSocket API? AppSync? polling?) | `FR-RT-01`–`-03` |
 | P4 | **AI provider and model** (Bedrock? external API?) | `ai` Lambda, and the enforcing path for the €50/month **global** cap (`G-70`, supersedes `G-38`) |

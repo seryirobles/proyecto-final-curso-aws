@@ -1,7 +1,7 @@
 - As an admin, I want to have an exclusive view to be able to create and manage users (change usernames and passwords) and nothing else
 - As an admin, I want to log in with username and password, but not register or change password
 - As an admin, I want to be able to reset a user's password
-- As an admin, I want to remove a user, keeping all the content they previously authored (candidates, library recipes, definitive selections, rule edits, shopping list items) but reattributing it to a generic "unknown user" so the history stays intact without the account existing anymore
+- As an admin, I want to remove a user, keeping all the content they previously authored (candidates, library recipes, ~~definitive selections~~, ~~rule edits~~, ~~shopping list items~~) but reattributing it to a generic "unknown user" so the history stays intact without the account existing anymore <!-- amended: three of the five enumerated kinds of content no longer carry an author, so there is nothing to reattribute — "definitive selections" removed by G-79 (no promotion attribution is stored), "rule edits" by G-76 (a rule stores no author), "shopping list items" by G-75 (since G-72 a shopping item stores no author). Candidates and library recipes are unaffected. See G-80 -->
 - As a user, I want to log in with username and password, but not register or change password
 - As a user, I want to use the app in both computer and mobile through a website
 - As a user, I want to see the current week's menu divided by days (Monday to Sunday) and meals for each day (lunch and dinner)
@@ -13,7 +13,7 @@
 - As a user, I want to see a confirmation prompt before generating a week menu with the current general rules and an option to edit them only for the current week
 - As a user, I want the meals generated to be balanced and healthy
 - As a user, I want to see candidate meals for a certain day created by me or other users and select a candidate for it to be the definitive food for a day
-- As a user, I want to see a summary view of the selected meals for the week that I cannot edit (view only mode) and who made them definitive
+- As a user, I want to see a summary view of the selected meals for the week that I cannot edit (view only mode) ~~and who made them definitive~~ <!-- amended: "who made them definitive" is FR-SUM-02, removed by G-79 — promotion attribution is out of MVP scope. The summary still shows each meal's own author (añadidoPor, FR-CAND-04); what is gone is the separate record of who promoted it. See G-80 -->
 - As a user, I want to generate a new meal with AI by specifying ingredients and tools, or selecting a library meal for reference with further user specifications <!-- amended: "cuisine and difficulty" removed from scope, see G-68 -->
 - As a user, I want to see all of the recipes added to the library by myself or other users and be able to edit, remove or add a new one (same process as adding a dish to a menu)
 - As a user, I want to see the changes made by other users in real time to the week menu

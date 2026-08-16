@@ -137,7 +137,7 @@
         "Available options are constrained so contradictory rule sets cannot be composed: category totals exceeding available slots after disabled days, or a pin on a disabled day (FR-RULE-07)",
         "Deleting a library recipe referenced by a pin rule surfaces a warning and removes the rule on confirmation (FR-RULE-07, G-20)",
         "A per-run override produces an effective rule set without mutating the shared rules (FR-RULE-05, G-06)",
-        "Rule edits carry author attribution (FR-RULE-06)"
+        "Any user may edit the shared rules; a rule stores NO author - rule attribution was removed from the MVP (FR-RULE-06, G-76, completed by G-78 for FR-RT-02)"
       ],
       "sdd": true,
       "status": "pending"
@@ -298,8 +298,7 @@
         "No AWS SDK import anywhere in this feature"
       ],
       "sdd": true,
-      "status": "blocked",
-      "blocked_reason": "Architecture P1 (datastore) undecided. Port shapes depend on whether access is key-value or relational — see docs/architecture.md section 2."
+      "status": "pending"
     },
     {
       "id": 15,
@@ -344,7 +343,7 @@
       ],
       "sdd": true,
       "status": "blocked",
-      "blocked_reason": "Architecture P4 (AI provider and model) undecided. Cost-cap enforcement is global via AWS cost tooling, not a per-user quota (NFR-AI-01, G-70, supersedes G-38) — the application stores no counter."
+      "blocked_reason": "Architecture P4 (AI provider and model) undecided. Cost-cap enforcement is global via AWS cost tooling, not a per-user quota (NFR-AI-01, G-70, supersedes G-38) — the application stores no counter. OPEN QUESTION FOR THE HUMAN (G-81): AWS Budgets only alert, they do not stop spend, so NFR-AI-01's 'enforcing path' needs either a real kill switch (Budget action or equivalent) or an explicit decision that an alert plus reaction time is acceptable for a course project. This determines whether this Lambda needs a flag it can read before invoking the provider."
     },
     {
       "id": 18,
@@ -374,7 +373,7 @@
       ],
       "sdd": true,
       "status": "blocked",
-      "blocked_reason": "Architecture P1 (datastore) and P6 (cold-storage wiring) undecided."
+      "blocked_reason": "Architecture P6 (cold-storage wiring) undecided. P1 was closed 2026-08-16 (DynamoDB, single table); the archive itself remains parked by decision as MVP scope — see docs/data_model.md section 9. Note the reverse-chronological browse of FR-ARCH-04 is NOT free: idSemana is in the partition key, which DynamoDB cannot list or sort."
     },
     {
       "id": 20,

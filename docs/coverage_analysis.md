@@ -218,18 +218,26 @@ Full reasoning per gap in `gaps_and_resolutions.md`.
 | G-77 | Shopping | Re-sync never writes to a checked item; the outstanding amount becomes a new unchecked item carrying the remainder | FR-SHOP-06, FR-SHOP-08, FR-SHOP-10 (amended) — supersedes G-44; corrects G-74's reasoning |
 | G-78 | Real-time/Rules | FR-RT-02's author attribution scoped to candidates and library only; rules excluded | FR-RT-02 (amended) — completes G-76 |
 | G-79 | Summary/Attribution | Who promoted a meal is not recorded; the summary shows the meal's own author | FR-SUM-02 (removed), FR-SUM-03, FR-AUTH-13 (amended) — narrows G-29 |
+| G-80 | Docs/Traceability | Derived-artifact resync: US4 and US16 still asserted removed attribution behaviour; the §13 matrix still cited `FR-SUM-02` and `FR-SHOP-11` | **No requirement amended.** `app_user_stories.md` US4, US16; `requirements.md` §13 matrix rows US16, US22, US23 — propagates G-74, G-75, G-76, G-79 |
+| G-81 | Docs/AI-Cost | The open `NFR-AI-01` kill-switch question deferred to a review document that has since been deleted | **No requirement amended.** `coverage_analysis.md` §4 made self-contained; the question now tracked against `feature_list.json` #17 `ai_lambda` |
 
 ## 4. Open questions remaining
 
 None. Every question raised across all review passes is resolved or confirmed
 (PEND-01 to PEND-13 on 2026-07-03; PEND-14 and PEND-15 on 2026-07-04). See
 `gaps_pending_stakeholders.md` for the historical record and
-`gaps_and_resolutions.md` (G-01 to G-79, Parts A–O, including the
+`gaps_and_resolutions.md` (G-01 to G-81, Parts A–Q, including the
 examined-and-rejected list in Part H) for the reasoning.
 
-**One question is open and belongs to the human**, carried over from the
-access-pattern review: `NFR-AI-01` requires an *enforcing* path for the AI cost
-cap, but AWS Budgets only alert — they do not stop spend (G-70). Whether the
-MVP needs a real kill switch, or an alert plus reaction time is acceptable for
-a course project, is undecided. It determines whether the `ai` Lambda needs a
-flag it can read. See `access_patterns_review.md` §7.
+**One question is open and belongs to the human.** `NFR-AI-01` requires an
+*enforcing* path for the AI cost cap, but **AWS Budgets only alert — they do not
+stop spend** (G-70). Whether the MVP needs a real kill switch (a Budget action
+or equivalent), or an alert plus human reaction time is acceptable for a course
+project, is undecided.
+
+It is **not an access-pattern or data-model question** — the application stores
+no counter (G-70) — but it has one code consequence: it determines whether the
+`ai` Lambda needs a flag it can read before invoking the provider. Tracked
+against **`feature_list.json` #17 `ai_lambda`**, which is where it will be
+answered. *(Amended by G-81: this paragraph previously deferred to a working
+review document that has since been deleted.)*
