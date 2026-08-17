@@ -471,5 +471,5 @@ Requirement changes made during that work are recorded as **Parts I–P
 authoritative record of *why* each requirement reads as it does.
 
 `docs/architecture.md` **§1.2.1** carries the P1 decision (DynamoDB, single
-table). **P2–P7 remain pending and human-owned** — hitting one means the feature
-is `blocked`.
+table) and **§1.1** the P7 decision (React/Vite/Vitest, 2026-08-17). **P2–P6
+remain pending and human-owned** — hitting one means the feature is `blocked`.

@@ -17,7 +17,7 @@
     "1": "Pure domain logic. Architecture-independent — buildable and fully testable today.",
     "2": "Ports and application services. Needs the REST contract decided.",
     "3": "Adapters. Blocked on the corresponding architecture decision.",
-    "4": "Frontend. Blocked on the human's initial code drop.",
+    "4": "Frontend. Stack decided 2026-08-17 (P7); blocked on the REST contract.",
     "5": "Infrastructure and pipelines. Human-owned, never agent-generated."
   },
   "features": [
@@ -25,8 +25,8 @@
       "id": 1,
       "name": "project_scaffold",
       "tier": 0,
-      "title": "Python project scaffold and quality toolchain",
-      "description": "uv workspace backend (core + lambda_api + lambda_ai) plus a separate frontend toolchain root, with pytest, ruff, mypy and pre-commit wired up. No product logic. Layout per docs/architecture.md section 3.",
+      "title": "Full-stack project scaffold and quality toolchain",
+      "description": "Both toolchain roots. Backend: uv workspace (core + lambda_api + lambda_ai) with pytest, ruff, mypy and pre-commit. Frontend: its own package.json root with React, Vite, Vitest, ESLint and Prettier, the messages and tokens modules, and the es-ES locale constant - bootstrapping a single placeholder component and NO product screens. No product logic either side. Layout per docs/architecture.md section 3.",
       "covers": [],
       "depends_on": [],
       "acceptance": [
@@ -38,8 +38,17 @@
         "pytest configured with the 'aws' marker registered and deselected by default (-m 'not aws'); at least one smoke test passing in core/tests",
         "pre-commit config running ruff format, ruff check and mypy on staged files",
         "uv export --package planner-api --no-dev resolves the api closure without the AI SDK (verifies the split is real)",
-        "frontend/ exists as its own toolchain root, untouched by the Python gates",
-        "./init.sh detects the workspace and runs all four gates green",
+        "frontend/ is its own toolchain root with its own package.json (private, ESM), untouched by the Python gates. React and react-dom are its only runtime dependencies; Vite, Vitest, ESLint and Prettier are devDependencies",
+        "frontend/src/ and frontend/tests/ exist, with src/messages/ and src/tokens/ as real modules (not placeholders): every user-facing string is UPPER_SNAKE in the messages module and every colour, spacing, font size and breakpoint is a named token (FR-UX-01, FR-UX-03, docs/conventions.md section 'Frontend conventions')",
+        "The locale is exported as a constant 'es-ES' used by Intl.DateTimeFormat and Intl.NumberFormat; it is not a runtime setting and no i18n framework is added",
+        "package.json declares no CSS framework, no component library, no CSS-in-JS library, no templating engine and no stylesheet - all four are explicit prohibitions in docs/conventions.md",
+        "Prettier formats and ESLint lints frontend/ only, both passing, both as devDependencies. ESLint uses flat config (eslint.config.js) with eslint-config-prettier applied last so the two never fight over formatting. Plain JS and ESM with JSX enabled and no TypeScript parser. Chosen by the agent on the human's instruction 2026-08-17 (he does not work in JS and asked for the industry-standard pair); this is the frontend counterpart of ruff",
+        "The two toolchains are mutually isolated: the Python gates never read frontend/, the JS gate never reads backend/, and NEITHER reaches prototypes/ (read-only reference material - see prototypes/wireframe/README.md)",
+        "pre-commit runs the JS gate on staged frontend files alongside the Python hooks",
+        "React is the framework, written idiomatically: function components and hooks, with JSX. Vite is the build tool and dev server, with a minimal index.html entry and a src/main.jsx bootstrap that mounts a single placeholder component - NO product screens, no routing, no API layer (P7, decided by the human 2026-08-17, docs/architecture.md section 1.1)",
+        "Vitest is configured as the test runner over frontend/ only, with at least one smoke test passing, asserting behaviour through state and never snapshotting whole views (docs/conventions.md section 'Testing')",
+        "Plain JavaScript and ESM throughout - no TypeScript, no tsconfig, no type-checking gate. The frontend has no mypy counterpart by design",
+        "./init.sh detects both toolchain roots and runs every gate green, skipping the frontend gate with a WARN while frontend/package.json is absent (same pattern it already uses for backend/pyproject.toml)",
         "No Terraform, no CI workflow, and no runtime dependency on core is added"
       ],
       "sdd": false,
@@ -388,7 +397,7 @@
       ],
       "sdd": true,
       "status": "blocked",
-      "blocked_reason": "Waiting on the human's initial frontend code (architecture P7: framework identity, bootstrap idiom, test runner) and on feature 16, since the SPA needs the REST contract. The frontend stack and conventions are already specified - see docs/conventions.md section 'Frontend conventions'."
+      "blocked_reason": "Blocked on feature 16 ONLY - the SPA needs the REST contract (P5). P7 was CLOSED 2026-08-17: idiomatic React (function components, hooks, JSX), Vite, Vitest, ESLint + Prettier, plain JS/ESM - see docs/architecture.md section 1.1. A Claude Design prototype was supplied 2026-08-16 (prototypes/wireframe/, moved out of frontend/ on 2026-08-17 so no SPA toolchain can reach it) and analysed in docs/frontend_prototype.md: it is an executable wireframe, NOT portable code (Anthropic-internal DC runtime, CDN-loaded React, single-file inline styles, no components or tests). Mine it for the 13 colour tokens, the es-ES strings, the screen inventory and the handler names - but NOT for the type or spacing scale (24 distinct font sizes with half-pixel steps, 91 distinct paddings: that is drift, not a system). Read docs/frontend_prototype.md section 4 first - the prototype contradicts eleven frozen requirements, including the shopping re-sync rule settled by G-77. Conventions: docs/conventions.md section 'Frontend conventions'."
     },
     {
       "id": 21,

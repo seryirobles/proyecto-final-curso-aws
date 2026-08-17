@@ -23,14 +23,30 @@ PROVIDER="claude"
 #   FILE_PATTERNS="*.ts,*.tsx"
 #   FILE_PATTERNS="*.py"
 #   FILE_PATTERNS="*.go,*.mod"
-FILE_PATTERNS="*.ts,*.tsx,*.js,*.jsx"
+#
+# BOTH halves of the app must be listed. This repo is full-stack: backend/ is a
+# Python uv workspace, frontend/ is the SPA. A JS-only pattern set silently
+# passes every line of backend domain logic (features 2-13) without reading it.
+# Python test files are deliberately IN scope — feature_list.json rules require
+# tests to close a feature, so the tests are part of what needs reviewing.
+FILE_PATTERNS="*.py,*.ts,*.tsx,*.js,*.jsx"
 
 # File patterns to exclude from review (comma-separated)
 # Default: none
 # Examples:
 #   EXCLUDE_PATTERNS="*.test.ts,*.spec.ts"
 #   EXCLUDE_PATTERNS="*_test.go,*.mock.ts"
-EXCLUDE_PATTERNS="*.test.ts,*.spec.ts,*.test.tsx,*.spec.tsx,*.d.ts"
+#
+# NOTE on pattern semantics (gga matches these two ways, and it matters):
+#   - A pattern STARTING WITH "*" is a plain SUFFIX match on the full path.
+#     "*.d.ts" therefore cannot express a directory. "*prototypes/*" would NOT work.
+#   - Any other pattern is glob-matched against the full path AND the basename,
+#     so a directory must be written WITHOUT a leading star: "prototypes/*".
+#
+# "prototypes/*" excludes the read-only design prototype (prototypes/wireframe/):
+# generated, unmaintainable-by-design build artifacts that never ship. Reviewing
+# them produces only false findings — see prototypes/wireframe/README.md.
+EXCLUDE_PATTERNS="*.test.ts,*.spec.ts,*.test.tsx,*.spec.tsx,*.d.ts,prototypes/*"
 
 # File containing code review rules
 # Default: AGENTS.md

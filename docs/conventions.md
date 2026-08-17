@@ -136,25 +136,34 @@ The exception worth making: when code implements a specific resolved gap, cite i
 
 ## Frontend conventions
 
-The stack: a **single-page app**, markup written as **HTML with inline CSS**,
-driven by a **JS logic class**, on a **React-based DC framework**. There is **no
-separate templating language** — no JSX file, no Handlebars, no `.vue`, no
-string-template engine. Markup is produced from JavaScript.
+The stack: a **single-page app** in **React**, written idiomatically — **function
+components and hooks, with JSX**. Plain JavaScript, ESM, built with **Vite** and
+tested with **Vitest**. Styling is **inline `style` objects** referencing shared
+tokens. No Handlebars, no `.vue`, no string-template engine, no TypeScript.
+
+> **Changed 2026-08-17 (formerly P7).** This section previously mandated a "JS
+> logic class" and banned JSX. Both rules were reverse-engineered from the Claude
+> Design prototype's runtime, not chosen on merit, and that runtime is not
+> obtainable — see `docs/architecture.md` §1.1. **Everything below except the
+> component model itself is unchanged.**
 
 ### Separation of concerns
 
-The "logic class / markup" split is the frontend's version of the backend's
+The **hook / component** split is the frontend's version of the backend's
 layering, and the reviewer treats it the same way.
 
 | Piece | Holds | Never holds |
 |---|---|---|
-| **Logic class** | State, event handlers, API calls, derived values | Literal markup strings, style values |
-| **Markup** | Structure and inline styles | Business rules, `fetch`, date maths |
+| **Custom hook** | State, event handlers, API calls, derived values | JSX, style values |
+| **Component** | Structure and inline styles | Business rules, `fetch`, date maths |
 
-- One logic class per view. It owns its state and exposes handlers as methods.
-- Markup is a **pure function of state**. Same state in, same markup out.
+- **One custom hook per view**, named `use<View>` (e.g. `useWeekPlanner`). It
+  owns that view's state and returns its handlers.
+- A component is a **pure function of its props**. Same props in, same markup
+  out. A component that both fetches and renders is the thing this rule exists
+  to prevent.
 - No DOM lookups (`getElementById`, `querySelector`) scattered through handlers.
-  The class holds its references; the framework owns the updates.
+  Use refs; React owns the updates.
 - No business logic in the frontend. Week boundaries, aggregation, rule
   satisfiability and scoping are **backend domain code** (`planner_core`). The
   SPA displays results — it never recomputes them. Two implementations of
@@ -189,9 +198,9 @@ breakpoints:
   `clamp()`, `min()`/`max()`. A fluid layout needs no breakpoint at all, and it
   is what the week grid (7 days × 2 slots) and the shopping list both want.
 - **Where a genuine breakpoint is unavoidable** (e.g. the week grid collapsing
-  to a day-by-day view on a narrow phone), the logic class observes it with
+  to a day-by-day view on a narrow phone), a hook observes it with
   `window.matchMedia` and switches state. The breakpoint becomes a state value,
-  and the markup stays a pure function of state.
+  and the component stays a pure function of its props.
 - Breakpoint values are tokens, not literals scattered across views.
 
 If a real `@media` block ever becomes unavoidable, that is a deviation from
@@ -232,8 +241,9 @@ week, and day one produces an empty everything (`G-25`).
 
 | Kind | Convention | Example |
 |---|---|---|
-| Logic classes | `PascalCase` + view noun | `WeekPlannerView`, `ShoppingListView` |
-| Files | `PascalCase` matching the class | `WeekPlannerView.js` |
+| Components | `PascalCase` + view noun | `WeekPlannerView`, `ShoppingListView` |
+| Component files | `PascalCase` matching the component, `.jsx` | `WeekPlannerView.jsx` |
+| Hooks | `use` + view noun, `.js` | `useWeekPlanner.js` |
 | Methods / variables | `camelCase` | `handlePromoteCandidate` |
 | Event handlers | `handle` + event | `handleToggleChecked` |
 | Constants / tokens | `UPPER_SNAKE` or a `tokens.*` path | `DEFAULT_WEEK_VIEW` |
@@ -245,12 +255,17 @@ Frontend tests assert **behaviour through state**, not rendered pixels: given a
 state, the expected markup shape and handler effects. No snapshot tests of whole
 views — they break on every styling tweak and assert nothing about correctness.
 
-The concrete test runner is confirmed against the initial code drop.
+The runner is **Vitest** (decided 2026-08-17). Test the **hook** directly wherever
+the logic lives there — it is a plain function, and that is the cheapest place to
+assert behaviour. Reach for rendering only when the assertion is genuinely about
+what the component produces.
 
 ### Do not
 
 - ❌ Do not add a CSS framework, component library or UI kit.
-- ❌ Do not introduce a templating language or a build-time template step.
+- ❌ Do not introduce a templating language (Handlebars, `.vue`, string
+  templates). **JSX is not one of these** — it is React's own markup syntax and
+  is the required form here.
 - ❌ Do not duplicate backend domain logic in the client.
 - ❌ Do not hardcode Spanish strings, dates or number formats in components.
 - ❌ Do not add accessibility work beyond browser defaults — explicit scope
@@ -258,14 +273,17 @@ The concrete test runner is confirmed against the initial code drop.
 - ❌ Do not add offline support, export/print, or presence indicators — all
   explicitly rejected (`docs/gaps_and_resolutions.md`, Part H).
 
-### Confirmed at the initial code drop
+### ~~Confirmed at the initial code drop~~ — resolved 2026-08-17
 
-The human supplies the initial frontend code (`docs/architecture.md` §1.1).
-Three things get pinned down from it, and only these — everything above applies
-regardless:
+~~The human supplies the initial frontend code. Three things get pinned down from
+it: the framework's identity and bootstrap idiom, the component/lifecycle API the
+logic class extends, and the test runner. Until that code exists, no agent writes
+frontend code.~~
 
-1. The framework's exact identity, import and bootstrap idiom.
-2. The component/lifecycle API the logic class extends.
-3. The test runner.
+**There is no code drop coming — it already happened, and it was the prototype in
+`prototypes/wireframe/`.** All three items are now settled (`architecture.md`
+§1.1): React with function components and hooks, bootstrapped by Vite, tested
+with Vitest. There is no base class to extend — a component is a plain function.
 
-Until that code exists, no agent writes frontend code.
+`frontend_spa` (feature 20) remains `blocked`, but on **feature 16** alone: the
+SPA needs the REST contract (P5). The stack no longer blocks it.

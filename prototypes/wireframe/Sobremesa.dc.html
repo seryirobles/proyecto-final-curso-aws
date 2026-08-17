@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400..800&family=Nunito:wght@400..900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:'Nunito',system-ui,sans-serif;background:#E1E5CB;color:#28331F;-webkit-font-smoothing:antialiased}
+input,select,textarea,button{font-family:inherit;font-size:inherit}
+button{cursor:pointer}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:#C6D0A8;border-radius:20px;border:2px solid transparent;background-clip:content-box}
+::-webkit-scrollbar-track{background:transparent}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes toastIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:none}}
+@keyframes sheetIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes popIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+@keyframes ring{0%{box-shadow:0 0 0 0 rgba(138,78,150,.4)}70%{box-shadow:0 0 0 7px rgba(138,78,150,0)}100%{box-shadow:0 0 0 0 rgba(138,78,150,0)}}
+</style>
+</helmet>
+<div style="--paper:#F5F2E3;--paper-2:#EDEBD6;--surface:#FFFEF6;--surface-2:#F4F2DF;--ink:#28331F;--ink-2:#5C6A4C;--ink-3:#90997D;--line:#E2E2C8;--line-2:#CBD0AC;--terra:#2E6B34;--terra-deep:#1F4E25;--terra-soft:#DFEDD3;--olive:#628F2F;--olive-soft:#E6F0CF;--aub:#8A4E96;--aub-soft:#F0E1F3;--honey:#D28E2B;--honey-soft:#F8E9C6;font-family:'Nunito',system-ui,sans-serif;color:var(--ink);min-height:100vh;width:100%;display:flex;flex-direction:column;align-items:center;gap:14px;padding:16px 12px 44px;background:radial-gradient(1200px 620px at 50% -12%, #F5F5DE, #D6E0BC 72%)">
+
+<div style="position:fixed;top:14px;left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:8px;z-index:200;pointer-events:none">
+<sc-for list="{{ toasts }}" as="t" hint-placeholder-count="0">
+<div style="pointer-events:auto;background:var(--ink);color:#EFF5E2;padding:10px 15px;border-radius:13px;font-size:13.5px;font-weight:500;box-shadow:0 14px 34px -14px rgba(40,51,31,.7);animation:toastIn .25s ease;display:flex;align-items:center;gap:9px;max-width:92vw">
+<span style="width:7px;height:7px;border-radius:50%;background:var(--olive);flex:none"></span>
+<span>{{ t.text }}</span>
+</div>
+</sc-for>
+</div>
+
+<div style="width:100%;max-width:1200px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 4px">
+<div style="display:flex;align-items:center;gap:10px">
+<div style="width:30px;height:30px;border-radius:9px;background:var(--terra);color:#F2F9E8;display:flex;align-items:center;justify-content:center;font-family:'Baloo 2';font-weight:800;font-size:18px;box-shadow:0 6px 14px -6px rgba(46,107,52,.7)">S</div>
+<div style="display:flex;flex-direction:column;line-height:1.05">
+<span style="font-family:'Baloo 2';font-weight:700;font-size:15px;letter-spacing:-.01em">Sobremesa</span>
+<span style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)">Prototipo</span>
+</div>
+</div>
+<sc-if value="{{ isApp }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px">
+<sc-if value="{{ isMobile }}" hint-placeholder-val="{{ true }}">
+<button onClick="{{ toggleDevice }}" style="border:none;background:var(--surface);color:var(--ink);border-radius:999px;padding:6px 13px;font-size:12.5px;font-weight:600;box-shadow:0 2px 6px -2px rgba(40,51,31,.3)">Móvil</button>
+<button onClick="{{ toggleDevice }}" style="border:none;background:transparent;color:var(--ink-3);border-radius:999px;padding:6px 13px;font-size:12.5px;font-weight:600">Escritorio</button>
+</sc-if>
+<sc-if value="{{ notMobile }}" hint-placeholder-val="{{ false }}">
+<button onClick="{{ toggleDevice }}" style="border:none;background:transparent;color:var(--ink-3);border-radius:999px;padding:6px 13px;font-size:12.5px;font-weight:600">Móvil</button>
+<button onClick="{{ toggleDevice }}" style="border:none;background:var(--surface);color:var(--ink);border-radius:999px;padding:6px 13px;font-size:12.5px;font-weight:600;box-shadow:0 2px 6px -2px rgba(40,51,31,.3)">Escritorio</button>
+</sc-if>
+</div>
+</sc-if>
+</div>
+
+<sc-if value="{{ isLogin }}" hint-placeholder-val="{{ true }}">
+<div data-screen-label="Login" style="width:100%;max-width:420px;margin-top:5vh;animation:popIn .4s ease">
+<div style="background:var(--surface);border:1px solid var(--line);border-radius:30px;padding:30px 26px 26px;box-shadow:0 2px 6px rgba(40,51,31,.05),0 40px 80px -44px rgba(40,51,31,.5)">
+<div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;margin-bottom:22px">
+<div style="width:58px;height:58px;border-radius:18px;background:var(--terra);color:#F2F9E8;display:flex;align-items:center;justify-content:center;font-family:'Baloo 2';font-weight:800;font-size:34px;box-shadow:0 12px 26px -10px rgba(46,107,52,.7);margin-bottom:8px">S</div>
+<h1 style="font-family:'Baloo 2';font-weight:700;font-size:27px;margin:0;letter-spacing:-.02em">Sobremesa</h1>
+<p style="margin:0;color:var(--ink-2);font-size:14px">¿Qué comemos esta semana? Decididlo en equipo.</p>
+</div>
+<form onSubmit="{{ doLogin }}">
+<div style="display:flex;flex-direction:column;gap:11px">
+<label style="font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)">Usuario</label>
+<input value="{{ loginDraft.username }}" onChange="{{ onField }}" data-group="loginDraft" data-field="username" placeholder="p. ej. marta" style="border:1px solid {{ loginErrBorder }};background:{{ loginErrBg }};border-radius:12px;padding:12px 14px;color:var(--ink);outline:none">
+<label style="font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-top:4px">Contraseña</label>
+<input value="{{ loginDraft.password }}" onChange="{{ onField }}" data-group="loginDraft" data-field="password" type="password" placeholder="••••••••" style="border:1px solid {{ loginErrBorder }};background:{{ loginErrBg }};border-radius:12px;padding:12px 14px;color:var(--ink);outline:none">
+</div>
+<button type="submit" disabled="{{ loginLocked }}" style="margin-top:18px;width:100%;border:none;background:{{ loginBtnBg }};color:#F2F9E8;border-radius:13px;padding:14px;font-weight:700;font-size:15px;box-shadow:0 10px 22px -10px rgba(46,107,52,.75);display:flex;align-items:center;justify-content:center;gap:8px;opacity:{{ loginBtnOpacity }}">{{ loginBtnLabel }}
+<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
+</form>
+<p style="text-align:center;margin:16px 0 0;font-size:11.5px;color:var(--ink-3);line-height:1.5">Sin registro público. Las cuentas las crea el administrador.</p>
+<p style="text-align:center;margin:12px 0 0;padding-top:10px;border-top:1px dashed var(--line);font-family:'DM Mono',monospace;font-size:10px;color:var(--ink-3);line-height:1.6">PROTOTIPO · usuarios: marta, javi, lucia, dani o admin · cualquier contraseña · prueba «dani» para ver el flujo de contraseña nueva (mínimo 10 caracteres)</p>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isSetPassword }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Nueva contraseña" style="width:100%;max-width:420px;margin-top:5vh;animation:popIn .4s ease">
+<div style="background:var(--surface);border:1px solid var(--line);border-radius:30px;padding:30px 26px 26px;box-shadow:0 2px 6px rgba(40,51,31,.05),0 40px 80px -44px rgba(40,51,31,.5)">
+<div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;margin-bottom:22px">
+<div style="width:58px;height:58px;border-radius:18px;background:var(--terra);color:#F2F9E8;display:flex;align-items:center;justify-content:center;font-family:'Baloo 2';font-weight:800;font-size:34px;box-shadow:0 12px 26px -10px rgba(46,107,52,.7);margin-bottom:8px">S</div>
+<h1 style="font-family:'Baloo 2';font-weight:700;font-size:24px;margin:0;letter-spacing:-.02em">Nueva contraseña</h1>
+<p style="margin:0;color:var(--ink-2);font-size:14px">Hola {{ pendingUser.name }}. Es tu primer acceso o tu contraseña fue restablecida — crea una nueva para continuar.</p>
+</div>
+<form onSubmit="{{ submitSetPassword }}">
+<div style="display:flex;flex-direction:column;gap:11px">
+<label style="font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)">Nueva contraseña</label>
+<input value="{{ setPwDraft.password }}" onChange="{{ onField }}" data-group="setPwDraft" data-field="password" type="password" placeholder="mínimo 10 caracteres" style="border:1px solid var(--line-2);background:var(--surface-2);border-radius:12px;padding:12px 14px;color:var(--ink);outline:none">
+<label style="font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-top:4px">Confirmar contraseña</label>
+<input value="{{ setPwDraft.confirm }}" onChange="{{ onField }}" data-group="setPwDraft" data-field="confirm" type="password" placeholder="repite la contraseña" style="border:1px solid var(--line-2);background:var(--surface-2);border-radius:12px;padding:12px 14px;color:var(--ink);outline:none">
+<p style="margin:2px 0 0;font-size:11.5px;color:var(--ink-3);line-height:1.5">Mínimo 10 caracteres, hasta 64. Sin obligación de mayúsculas, números ni símbolos, y sin caducidad. Se rechazan las contraseñas más comunes y filtradas, también en castellano.</p>
+<sc-if value="{{ pwHasError }}" hint-placeholder-val="{{ false }}"><div style="font-size:12.5px;font-weight:600;color:#8E2A1E;background:#FBEAE8;border:1px solid #E7B6AF;border-radius:10px;padding:9px 11px">{{ pwError }}</div></sc-if>
+</div>
+<button type="submit" style="margin-top:18px;width:100%;border:none;background:var(--terra);color:#F2F9E8;border-radius:13px;padding:14px;font-weight:700;font-size:15px;box-shadow:0 10px 22px -10px rgba(46,107,52,.75);display:flex;align-items:center;justify-content:center;gap:8px">Guardar y entrar
+<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
+</form>
+<button onClick="{{ cancelSetPassword }}" style="margin-top:8px;width:100%;border:none;background:transparent;color:var(--ink-3);font-size:13px;font-weight:600;padding:8px">Cancelar</button>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isApp }}" hint-placeholder-val="{{ false }}">
+<div style="{{ frameStyle }}">
+<div style="{{ shellStyle }}">
+
+<sc-if value="{{ offline }}" hint-placeholder-val="{{ false }}">
+<div style="flex:none;background:#5A3A21;color:#FBEFE2;display:flex;align-items:center;gap:9px;padding:8px 15px;font-size:12.5px;font-weight:600;z-index:6"><span style="width:8px;height:8px;border-radius:50%;background:#E8B04B;animation:pulse 1.2s infinite;flex:none"></span>Sin conexión · reconectando… puede que no estés viendo los cambios de los demás</div>
+</sc-if>
+<header style="flex:none;background:var(--surface);border-bottom:1px solid var(--line);padding:11px 15px 12px;display:flex;flex-direction:column;gap:9px;z-index:5">
+<div style="display:flex;align-items:center;gap:10px">
+<div style="width:28px;height:28px;border-radius:8px;background:var(--terra);color:#F2F9E8;display:flex;align-items:center;justify-content:center;font-family:'Baloo 2';font-weight:800;font-size:16px;flex:none">S</div>
+<span style="font-family:'Baloo 2';font-weight:700;font-size:16px;flex:1">Sobremesa</span>
+<button onClick="{{ doLogout }}" style="border:none;background:transparent;color:var(--ink-3);padding:4px;display:flex" title="Salir"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 12H4M8 8l-4 4 4 4M14 5h5v14h-5"/></svg></button>
+</div>
+<sc-if value="{{ isRoleUser }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;align-items:center;gap:8px">
+<button onClick="{{ setWeek }}" data-week="cur" title="Semana actual" style="border:1px solid var(--line-2);background:var(--surface-2);border-radius:8px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;color:{{ prevCol }};flex:none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+<div style="flex:1;text-align:center;line-height:1.15"><div style="font-weight:700;font-size:14.5px">{{ weekTitle }} · {{ weekTag }}</div><div style="font-family:'DM Mono',monospace;font-size:10.5px;color:var(--ink-3);letter-spacing:.02em">{{ weekRange }} · en vivo</div></div>
+<button onClick="{{ setWeek }}" data-week="next" title="Semana próxima" style="border:1px solid var(--line-2);background:var(--surface-2);border-radius:8px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;color:{{ nextCol }};flex:none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+</div>
+</sc-if>
+<sc-if value="{{ isRoleAdmin }}" hint-placeholder-val="{{ false }}">
+<div style="text-align:center;line-height:1.15"><div style="font-weight:700;font-size:14.5px">Panel de administración</div><div style="font-family:'DM Mono',monospace;font-size:10.5px;color:var(--ink-3);letter-spacing:.02em">Gestión de cuentas de acceso</div></div>
+</sc-if>
+</header>
+
+<main style="flex:1;overflow-y:auto;overflow-x:hidden;background:var(--paper)">
+<div style="max-width:1060px;margin:0 auto;padding:16px 15px 26px;width:100%">
+
+<sc-if value="{{ isMenu }}" hint-placeholder-val="{{ true }}">
+<div data-screen-label="Menú semanal">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
+<div><h2 style="font-family:'Baloo 2';font-weight:700;font-size:21px;margin:0;letter-spacing:-.01em">Menú · {{ weekHeading }}</h2><p style="margin:2px 0 0;font-size:12.5px;color:var(--ink-2)">{{ weekFull }} · comida y cena</p></div>
+<button onClick="{{ openAiWeek }}" style="border:none;background:var(--aub);color:#FAF0FC;border-radius:12px;padding:10px 13px;font-weight:700;font-size:13px;display:flex;align-items:center;gap:7px;flex:none;box-shadow:0 8px 18px -9px rgba(138,78,150,.8)">
+<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9z"/></svg>Generar con IA</button>
+</div>
+
+<div style="display:flex;gap:7px;overflow-x:auto;padding:2px 0 8px;margin-bottom:6px">
+<div style="display:inline-flex;align-items:center;gap:6px;background:var(--olive-soft);color:var(--olive);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;flex:none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V10M12 21V4M20 21v-7"/></svg>Objetivos de las reglas · estimado</div>
+<sc-for list="{{ balance }}" as="b" hint-placeholder-count="5">
+<div style="display:inline-flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600;flex:none"><span style="width:8px;height:8px;border-radius:50%;background:{{ b.color }}"></span>{{ b.label }} <span style="font-family:'DM Mono',monospace;color:var(--ink-3)">{{ b.have }}/{{ b.target }}</span></div>
+</sc-for>
+</div>
+
+<div style="display:grid;gap:13px;grid-template-columns:repeat(auto-fill,minmax(min(100%,272px),1fr))">
+<sc-for list="{{ viewDays }}" as="d" hint-placeholder-count="7">
+<div data-screen-label="{{ d.name }}" style="background:var(--surface);border:1px solid var(--line);border-radius:20px;overflow:hidden;opacity:{{ d.dayOpacity }};box-shadow:0 1px 2px rgba(40,51,31,.04),0 14px 30px -22px rgba(40,51,31,.4)">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid var(--line);background:var(--surface-2)">
+<div style="display:flex;align-items:baseline;gap:7px"><span style="font-family:'Baloo 2';font-weight:700;font-size:15.5px">{{ d.name }}</span><span style="font-family:'DM Mono',monospace;font-size:10.5px;color:var(--ink-3)">{{ d.date }}</span></div>
+<span style="font-size:11px;font-weight:700;color:{{ d.statusColor }};background:{{ d.statusBg }};padding:3px 9px;border-radius:999px">{{ d.statusText }}</span>
+</div>
+<div style="padding:9px 11px;display:flex;flex-direction:column;gap:9px">
+<sc-for list="{{ d.slots }}" as="s" hint-placeholder-count="2">
+<div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+<span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);font-weight:500">{{ s.label }}</span>
+</div>
+<sc-if value="{{ s.disabled }}" hint-placeholder-val="{{ false }}">
+<div style="border:1px dashed var(--line-2);border-radius:11px;padding:11px;text-align:center;color:var(--ink-3);font-size:12px;background:var(--surface-2)">Generación desactivada (regla)</div>
+</sc-if>
+<sc-if value="{{ s.notDisabled }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:6px">
+<sc-for list="{{ s.cands }}" as="c" hint-placeholder-count="1">
+<div style="display:flex;align-items:center;gap:9px;border:1px solid {{ c.borderCol }};background:{{ c.bgCol }};border-radius:12px;padding:8px 9px">
+<button onClick="{{ makeDefinitive }}" data-day="{{ d.key }}" data-slot="{{ s.key }}" data-cid="{{ c.id }}" title="Marcar definitiva" style="border:2px solid {{ c.checkBorder }};background:{{ c.checkBg }};width:24px;height:24px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;color:{{ c.checkFg }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5 9-10"/></svg></button>
+<button onClick="{{ openRecipe }}" data-meal-id="{{ c.id }}" style="border:none;background:transparent;flex:1;min-width:0;text-align:left;padding:0">
+<div style="display:flex;align-items:center;gap:6px"><span style="font-weight:700;font-size:13.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.name }}</span><sc-if value="{{ c.isAI }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:800;letter-spacing:.04em;color:#FAF0FC;background:var(--aub);padding:2px 5px;border-radius:5px;flex:none"><svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9z"/></svg>IA</span></sc-if></div>
+<div style="display:flex;align-items:center;gap:6px;margin-top:2px"><span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--ink-3)">{{ c.meta }}</span><span style="font-size:10.5px;color:var(--ink-3)">· {{ c.authorLine }}</span></div>
+</button>
+<button onClick="{{ editCand }}" data-day="{{ d.key }}" data-slot="{{ s.key }}" data-cid="{{ c.id }}" style="border:none;background:transparent;color:var(--ink-3);padding:3px;flex:none;display:flex" title="Editar"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 5l4 4"/></svg></button>
+<button onClick="{{ removeCand }}" data-day="{{ d.key }}" data-slot="{{ s.key }}" data-cid="{{ c.id }}" style="border:none;background:transparent;color:var(--ink-3);padding:3px;flex:none;display:flex" title="Quitar"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+</div>
+</sc-for>
+<button onClick="{{ openAdd }}" data-day="{{ d.key }}" data-slot="{{ s.key }}" style="border:1px dashed var(--line-2);background:transparent;color:var(--ink-2);border-radius:11px;padding:8px;font-size:12.5px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Añadir candidata</button>
+<sc-if value="{{ s.isEmpty }}" hint-placeholder-val="{{ false }}"><div style="font-size:11.5px;color:var(--ink-3);text-align:center;line-height:1.45;padding:0 4px 2px">Sin candidatas todavía. Añade una de la biblioteca, escríbela o genérala con IA.</div></sc-if>
+<sc-if value="{{ s.hasDef }}" hint-placeholder-val="{{ false }}"><button onClick="{{ clearDefinitive }}" data-day="{{ d.key }}" data-slot="{{ s.key }}" style="border:none;background:transparent;color:var(--ink-3);font-size:11.5px;font-weight:600;padding:2px;text-align:center">Quitar la definitiva</button></sc-if>
+</div>
+</sc-if>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isSummary }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Resumen">
+<div style="display:flex;align-items:center;gap:9px;margin-bottom:4px"><h2 style="font-family:'Baloo 2';font-weight:700;font-size:21px;margin:0">Resumen de la semana</h2><span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--line);padding:3px 8px;border-radius:7px">solo lectura</span></div>
+<p style="margin:0 0 14px;font-size:12.5px;color:var(--ink-2)">{{ weekFull }} · comidas definitivas y quién las eligió. No editable desde aquí; toca una comida para ver la receta.</p>
+<div style="display:grid;gap:11px;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))">
+<sc-for list="{{ viewDays }}" as="d" hint-placeholder-count="7">
+<div style="background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:13px 15px">
+<div style="display:flex;align-items:baseline;gap:7px;margin-bottom:9px"><span style="font-family:'Baloo 2';font-weight:700;font-size:15px">{{ d.name }}</span><span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--ink-3)">{{ d.date }}</span></div>
+<sc-for list="{{ d.slots }}" as="s" hint-placeholder-count="2">
+<div style="display:flex;align-items:center;gap:9px;padding:7px 0;border-top:1px solid var(--line)">
+<span style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);width:46px;flex:none">{{ s.label }}</span>
+<button onClick="{{ openRecipe }}" data-meal-id="{{ s.defId }}" style="flex:1;min-width:0;border:none;background:transparent;text-align:left;padding:0"><div style="font-weight:600;font-size:13.5px;color:{{ s.sumColor }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.sumName }}</div><sc-if value="{{ s.hasDef }}" hint-placeholder-val="{{ false }}"><div style="font-size:11px;color:var(--ink-3)">definitiva · por {{ s.defBy }}</div></sc-if></button>
+</div>
+</sc-for>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isLibrary }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Biblioteca">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
+<div><h2 style="font-family:'Baloo 2';font-weight:700;font-size:21px;margin:0">Biblioteca</h2><p style="margin:2px 0 0;font-size:12.5px;color:var(--ink-2)">{{ libCount }} recetas compartidas</p></div>
+<button onClick="{{ openAddLibrary }}" style="border:none;background:var(--terra);color:#F2F9E8;border-radius:12px;padding:10px 13px;font-weight:700;font-size:13px;display:flex;align-items:center;gap:6px;flex:none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nueva receta</button>
+</div>
+<div style="display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line-2);border-radius:12px;padding:9px 13px;margin-bottom:14px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink-3)" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg><input value="{{ librarySearch }}" onChange="{{ onField }}" data-group="root" data-field="librarySearch" placeholder="Buscar recetas…" style="border:none;background:transparent;outline:none;flex:1;color:var(--ink)">
+<select value="{{ libFilterCuisine }}" onChange="{{ onField }}" data-group="root" data-field="libFilterCuisine" style="border:1px solid var(--line);background:var(--surface-2);border-radius:9px;padding:6px 8px;font-size:12px;font-weight:600;color:var(--ink-2);outline:none;flex:none"><option value="">Toda cocina</option><sc-for list="{{ cuisineOptions }}" as="c" hint-placeholder-count="4"><option value="{{ c }}">{{ c }}</option></sc-for></select>
+<select value="{{ libFilterDiff }}" onChange="{{ onField }}" data-group="root" data-field="libFilterDiff" style="border:1px solid var(--line);background:var(--surface-2);border-radius:9px;padding:6px 8px;font-size:12px;font-weight:600;color:var(--ink-2);outline:none;flex:none"><option value="">Toda dificultad</option><sc-for list="{{ diffOptions }}" as="c" hint-placeholder-count="3"><option value="{{ c }}">{{ c }}</option></sc-for></select></div>
+<sc-if value="{{ libEmpty }}" hint-placeholder-val="{{ false }}"><div style="border:1px dashed var(--line-2);border-radius:16px;padding:26px 18px;text-align:center;color:var(--ink-2);background:var(--surface)"><div style="font-weight:700;font-size:14.5px;margin-bottom:4px">Ninguna receta coincide</div><div style="font-size:12.5px;color:var(--ink-3);line-height:1.5">Prueba con otro nombre, quita los filtros de cocina y dificultad, o crea una receta nueva.</div></div></sc-if>
+<div style="display:grid;gap:11px;grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr))">
+<sc-for list="{{ libFiltered }}" as="r" hint-placeholder-count="6">
+<div style="background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:13px 14px;display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;align-items:start;justify-content:space-between;gap:8px"><div style="display:flex;align-items:center;gap:7px;min-width:0"><span style="width:9px;height:9px;border-radius:50%;background:{{ r.catColor }};flex:none"></span><span style="font-weight:700;font-size:14.5px;line-height:1.2">{{ r.name }}</span></div><sc-if value="{{ r.isAI }}" hint-placeholder-val="{{ false }}"><span style="font-size:9px;font-weight:800;color:#FAF0FC;background:var(--aub);padding:2px 5px;border-radius:5px;flex:none">IA</span></sc-if></div>
+<div style="font-family:'DM Mono',monospace;font-size:10.5px;color:var(--ink-3)">{{ r.meta }}</div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:2px">
+<span style="font-size:11px;color:var(--ink-3)">por {{ r.author }}</span>
+<div style="display:flex;gap:5px">
+<button onClick="{{ openRecipe }}" data-meal-id="{{ r.id }}" style="border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink-2);border-radius:8px;padding:6px 9px;font-size:12px;font-weight:600">Ver</button>
+<button onClick="{{ editLibrary }}" data-lib-id="{{ r.id }}" style="border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink-2);border-radius:8px;width:30px;height:30px;display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 5l4 4"/></svg></button>
+<button onClick="{{ deleteLibrary }}" data-lib-id="{{ r.id }}" style="border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink-3);border-radius:8px;width:30px;height:30px;display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13"/></svg></button>
+</div>
+</div>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isShopping }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Lista de la compra">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
+<div><h2 style="font-family:'Baloo 2';font-weight:700;font-size:21px;margin:0">Lista de la compra</h2><p style="margin:2px 0 0;font-size:12.5px;color:var(--ink-2)">{{ shopScope }} · solo comidas definitivas</p></div>
+<button onClick="{{ autoSync }}" style="border:1px solid var(--olive);background:var(--olive-soft);color:var(--olive);border-radius:12px;padding:9px 12px;font-weight:700;font-size:12.5px;display:flex;align-items:center;gap:7px;flex:none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0 1 13.7-5.6L20 8M20 3v5h-5M20 12a8 8 0 0 1-13.7 5.6L4 16M4 21v-5h5"/></svg>Sincronizar con el menú</button>
+</div>
+<div style="display:flex;align-items:end;gap:8px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:12px">
+<div style="display:flex;flex-direction:column;gap:4px;flex:2;min-width:120px"><label style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)">Artículo</label><input value="{{ shopDraft.name }}" onChange="{{ onField }}" data-group="shopDraft" data-field="name" placeholder="p. ej. Tomate" style="border:1px solid var(--line-2);background:var(--surface-2);border-radius:9px;padding:9px 11px;outline:none"></div>
+<div style="display:flex;flex-direction:column;gap:4px;width:66px"><label style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)">Cant.</label><input value="{{ shopDraft.qty }}" onChange="{{ onField }}" data-group="shopDraft" data-field="qty" style="border:1px solid var(--line-2);background:var(--surface-2);border-radius:9px;padding:9px 11px;outline:none"></div>
+<div style="display:flex;flex-direction:column;gap:4px;width:74px"><label style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)">Unidad</label><select value="{{ shopDraft.unit }}" onChange="{{ onField }}" data-group="shopDraft" data-field="unit" style="border:1px solid var(--line-2);background:var(--surface-2);border-radius:9px;padding:9px 8px;outline:none;color:var(--ink)"><sc-for list="{{ units }}" as="u" hint-placeholder-count="5"><option value="{{ u }}">{{ u }}</option></sc-for></select></div>
+<button onClick="{{ addShopItem }}" style="border:none;background:var(--terra);color:#F2F9E8;border-radius:10px;padding:10px 14px;font-weight:700;font-size:13px;height:37px">Añadir</button>
+</div>
+<div style="background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden">
+<sc-if value="{{ shopEmpty }}" hint-placeholder-val="{{ false }}"><div style="padding:26px 18px;text-align:center"><div style="font-weight:700;font-size:14.5px;margin-bottom:4px">La lista está vacía</div><div style="font-size:12.5px;color:var(--ink-3);line-height:1.5">Pulsa «Sincronizar con el menú» para traer los ingredientes de las comidas definitivas, o añade artículos a mano.</div></div></sc-if>
+<sc-for list="{{ shopOpen }}" as="i" hint-placeholder-count="8">
+<div style="display:flex;align-items:center;gap:9px;padding:10px 13px;border-top:1px solid var(--line)">
+<button onClick="{{ toggleCheck }}" data-id="{{ i.id }}" title="Marcar como comprado" style="width:23px;height:23px;border:2px solid var(--line-2);background:transparent;border-radius:7px;flex:none;display:flex;align-items:center;justify-content:center;color:transparent"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5 9-10"/></svg></button>
+<div style="flex:1;min-width:0">
+<input value="{{ i.name }}" onChange="{{ onShopName }}" data-id="{{ i.id }}" style="border:none;background:transparent;outline:none;width:100%;font-weight:600;font-size:14px;color:var(--ink);padding:0">
+<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:1px">
+<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--ink-3)"><span style="width:6px;height:6px;border-radius:50%;background:{{ i.dot }}"></span>{{ i.originLabel }}</span>
+<span style="font-family:'DM Mono',monospace;font-size:9.5px;color:var(--ink-3)">{{ i.weekTag }}</span>
+<sc-if value="{{ i.dup }}" hint-placeholder-val="{{ false }}"><span style="font-size:9.5px;font-weight:700;color:var(--honey);background:var(--honey-soft);padding:1px 6px;border-radius:5px">posible duplicado</span></sc-if>
+</div>
+</div>
+<div style="display:flex;align-items:center;gap:2px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:3px;flex:none">
+<button onClick="{{ stepShopQty }}" data-id="{{ i.id }}" data-delta="-1" style="width:22px;height:22px;border:none;background:transparent;color:var(--ink-2);font-weight:700;font-size:15px;border-radius:7px;display:flex;align-items:center;justify-content:center">−</button>
+<input value="{{ i.qty }}" onChange="{{ onShopQty }}" data-id="{{ i.id }}" style="border:none;background:transparent;outline:none;width:34px;text-align:center;font-family:'DM Mono',monospace;font-size:12.5px;color:var(--ink)">
+<button onClick="{{ stepShopQty }}" data-id="{{ i.id }}" data-delta="1" style="width:22px;height:22px;border:none;background:transparent;color:var(--ink-2);font-weight:700;font-size:15px;border-radius:7px;display:flex;align-items:center;justify-content:center">+</button>
+</div>
+<select value="{{ i.unit }}" onChange="{{ onShopUnit }}" data-id="{{ i.id }}" style="border:1px solid var(--line);background:var(--surface-2);border-radius:9px;padding:5px 4px;font-family:'DM Mono',monospace;font-size:11px;color:var(--ink-2);outline:none;flex:none;max-width:74px"><sc-for list="{{ units }}" as="u" hint-placeholder-count="5"><option value="{{ u }}">{{ u }}</option></sc-for></select>
+<button onClick="{{ removeShopItem }}" data-id="{{ i.id }}" style="border:none;background:transparent;color:var(--ink-3);padding:3px;flex:none;display:flex"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+</div>
+</sc-for>
+<sc-if value="{{ hasDone }}" hint-placeholder-val="{{ false }}">
+<div style="padding:9px 13px;border-top:1px solid var(--line);background:var(--surface-2);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)">Comprados</div>
+<sc-for list="{{ shopDone }}" as="i" hint-placeholder-count="2">
+<div style="display:flex;align-items:center;gap:9px;padding:10px 13px;border-top:1px solid var(--line);opacity:.55">
+<button onClick="{{ toggleCheck }}" data-id="{{ i.id }}" title="Desmarcar" style="width:23px;height:23px;border:2px solid var(--olive);background:var(--olive);border-radius:7px;flex:none;display:flex;align-items:center;justify-content:center;color:#fff"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5 9-10"/></svg></button>
+<div style="flex:1;min-width:0">
+<div style="font-weight:600;font-size:14px;text-decoration:line-through;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ i.name }}</div>
+<sc-if value="{{ i.qtyChanged }}" hint-placeholder-val="{{ false }}"><span style="font-size:9.5px;font-weight:700;color:var(--honey);background:var(--honey-soft);padding:1px 6px;border-radius:5px">cantidad actualizada desde que lo marcaste</span></sc-if>
+</div>
+<span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--ink-3);flex:none">{{ i.qty }} {{ i.unit }}</span>
+<button onClick="{{ removeShopItem }}" data-id="{{ i.id }}" style="border:none;background:transparent;color:var(--ink-3);padding:3px;flex:none;display:flex"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+</div>
+</sc-for>
+</sc-if>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isRules }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Reglas">
+<h2 style="font-family:'Baloo 2';font-weight:700;font-size:21px;margin:0">Reglas generales</h2>
+<p style="margin:2px 0 14px;font-size:12.5px;color:var(--ink-2)">Compartidas entre todos · afectan a cada semana · solo desplegables</p>
+<sc-if value="{{ ruleWarnOn }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:start;gap:9px;background:var(--honey-soft);border:1px solid var(--honey);border-radius:13px;padding:11px 13px;margin-bottom:14px"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--honey)" stroke-width="2.2" stroke-linecap="round" style="flex:none;margin-top:1px"><path d="M12 8v5M12 16.5v.5"/><circle cx="12" cy="12" r="9"/></svg><span style="font-size:12.5px;color:#7A5A16;line-height:1.45;font-weight:600">{{ ruleWarnText }}</span></div></sc-if>
+<div style="display:flex;flex-direction:column;gap:16px">
+<sc-for list="{{ ruleGroups }}" as="g" hint-placeholder-count="1">
+<div style="background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden">
+<div style="padding:11px 15px;border-bottom:1px solid var(--line);background:var(--surface-2);display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:{{ g.color }}"></span><span style="font-weight:700;font-size:14px">{{ g.title }}</span></div>
+<sc-for list="{{ g.rules }}" as="r" hint-placeholder-count="3">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 15px;border-top:1px solid var(--line)">
+<span style="font-size:13.5px;font-weight:500;flex:1">{{ r.label }}</span>
+<select value="{{ r.value }}" data-rule-id="{{ r.id }}" onChange="{{ setRule }}" style="border:1px solid var(--line-2);background:var(--surface-2);border-radius:10px;padding:8px 11px;font-weight:600;color:var(--ink);outline:none;min-width:120px">
+<sc-for list="{{ r.options }}" as="opt" hint-placeholder-count="3"><option value="{{ opt }}">{{ opt }}</option></sc-for>
+</select>
+</div>
+</sc-for>
+</div>
+</sc-for>
+
+<div style="background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden">
+<div style="padding:11px 15px;border-bottom:1px solid var(--line);background:var(--surface-2);display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:var(--honey)"></span><span style="font-weight:700;font-size:14px;flex:1">Comidas fijas de biblioteca</span><select value="{{ pinCuisineFilter }}" onChange="{{ onField }}" data-group="root" data-field="pinCuisineFilter" style="border:1px solid var(--line-2);background:var(--surface);border-radius:8px;padding:5px 7px;font-size:11.5px;font-weight:600;color:var(--ink-2);outline:none;flex:none"><option value="">Filtrar por cocina</option><sc-for list="{{ pinFilterOptions }}" as="c" hint-placeholder-count="4"><option value="{{ c }}">{{ c }}</option></sc-for></select>
+<select value="{{ pinDiffFilter }}" onChange="{{ onField }}" data-group="root" data-field="pinDiffFilter" style="border:1px solid var(--line-2);background:var(--surface);border-radius:8px;padding:5px 7px;font-size:11.5px;font-weight:600;color:var(--ink-2);outline:none;flex:none"><option value="">Toda dificultad</option><sc-for list="{{ diffOptions }}" as="c" hint-placeholder-count="3"><option value="{{ c }}">{{ c }}</option></sc-for></select></div>
+<div style="display:flex;align-items:center;gap:7px;padding:9px 15px;border-bottom:1px solid var(--line);background:var(--surface-2)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="color:var(--ink-3);flex:none"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg><input value="{{ pinMealSearch }}" onChange="{{ onField }}" data-group="root" data-field="pinMealSearch" placeholder="Buscar receta para fijar…" style="flex:1;border:none;background:transparent;outline:none;font-size:12.5px;color:var(--ink)"><span style="font-size:11px;font-weight:700;color:var(--ink-3);flex:none">{{ pinMealCount }} recetas</span></div>
+<sc-for list="{{ pinRules }}" as="r" hint-placeholder-count="1">
+<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:11px 15px;border-top:1px solid var(--line)">
+<select value="{{ r.day }}" data-rule-id="{{ r.id }}" data-field="day" onChange="{{ setRuleField }}" style="border:1px solid var(--line-2);background:var(--surface-2);border-radius:9px;padding:7px 9px;font-weight:600;font-size:12.5px;color:var(--ink);outline:none">
+<sc-for list="{{ r.dayOpts }}" as="o" hint-placeholder-count="7"><option value="{{ o.v }}">{{ o.l }}</option></sc-for>
+</select>
+<select value="{{ r.slot }}" data-rule-id="{{ r.id }}" data-field="slot" onChange="{{ setRuleField }}" style="border:1px solid var(--line-2);background:var(--surface-2);border-radius:9px;padding:7px 9px;font-weight:600;font-size:12.5px;color:var(--ink);outline:none">
+<sc-for list="{{ r.slotOpts }}" as="o" hint-placeholder-count="2"><option value="{{ o.v }}">{{ o.l }}</option></sc-for>
+</select>
+<span style="color:var(--ink-3);font-weight:700">:</span>
+<select value="{{ r.meal }}" data-rule-id="{{ r.id }}" data-field="meal" onChange="{{ setRuleField }}" style="flex:1;min-width:140px;border:1px solid var(--line-2);background:var(--surface-2);border-radius:9px;padding:7px 9px;font-weight:600;font-size:12.5px;color:var(--ink);outline:none">
+<sc-for list="{{ r.mealOpts }}" as="o" hint-placeholder-count="4"><option value="{{ o.v }}">{{ o.l }}</option></sc-for>
+</select>
+<sc-if value="{{ r.conflict }}" hint-placeholder-val="{{ false }}"><span style="width:100%;font-size:11.5px;font-weight:700;color:var(--honey)">⚠ {{ r.conflictText }}</span></sc-if>
+<sc-if value="{{ r.notConfirming }}" hint-placeholder-val="{{ true }}"><button onClick="{{ askRemoveRule }}" data-rule-id="{{ r.id }}" style="border:none;background:transparent;color:var(--ink-3);padding:5px;flex:none;display:flex" title="Eliminar"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13"/></svg></button></sc-if>
+<sc-if value="{{ r.confirming }}" hint-placeholder-val="{{ false }}"><div style="display:flex;gap:5px;flex:none"><button onClick="{{ cancelRemoveRule }}" style="border:1px solid var(--line-2);background:var(--surface);color:var(--ink-2);border-radius:8px;padding:6px 9px;font-size:11.5px;font-weight:600">Cancelar</button><button onClick="{{ confirmRemoveRule }}" data-rule-id="{{ r.id }}" style="border:1px solid var(--terra-soft);background:var(--terra-soft);color:var(--terra-deep);border-radius:8px;padding:6px 9px;font-size:11.5px;font-weight:700">Eliminar</button></div></sc-if>
+</div>
+</sc-for>
+<button onClick="{{ addPinRule }}" style="width:calc(100% - 30px);margin:11px 15px 15px;border:1px dashed var(--line-2);background:transparent;color:var(--ink-2);border-radius:11px;padding:9px;font-size:12.5px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Añadir regla</button>
+</div>
+
+<div style="background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden">
+<div style="padding:11px 15px;border-bottom:1px solid var(--line);background:var(--surface-2);display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:var(--aub)"></span><span style="font-weight:700;font-size:14px;flex:1">Días sin generación</span></div>
+<sc-for list="{{ disableRules }}" as="r" hint-placeholder-count="1">
+<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:11px 15px;border-top:1px solid var(--line)">
+<select value="{{ r.day }}" data-rule-id="{{ r.id }}" data-field="day" onChange="{{ setRuleField }}" style="border:1px solid var(--line-2);background:var(--surface-2);border-radius:9px;padding:7px 9px;font-weight:600;font-size:12.5px;color:var(--ink);outline:none">
+<sc-for list="{{ r.dayOpts }}" as="o" hint-placeholder-count="7"><option value="{{ o.v }}">{{ o.l }}</option></sc-for>
+</select>
+<select value="{{ r.slot }}" data-rule-id="{{ r.id }}" data-field="slot" onChange="{{ setRuleField }}" style="border:1px solid var(--line-2);background:var(--surface-2);border-radius:9px;padding:7px 9px;font-weight:600;font-size:12.5px;color:var(--ink);outline:none">
+<sc-for list="{{ r.slotOpts }}" as="o" hint-placeholder-count="2"><option value="{{ o.v }}">{{ o.l }}</option></sc-for>
+</select>
+<span style="font-size:12px;color:var(--ink-3);flex:1">no se genera</span>
+<sc-if value="{{ r.conflict }}" hint-placeholder-val="{{ false }}"><span style="width:100%;font-size:11.5px;font-weight:700;color:var(--honey)">⚠ {{ r.conflictText }}</span></sc-if>
+<sc-if value="{{ r.notConfirming }}" hint-placeholder-val="{{ true }}"><button onClick="{{ askRemoveRule }}" data-rule-id="{{ r.id }}" style="border:none;background:transparent;color:var(--ink-3);padding:5px;flex:none;display:flex" title="Eliminar"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13"/></svg></button></sc-if>
+<sc-if value="{{ r.confirming }}" hint-placeholder-val="{{ false }}"><div style="display:flex;gap:5px;flex:none"><button onClick="{{ cancelRemoveRule }}" style="border:1px solid var(--line-2);background:var(--surface);color:var(--ink-2);border-radius:8px;padding:6px 9px;font-size:11.5px;font-weight:600">Cancelar</button><button onClick="{{ confirmRemoveRule }}" data-rule-id="{{ r.id }}" style="border:1px solid var(--terra-soft);background:var(--terra-soft);color:var(--terra-deep);border-radius:8px;padding:6px 9px;font-size:11.5px;font-weight:700">Eliminar</button></div></sc-if>
+</div>
+</sc-for>
+<button onClick="{{ addDisableRule }}" style="width:calc(100% - 30px);margin:11px 15px 15px;border:1px dashed var(--line-2);background:transparent;color:var(--ink-2);border-radius:11px;padding:9px;font-size:12.5px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Añadir regla</button>
+</div>
+
+<p style="margin:0;font-size:11.5px;color:var(--ink-3);text-align:center;line-height:1.5">Cualquier usuario puede editarlas. Los cambios se sincronizan en tiempo real.</p>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isAdminTab }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Administración">
+<div style="display:flex;align-items:center;gap:9px;margin-bottom:4px"><h2 style="font-family:'Baloo 2';font-weight:700;font-size:21px;margin:0">Administración de usuarios</h2><span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--aub);background:var(--aub-soft);padding:3px 8px;border-radius:6px">admin</span></div>
+<p style="margin:2px 0 14px;font-size:12.5px;color:var(--ink-2)">Crear y gestionar cuentas de acceso.</p>
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;align-items:end;gap:10px;flex-wrap:wrap;background:var(--surface-2);border:1px solid var(--line);border-radius:16px;padding:14px">
+<div style="display:flex;flex-direction:column;gap:5px;flex:1;min-width:130px"><label style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)">Nuevo usuario</label><input value="{{ adminDraft.username }}" onChange="{{ onField }}" data-group="adminDraft" data-field="username" placeholder="p. ej. carlos" style="border:1px solid var(--line-2);background:var(--surface);border-radius:10px;padding:10px 12px;outline:none"></div>
+<div style="display:flex;flex-direction:column;gap:5px;flex:1;min-width:130px"><label style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)">Contraseña inicial</label><input value="{{ adminDraft.password }}" onChange="{{ onField }}" data-group="adminDraft" data-field="password" placeholder="temporal" style="border:1px solid var(--line-2);background:var(--surface);border-radius:10px;padding:10px 12px;outline:none"></div>
+<button onClick="{{ adminCreate }}" style="border:none;background:var(--terra);color:#F2F9E8;border-radius:11px;padding:11px 16px;font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:6px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Crear</button>
+<sc-if value="{{ adminHasError }}" hint-placeholder-val="{{ false }}"><div style="width:100%;font-size:12.5px;font-weight:600;color:#8E2A1E;background:#FBEAE8;border:1px solid #E7B6AF;border-radius:10px;padding:9px 11px">{{ adminError }}</div></sc-if>
+<div style="width:100%;font-size:11.5px;color:var(--ink-3);line-height:1.45">Las cuentas se crean solo aquí. La contraseña inicial es temporal: solo sirve para llegar a la pantalla de nueva contraseña. Las cuentas de administrador se crean únicamente en el despliegue.</div>
+</div>
+<sc-for list="{{ users }}" as="u" hint-placeholder-count="4">
+<div style="display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:var(--surface)">
+<div style="width:38px;height:38px;border-radius:11px;background:{{ u.color }};color:#F2F9E8;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex:none">{{ u.initial }}</div>
+<div style="flex:1;min-width:0">
+<div style="display:flex;align-items:center;gap:8px"><span style="font-weight:700;font-size:15px">{{ u.username }}</span><span style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);border:1px solid var(--line-2);padding:2px 6px;border-radius:6px">{{ u.roleLabel }}</span><sc-if value="{{ u.pending }}" hint-placeholder-val="{{ false }}"><span style="font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--honey);background:var(--honey-soft);padding:2px 6px;border-radius:6px">contraseña pendiente</span></sc-if><sc-if value="{{ u.isMe }}" hint-placeholder-val="{{ false }}"><span style="font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3);border:1px solid var(--line-2);padding:2px 6px;border-radius:6px">tú</span></sc-if></div>
+<span style="font-size:12px;color:var(--ink-3)">{{ u.meta }}</span>
+</div>
+<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
+<sc-if value="{{ u.canEdit }}" hint-placeholder-val="{{ true }}"><button onClick="{{ adminOpenEdit }}" data-uid="{{ u.id }}" style="border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink-2);border-radius:9px;padding:7px 10px;font-size:12.5px;font-weight:600">Editar</button></sc-if>
+<sc-if value="{{ u.canReset }}" hint-placeholder-val="{{ true }}"><button onClick="{{ adminReset }}" data-uid="{{ u.id }}" style="border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink-2);border-radius:9px;padding:7px 10px;font-size:12.5px;font-weight:600">Restablecer contraseña</button></sc-if>
+<sc-if value="{{ u.removable }}" hint-placeholder-val="{{ true }}"><button onClick="{{ adminRemove }}" data-uid="{{ u.id }}" style="border:1px solid var(--terra-soft);background:var(--surface);color:var(--terra-deep);border-radius:9px;padding:7px 9px;font-size:12.5px;font-weight:600">Eliminar</button></sc-if>
+</div>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isHistory }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Historial">
+<h2 style="font-family:'Baloo 2';font-weight:700;font-size:21px;margin:0">Historial</h2>
+<p style="margin:2px 0 14px;font-size:12.5px;color:var(--ink-2)">Semanas anteriores archivadas · siempre accesibles · incluyen la lista de la compra de esa semana</p>
+<button onClick="{{ simRollover }}" style="width:100%;margin-bottom:12px;border:1px dashed var(--line-2);background:transparent;color:var(--ink-2);border-radius:12px;padding:10px;font-size:12.5px;font-weight:700">Simular cierre de semana (demo del prototipo)</button>
+<div style="display:flex;flex-direction:column;gap:10px">
+<sc-for list="{{ history }}" as="h" hint-placeholder-count="4">
+<button onClick="{{ openPast }}" data-id="{{ h.id }}" style="text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:15px;padding:14px 16px;display:flex;align-items:center;gap:13px">
+<div style="width:44px;height:44px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none;line-height:1"><span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--ink-3)">SEM</span><span style="font-family:'Baloo 2';font-weight:700;font-size:17px">{{ h.num }}</span></div>
+<div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px"><span style="font-weight:700;font-size:15px">{{ h.range }}</span><span style="font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);background:var(--surface-2);border:1px solid var(--line);padding:2px 6px;border-radius:5px">{{ h.coldLabel }}</span></div><div style="font-size:12px;color:var(--ink-3);margin-top:2px">{{ h.meals }} comidas · {{ h.by }} · {{ h.shopCount }} artículos en la compra</div></div>
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink-3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+</button>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+</div>
+</main>
+
+<sc-if value="{{ isRoleUser }}" hint-placeholder-val="{{ true }}">
+<nav style="flex:none;background:var(--surface);border-top:1px solid var(--line);display:flex;padding:7px 6px 9px;gap:2px;z-index:5">
+<button onClick="{{ goTab }}" data-tab="summary" style="flex:1;border:none;background:transparent;display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 2px;color:{{ tabCols.summary }}"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="3.5" width="15" height="17" rx="3"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg><span style="font-size:9.5px;font-weight:700">Resumen</span></button>
+<button onClick="{{ goTab }}" data-tab="menu" style="flex:1;border:none;background:transparent;display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 2px;color:{{ tabCols.menu }}"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9h18M8 2.5v4M16 2.5v4"/></svg><span style="font-size:9.5px;font-weight:700">Menú</span></button>
+<button onClick="{{ goTab }}" data-tab="library" style="flex:1;border:none;background:transparent;display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 2px;color:{{ tabCols.library }}"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6c-1.6-1-4-1.5-6.5-1.5V17c2.5 0 4.9.5 6.5 1.5 1.6-1 4-1.5 6.5-1.5V4.5C16 4.5 13.6 5 12 6z"/><path d="M12 6v12.5"/></svg><span style="font-size:9.5px;font-weight:700">Biblioteca</span></button>
+<button onClick="{{ goTab }}" data-tab="shopping" style="flex:1;border:none;background:transparent;display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 2px;color:{{ tabCols.shopping }}"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/><path d="M2.5 4h2l2.2 12h10.3l2-8H6.5"/></svg><span style="font-size:9.5px;font-weight:700">Compra</span></button>
+<button onClick="{{ goTab }}" data-tab="rules" style="flex:1;border:none;background:transparent;display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 2px;color:{{ tabCols.rules }}"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h9M4 12h5M4 17h12"/><circle cx="17" cy="7" r="2.3"/><circle cx="13" cy="12" r="2.3"/><circle cx="20" cy="17" r="2.3"/></svg><span style="font-size:9.5px;font-weight:700">Reglas</span></button>
+<button onClick="{{ goTab }}" data-tab="history" style="flex:1;border:none;background:transparent;display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 2px;color:{{ tabCols.history }}"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span style="font-size:9.5px;font-weight:700">Historial</span></button>
+</nav>
+</sc-if>
+
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ recipeOpen }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ closeRecipe }}" style="position:fixed;inset:0;background:rgba(40,51,31,.4);backdrop-filter:blur(3px);z-index:150;display:flex;align-items:flex-end;justify-content:center;animation:fadeIn .2s ease;padding:0">
+<div onClick="{{ stop }}" style="background:var(--surface);width:100%;max-width:560px;max-height:90vh;overflow-y:auto;border-radius:24px 24px 0 0;animation:sheetIn .3s ease;box-shadow:0 -20px 60px -20px rgba(40,51,31,.5)">
+<div style="position:sticky;top:0;background:var(--surface);padding:16px 20px 12px;border-bottom:1px solid var(--line);display:flex;align-items:start;gap:12px;z-index:2">
+<div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:7px"><h3 style="font-family:'Baloo 2';font-weight:700;font-size:20px;margin:0;line-height:1.15">{{ recipe.name }}</h3><sc-if value="{{ recipe.isAI }}" hint-placeholder-val="{{ false }}"><span style="font-size:9px;font-weight:800;color:#FAF0FC;background:var(--aub);padding:2px 5px;border-radius:5px">IA</span></sc-if></div>
+<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
+<span style="font-size:11px;font-weight:600;background:var(--surface-2);border:1px solid var(--line);padding:3px 9px;border-radius:999px">{{ recipe.cuisine }}</span>
+<span style="font-size:11px;font-weight:600;background:var(--surface-2);border:1px solid var(--line);padding:3px 9px;border-radius:999px">{{ recipe.diff }}</span>
+<span style="font-size:11px;font-weight:600;background:var(--surface-2);border:1px solid var(--line);padding:3px 9px;border-radius:999px">{{ recipe.time }} min</span>
+<span style="font-size:11px;font-weight:600;background:var(--surface-2);border:1px solid var(--line);padding:3px 9px;border-radius:999px">{{ recipe.kcal }} kcal</span>
+<span style="font-size:11px;font-weight:600;background:var(--surface-2);border:1px solid var(--line);padding:3px 9px;border-radius:999px">{{ recipe.servingsLabel }}</span>
+<span style="font-size:11px;font-weight:600;background:var(--surface-2);border:1px solid var(--line);padding:3px 9px;border-radius:999px">por {{ recipe.authorLabel }}</span>
+<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;background:var(--surface-2);border:1px solid var(--line);padding:3px 9px;border-radius:999px"><span style="width:7px;height:7px;border-radius:50%;background:{{ recipe.catColor }}"></span>{{ recipe.catLabel }}</span>
+</div></div>
+<button onClick="{{ closeRecipe }}" style="border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink-2);border-radius:10px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex:none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+</div>
+<div style="padding:18px 20px 22px">
+<div style="font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--terra-deep);margin-bottom:9px">Ingredientes</div>
+<div style="display:flex;flex-direction:column;gap:2px;margin-bottom:20px">
+<sc-for list="{{ recipe.ingredients }}" as="ing" hint-placeholder-count="5">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)"><span style="font-size:13.5px">{{ ing.n }}</span><span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--ink-2);white-space:nowrap">{{ ing.q }}</span></div>
+</sc-for>
+</div>
+<div style="font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--terra-deep);margin-bottom:9px">Utensilios</div>
+<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px">
+<sc-for list="{{ recipe.tools }}" as="tl" hint-placeholder-count="3"><span style="font-size:12px;font-weight:500;background:var(--surface-2);border:1px solid var(--line);padding:5px 11px;border-radius:999px">{{ tl }}</span></sc-for>
+</div>
+<div style="font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--terra-deep);margin-bottom:11px">Procedimiento</div>
+<div style="display:flex;flex-direction:column;gap:11px;margin-bottom:20px">
+<sc-for list="{{ recipe.stepsN }}" as="st" hint-placeholder-count="4">
+<div style="display:flex;gap:11px;align-items:start"><span style="width:24px;height:24px;border-radius:50%;background:var(--terra-soft);color:var(--terra-deep);font-weight:700;font-size:12.5px;display:flex;align-items:center;justify-content:center;flex:none">{{ st.n }}</span><span style="font-size:13.5px;line-height:1.5;padding-top:2px">{{ st.t }}</span></div>
+</sc-for>
+</div>
+<button onClick="{{ addToLibrary }}" data-meal-id="{{ recipe.id }}" style="width:100%;border:1px solid var(--olive);background:var(--olive-soft);color:var(--olive);border-radius:13px;padding:12px;font-weight:700;font-size:13.5px;display:flex;align-items:center;justify-content:center;gap:8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6c-1.6-1-4-1.5-6.5-1.5V17c2.5 0 4.9.5 6.5 1.5 1.6-1 4-1.5 6.5-1.5V4.5C16 4.5 13.6 5 12 6z"/><path d="M12 6v12.5"/></svg>Guardar en la biblioteca</button>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ addOpen }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ closeAdd }}" style="position:fixed;inset:0;background:rgba(40,51,31,.4);backdrop-filter:blur(3px);z-index:160;display:flex;align-items:flex-end;justify-content:center;animation:fadeIn .2s ease">
+<div onClick="{{ stop }}" style="background:var(--surface);width:100%;max-width:560px;max-height:92vh;overflow-y:auto;border-radius:24px 24px 0 0;animation:sheetIn .3s ease;box-shadow:0 -20px 60px -20px rgba(40,51,31,.5)">
+<div style="position:sticky;top:0;background:var(--surface);padding:16px 20px 13px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;z-index:2">
+<div style="flex:1"><h3 style="font-family:'Baloo 2';font-weight:700;font-size:18px;margin:0">{{ addTitle }}</h3><sc-if value="{{ addHasMethod }}" hint-placeholder-val="{{ false }}"><button onClick="{{ backMethod }}" style="border:none;background:transparent;color:var(--terra-deep);font-size:12px;font-weight:600;padding:3px 0;display:flex;align-items:center;gap:4px;margin-top:2px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>Cambiar método</button></sc-if></div>
+<button onClick="{{ closeAdd }}" style="border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink-2);border-radius:10px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex:none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+</div>
+<div style="padding:16px 20px 22px">
+
+<sc-if value="{{ mNone }}" hint-placeholder-val="{{ true }}">
+<p style="margin:0 0 13px;font-size:13px;color:var(--ink-2)">¿Cómo quieres crear esta comida?</p>
+<div style="display:flex;flex-direction:column;gap:10px">
+<sc-if value="{{ addNotLibrary }}" hint-placeholder-val="{{ true }}">
+<button onClick="{{ setMethod }}" data-method="library" style="text-align:left;border:1px solid var(--line-2);background:var(--surface-2);border-radius:15px;padding:14px 15px;display:flex;align-items:center;gap:13px"><div style="width:42px;height:42px;border-radius:12px;background:var(--terra-soft);color:var(--terra-deep);display:flex;align-items:center;justify-content:center;flex:none"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6c-1.6-1-4-1.5-6.5-1.5V17c2.5 0 4.9.5 6.5 1.5 1.6-1 4-1.5 6.5-1.5V4.5C16 4.5 13.6 5 12 6z"/><path d="M12 6v12.5"/></svg></div><div><div style="font-weight:700;font-size:14.5px">Elegir de la biblioteca</div><div style="font-size:12px;color:var(--ink-3)">Reutiliza una receta guardada</div></div></button>
+</sc-if>
+<button onClick="{{ setMethod }}" data-method="scratch" style="text-align:left;border:1px solid var(--line-2);background:var(--surface-2);border-radius:15px;padding:14px 15px;display:flex;align-items:center;gap:13px"><div style="width:42px;height:42px;border-radius:12px;background:var(--honey-soft);color:var(--honey);display:flex;align-items:center;justify-content:center;flex:none"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 5l4 4"/></svg></div><div><div style="font-weight:700;font-size:14.5px">Escribir desde cero</div><div style="font-size:12px;color:var(--ink-3)">Redacta tu propia receta</div></div></button>
+<button onClick="{{ setMethod }}" data-method="ai" style="text-align:left;border:1px solid var(--aub);background:var(--aub-soft);border-radius:15px;padding:14px 15px;display:flex;align-items:center;gap:13px"><div style="width:42px;height:42px;border-radius:12px;background:var(--aub);color:#FAF0FC;display:flex;align-items:center;justify-content:center;flex:none"><svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9z"/></svg></div><div><div style="font-weight:700;font-size:14.5px;color:var(--aub)">Generar con IA</div><div style="font-size:12px;color:var(--aub)">Ingredientes, cocina, dificultad…</div></div></button>
+</div>
+</sc-if>
+
+<sc-if value="{{ mLib }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:center;gap:8px;background:var(--surface-2);border:1px solid var(--line-2);border-radius:11px;padding:9px 12px;margin-bottom:12px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-3)" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg><input value="{{ addLibSearch }}" onChange="{{ onField }}" data-group="root" data-field="addLibSearch" placeholder="Buscar en la biblioteca…" style="border:none;background:transparent;outline:none;flex:1;color:var(--ink)">
+<select value="{{ addLibFilterCuisine }}" onChange="{{ onField }}" data-group="root" data-field="addLibFilterCuisine" style="border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:5px 6px;font-size:11.5px;font-weight:600;color:var(--ink-2);outline:none;flex:none"><option value="">Toda cocina</option><sc-for list="{{ cuisineOptions }}" as="c" hint-placeholder-count="4"><option value="{{ c }}">{{ c }}</option></sc-for></select>
+<select value="{{ addLibFilterDiff }}" onChange="{{ onField }}" data-group="root" data-field="addLibFilterDiff" style="border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:5px 6px;font-size:11.5px;font-weight:600;color:var(--ink-2);outline:none;flex:none"><option value="">Toda dificultad</option><sc-for list="{{ diffOptions }}" as="c" hint-placeholder-count="3"><option value="{{ c }}">{{ c }}</option></sc-for></select>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<sc-for list="{{ addLibFiltered }}" as="r" hint-placeholder-count="4">
+<button onClick="{{ pickLibrary }}" data-lib-id="{{ r.id }}" style="text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:13px;padding:11px 13px;display:flex;align-items:center;gap:11px"><span style="width:9px;height:9px;border-radius:50%;background:{{ r.catColor }};flex:none"></span><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px">{{ r.name }}</div><div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--ink-3)">{{ r.meta }}</div></div><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--terra)" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ mScratch }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:11px">
+<div style="display:flex;flex-direction:column;gap:5px"><label style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)">Nombre</label><input value="{{ addDraft.name }}" onChange="{{ onField }}" data-group="addDraft" data-field="name" placeholder="p. ej. Guiso de garbanzos" style="border:1px solid var(--line-2);background:var(--surface-2);border-radius:10px;padding:10px 12px;outline:none"></div>
+<div style="display:flex;gap:9px;flex-wrap:wrap">
+<div style="display:flex;flex-direction:column;gap:5px;flex:1;min-width:100px"><label style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)">Categoría</label><select value="{{ addDraft.cat }}" onChange="{{ onField }}" data-group="addDraft" data-field="cat" style="border:1px solid var(--line-2);background:var(--surface-2);border-radius:10px;padding:10px 11px;outline:none;color:var(--ink)"><option value="carne">Carne</option><option value="pescado">Pescado</option><option value="legumbres">Legumbres</option><option value="vegetariano">Vegetariano</option><option value="carbohidratos">Carbohidratos</option></select></div>
+<div style="display:flex;flex-direction:column;gap:5px;flex:1;min-width:100px"><label style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)">Dificultad</label><select value="{{ addDraft.diff }}" onChange="{{ onField }}" data-group="addDraft" data-field="diff" style="border:1px solid var(--line-2);background:var(--surface-2);border-radius:10px;padding:10px 11px;outline:none;color:var(--ink)"><option value="Fácil">Fácil</option><option value="Media">Media</option><option value="Difícil">Difícil</option></select></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:5px"><label style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)">Cocina</label><input value="{{ addDraft.cuisine }}" onChange="{{ onField }}" data-group="addDraft" data-field="cuisine" list="cocinas-sug" placeholder="p. ej. Española" style="border:1px solid var(--line-2);background:var(--surface-2);border-radius:10px;padding:10px 12px;outline:none"><datalist id="cocinas-sug"><sc-for list="{{ cuisineOptions }}" as="c" hint-placeholder-count="4"><option value="{{ c }}"></option></sc-for></datalist></div>
+<div style="display:flex;flex-direction:column;gap:6px"><label style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)">Ingredientes · cantidad y unidad de la lista fija</label>
+<sc-for list="{{ ingRows }}" as="r" hint-placeholder-count="2">
+<div style="display:flex;align-items:center;gap:6px">
+<input value="{{ r.n }}" onChange="{{ onIngField }}" data-idx="{{ r.idx }}" data-field="n" placeholder="Ingrediente" style="flex:1;min-width:0;border:1px solid var(--line-2);background:var(--surface-2);border-radius:9px;padding:9px 10px;outline:none">
+<input value="{{ r.qty }}" onChange="{{ onIngField }}" data-idx="{{ r.idx }}" data-field="qty" placeholder="400" style="width:62px;flex:none;border:1px solid var(--line-2);background:var(--surface-2);border-radius:9px;padding:9px 8px;outline:none;font-family:'DM Mono',monospace;font-size:12.5px;text-align:center">
+<select value="{{ r.unit }}" onChange="{{ onIngField }}" data-idx="{{ r.idx }}" data-field="unit" style="width:82px;flex:none;border:1px solid var(--line-2);background:var(--surface-2);border-radius:9px;padding:9px 6px;outline:none;font-size:12px;color:var(--ink)"><sc-for list="{{ units }}" as="u" hint-placeholder-count="5"><option value="{{ u }}">{{ u }}</option></sc-for></select>
+<button onClick="{{ removeIngRow }}" data-idx="{{ r.idx }}" style="border:none;background:transparent;color:var(--ink-3);padding:3px;flex:none;display:flex" title="Quitar"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+</div>
+</sc-for>
+<button onClick="{{ addIngRow }}" style="border:1px dashed var(--line-2);background:transparent;color:var(--ink-2);border-radius:9px;padding:8px;font-size:12px;font-weight:600">+ Añadir ingrediente</button>
+</div>
+<div style="display:flex;flex-direction:column;gap:5px"><label style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)">Utensilios (uno por línea)</label><textarea value="{{ addDraft.tools }}" onChange="{{ onField }}" data-group="addDraft" data-field="tools" rows="2" placeholder="Olla&#10;Cuchillo" style="border:1px solid var(--line-2);background:var(--surface-2);border-radius:10px;padding:10px 12px;outline:none;resize:vertical;line-height:1.5"></textarea></div>
+<div style="display:flex;flex-direction:column;gap:5px"><label style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)">Procedimiento (un paso por línea)</label><textarea value="{{ addDraft.steps }}" onChange="{{ onField }}" data-group="addDraft" data-field="steps" rows="3" placeholder="Sofríe la cebolla&#10;Añade los garbanzos" style="border:1px solid var(--line-2);background:var(--surface-2);border-radius:10px;padding:10px 12px;outline:none;resize:vertical;line-height:1.5"></textarea></div>
+<button onClick="{{ saveScratch }}" style="border:none;background:var(--terra);color:#F2F9E8;border-radius:12px;padding:13px;font-weight:700;font-size:14px;margin-top:2px">{{ addSaveLabel }}</button>
+</div>
+</sc-if>
+
+<sc-if value="{{ mAi }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:11px">
+<div style="display:flex;align-items:center;gap:9px;background:var(--aub-soft);border-radius:12px;padding:11px 13px;color:var(--aub)"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9z"/></svg><span style="font-size:12.5px;font-weight:600;line-height:1.35">Generación equilibrada y saludable, en castellano, para {{ servingsLabel }}. Te quedan {{ aiLeft }} de {{ aiCap }} generaciones hoy. Resultado no médico.</span></div>
+<div style="display:flex;flex-direction:column;gap:5px"><label style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)">Receta de referencia (opcional)</label><div style="display:flex;align-items:center;gap:7px;background:var(--surface-2);border:1px solid var(--line-2);border-radius:10px;padding:8px 11px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="color:var(--ink-3);flex:none"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg><input value="{{ aiRefSearch }}" onChange="{{ onField }}" data-group="root" data-field="aiRefSearch" placeholder="Buscar en la biblioteca…" style="flex:1;border:none;background:transparent;outline:none;font-size:13px;color:var(--ink)">
+<select value="{{ aiRefFilterCuisine }}" onChange="{{ onField }}" data-group="root" data-field="aiRefFilterCuisine" style="border:1px solid var(--line-2);background:var(--surface);border-radius:8px;padding:5px 6px;font-size:11px;font-weight:600;color:var(--ink-2);outline:none;flex:none"><option value="">Cocina</option><sc-for list="{{ cuisineOptions }}" as="c" hint-placeholder-count="4"><option value="{{ c }}">{{ c }}</option></sc-for></select>
+<select value="{{ aiRefFilterDiff }}" onChange="{{ onField }}" data-group="root" data-field="aiRefFilterDiff" style="border:1px solid var(--line-2);background:var(--surface);border-radius:8px;padding:5px 6px;font-size:11px;font-weight:600;color:var(--ink-2);outline:none;flex:none"><option value="">Dificultad</option><sc-for list="{{ diffOptions }}" as="c" hint-placeholder-count="3"><option value="{{ c }}">{{ c }}</option></sc-for></select>
+</div><select value="{{ aiDraft.ref }}" onChange="{{ onField }}" data-group="aiDraft" data-field="ref" size="{{ aiRefSize }}" style="border:1px solid var(--line-2);background:var(--surface-2);border-radius:10px;padding:10px 11px;outline:none;color:var(--ink)"><option value="">Ninguna — generar desde cero</option><sc-for list="{{ aiRefChoices }}" as="r" hint-placeholder-count="4"><option value="{{ r.v }}">{{ r.l }}</option></sc-for></select><sc-if value="{{ aiRefEmpty }}" hint-placeholder-val="{{ false }}"><span style="font-size:11.5px;color:var(--ink-3)">Ninguna receta coincide con «{{ aiRefSearch }}»</span></sc-if></div>
+<div style="display:flex;flex-direction:column;gap:5px"><label style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)">Ingredientes disponibles</label><input value="{{ aiDraft.ing }}" onChange="{{ onField }}" data-group="aiDraft" data-field="ing" placeholder="calabacín, arroz, gambas…" style="border:1px solid var(--line-2);background:var(--surface-2);border-radius:10px;padding:10px 12px;outline:none"></div>
+<div style="display:flex;flex-direction:column;gap:5px"><label style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)">Utensilios</label><input value="{{ aiDraft.tools }}" onChange="{{ onField }}" data-group="aiDraft" data-field="tools" placeholder="sartén, horno…" style="border:1px solid var(--line-2);background:var(--surface-2);border-radius:10px;padding:10px 12px;outline:none"></div>
+<div style="display:flex;gap:9px;flex-wrap:wrap">
+<div style="display:flex;flex-direction:column;gap:5px;flex:1;min-width:100px"><label style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)">Cocina</label><input value="{{ aiDraft.cuisine }}" onChange="{{ onField }}" data-group="aiDraft" data-field="cuisine" list="cocinas-sug" placeholder="p. ej. Española" style="border:1px solid var(--line-2);background:var(--surface-2);border-radius:10px;padding:10px 11px;outline:none;color:var(--ink)"></div>
+<div style="display:flex;flex-direction:column;gap:5px;flex:1;min-width:100px"><label style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)">Dificultad</label><select value="{{ aiDraft.diff }}" onChange="{{ onField }}" data-group="aiDraft" data-field="diff" style="border:1px solid var(--line-2);background:var(--surface-2);border-radius:10px;padding:10px 11px;outline:none;color:var(--ink)"><option>Fácil</option><option>Media</option><option>Difícil</option></select></div>
+</div>
+<button onClick="{{ genAiMeal }}" style="border:none;background:var(--aub);color:#FAF0FC;border-radius:12px;padding:13px;font-weight:700;font-size:14px;margin-top:2px;display:flex;align-items:center;justify-content:center;gap:8px">
+<sc-if value="{{ aiBusy }}" hint-placeholder-val="{{ false }}"><span style="width:15px;height:15px;border:2px solid rgba(251,239,247,.4);border-top-color:#FAF0FC;border-radius:50%;animation:spin .7s linear infinite"></span>Generando…</sc-if>
+<sc-if value="{{ aiIdle }}" hint-placeholder-val="{{ true }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9z"/></svg>Generar receta</sc-if>
+</button>
+<sc-if value="{{ aiPreviewOn }}" hint-placeholder-val="{{ false }}">
+<div style="border:1px solid var(--aub);background:var(--surface);border-radius:15px;overflow:hidden">
+<div style="padding:11px 14px;background:var(--aub-soft);display:flex;align-items:center;justify-content:space-between;gap:8px"><span style="font-weight:700;font-size:13px;color:var(--aub)">Propuesta de la IA · sin guardar</span><span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--aub)">{{ preview.servingsLabel }}</span></div>
+<div style="padding:13px 14px">
+<div style="font-family:'Baloo 2';font-weight:700;font-size:17px;margin-bottom:3px">{{ preview.name }}</div>
+<div style="font-family:'DM Mono',monospace;font-size:10.5px;color:var(--ink-3);margin-bottom:10px">{{ preview.cuisine }} · {{ preview.diff }} · {{ preview.time }} min</div>
+<sc-for list="{{ preview.ingredients }}" as="ing" hint-placeholder-count="4">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--line)"><span style="font-size:13px">{{ ing.n }}</span><span style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--ink-2)">{{ ing.q }}</span></div>
+</sc-for>
+<div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
+<sc-for list="{{ preview.stepsN }}" as="st" hint-placeholder-count="3">
+<div style="display:flex;gap:9px;align-items:start"><span style="width:20px;height:20px;border-radius:50%;background:var(--aub-soft);color:var(--aub);font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;flex:none">{{ st.n }}</span><span style="font-size:12.5px;line-height:1.5">{{ st.t }}</span></div>
+</sc-for>
+</div>
+<div style="display:flex;gap:7px;margin-top:14px">
+<button onClick="{{ discardPreview }}" style="flex:none;border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink-2);border-radius:11px;padding:11px 13px;font-weight:600;font-size:13px">Descartar</button>
+<button onClick="{{ genAiMeal }}" style="flex:none;border:1px solid var(--aub);background:var(--surface);color:var(--aub);border-radius:11px;padding:11px 13px;font-weight:700;font-size:13px">Regenerar</button>
+<button onClick="{{ acceptPreview }}" style="flex:1;border:none;background:var(--olive);color:#F7FAEC;border-radius:11px;padding:11px;font-weight:700;font-size:13.5px">Aceptar</button>
+</div>
+</div>
+</div>
+</sc-if>
+</div>
+</sc-if>
+
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ aiOpen }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ closeAiWeek }}" style="position:fixed;inset:0;background:rgba(40,51,31,.44);backdrop-filter:blur(3px);z-index:170;display:flex;align-items:center;justify-content:center;animation:fadeIn .2s ease;padding:16px">
+<div onClick="{{ stop }}" style="background:var(--surface);width:100%;max-width:480px;max-height:90vh;overflow-y:auto;border-radius:22px;animation:popIn .3s ease;box-shadow:0 30px 80px -24px rgba(40,51,31,.6)">
+
+<sc-if value="{{ aiConfirm }}" hint-placeholder-val="{{ true }}">
+<div style="padding:22px 22px 20px">
+<div style="display:flex;align-items:center;gap:11px;margin-bottom:14px"><div style="width:44px;height:44px;border-radius:13px;background:var(--aub);color:#FAF0FC;display:flex;align-items:center;justify-content:center;flex:none"><svg width="23" height="23" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9z"/></svg></div><div><h3 style="font-family:'Baloo 2';font-weight:700;font-size:19px;margin:0">Generar la semana con IA</h3><p style="margin:2px 0 0;font-size:12.5px;color:var(--ink-2)">Se añadirán como candidatas, sin tocar lo ya elegido.</p></div></div>
+<div style="background:var(--terra-soft);border:1px solid var(--terra);border-radius:13px;padding:11px 13px;margin-bottom:14px">
+<div style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--terra-deep);margin-bottom:3px">Semana destino</div>
+<div style="font-weight:700;font-size:14px;color:var(--terra-deep)">{{ aiTargetLabel }}</div>
+<div style="font-size:12px;color:var(--terra-deep);margin-top:3px;line-height:1.4">{{ aiSlotCount }} huecos generables · para {{ servingsLabel }} · te quedan {{ aiLeft }} generaciones hoy</div>
+<sc-if value="{{ aiPartialWeek }}" hint-placeholder-val="{{ false }}"><div style="font-size:11.5px;color:var(--terra-deep);margin-top:4px;font-weight:600">Esta semana solo quedan {{ aiSlotCount }} huecos: los objetivos de las reglas se aplicarán en lo posible.</div></sc-if>
+</div>
+
+<div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);margin-bottom:8px">Modo de generación</div>
+<div style="display:flex;gap:7px;margin-bottom:16px">
+<button onClick="{{ setAiMode }}" data-mode="lib" style="flex:1;border:1px solid {{ aiModeLib.bd }};background:{{ aiModeLib.bg }};color:{{ aiModeLib.fg }};border-radius:12px;padding:11px 6px;font-weight:700;font-size:12px;line-height:1.25">Solo<br>biblioteca</button>
+<button onClick="{{ setAiMode }}" data-mode="ai" style="flex:1;border:1px solid {{ aiModeAi.bd }};background:{{ aiModeAi.bg }};color:{{ aiModeAi.fg }};border-radius:12px;padding:11px 6px;font-weight:700;font-size:12px;line-height:1.25">Solo<br>IA nueva</button>
+<button onClick="{{ setAiMode }}" data-mode="mix" style="flex:1;border:1px solid {{ aiModeMix.bd }};background:{{ aiModeMix.bg }};color:{{ aiModeMix.fg }};border-radius:12px;padding:11px 6px;font-weight:700;font-size:12px;line-height:1.25">Mixto</button>
+</div>
+
+<div style="background:var(--surface-2);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:14px">
+<div style="padding:10px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between"><span style="font-weight:700;font-size:13px">Reglas generales activas</span><span style="font-size:10.5px;color:var(--ink-3);font-family:'DM Mono',monospace">compartidas</span></div>
+<sc-for list="{{ activeRules }}" as="r" hint-placeholder-count="5">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 14px;border-top:1px solid var(--line)"><span style="font-size:12.5px;color:var(--ink-2)">{{ r.label }}</span><span style="font-size:12px;font-weight:700">{{ r.value }}</span></div>
+</sc-for>
+</div>
+
+<label style="display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line-2);border-radius:12px;padding:11px 13px;margin-bottom:16px;cursor:pointer">
+<span onClick="{{ toggleOverride }}" style="width:38px;height:22px;border-radius:999px;background:{{ ovTrackBg }};position:relative;flex:none;transition:background .2s"><span style="position:absolute;top:2px;left:{{ ovKnobX }};width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:left .2s"></span></span>
+<span style="font-size:12.5px;font-weight:600;flex:1">Editar las reglas solo para esta semana</span></label>
+
+<sc-if value="{{ overrideOn }}" hint-placeholder-val="{{ false }}">
+<div style="background:var(--honey-soft);border:1px solid var(--honey);border-radius:12px;padding:11px 13px;margin-bottom:16px">
+<div style="font-size:11px;font-weight:700;color:var(--honey);margin-bottom:8px">Ajuste temporal · no cambia las reglas compartidas</div>
+<sc-for list="{{ overrideRules }}" as="r" hint-placeholder-count="3">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 0"><span style="font-size:12.5px">{{ r.label }}</span><select value="{{ r.value }}" data-rule-id="{{ r.id }}" onChange="{{ setOverrideRule }}" style="border:1px solid var(--line-2);background:var(--surface);border-radius:9px;padding:6px 9px;font-weight:600;outline:none;color:var(--ink)"><sc-for list="{{ r.options }}" as="opt" hint-placeholder-count="3"><option value="{{ opt }}">{{ opt }}</option></sc-for></select></div>
+</sc-for>
+</div>
+</sc-if>
+
+<div style="display:flex;gap:9px">
+<button onClick="{{ closeAiWeek }}" style="flex:none;border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink-2);border-radius:12px;padding:13px 16px;font-weight:600;font-size:13.5px">Cancelar</button>
+<button onClick="{{ confirmAiWeek }}" style="flex:1;border:none;background:var(--aub);color:#FAF0FC;border-radius:12px;padding:13px;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;gap:8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9z"/></svg>Generar menú</button>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ aiLoading }}" hint-placeholder-val="{{ false }}">
+<div style="padding:40px 26px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px">
+<div style="width:56px;height:56px;border-radius:50%;border:4px solid var(--aub-soft);border-top-color:var(--aub);animation:spin .8s linear infinite"></div>
+<div><div style="font-family:'Baloo 2';font-weight:700;font-size:18px">Generando {{ aiSlotCount }} huecos…</div><div style="font-size:12.5px;color:var(--ink-2);margin-top:3px">{{ aiTargetLabel }} · hueco a hueco, según las reglas</div></div>
+<div style="width:100%;display:flex;flex-direction:column;gap:1px;margin-top:4px;text-align:left;max-height:230px;overflow-y:auto">
+<sc-for list="{{ aiSlots }}" as="s" hint-placeholder-count="6">
+<div style="display:flex;align-items:center;gap:9px;padding:7px 2px;border-bottom:1px solid var(--line)"><span style="width:8px;height:8px;border-radius:50%;background:{{ s.dotBg }};flex:none"></span><span style="flex:1;font-size:12.5px;font-weight:600">{{ s.label }}</span><span style="font-family:'DM Mono',monospace;font-size:10.5px;color:var(--ink-3)">{{ s.statusLabel }}</span></div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ aiDone }}" hint-placeholder-val="{{ false }}">
+<div style="padding:34px 26px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px">
+<div style="width:56px;height:56px;border-radius:50%;background:var(--olive-soft);color:var(--olive);display:flex;align-items:center;justify-content:center"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5 9-10"/></svg></div>
+<div><div style="font-family:'Baloo 2';font-weight:700;font-size:19px">Menú generado</div><div style="font-size:13px;color:var(--ink-2);margin-top:3px">{{ aiAdded }} comidas añadidas como candidatas en {{ aiTargetLabel }}.</div></div>
+<sc-if value="{{ aiHasErrors }}" hint-placeholder-val="{{ false }}">
+<div style="width:100%;text-align:left;background:#FBEAE8;border:1px solid #E7B6AF;border-radius:13px;padding:11px 12px">
+<div style="font-size:12px;font-weight:700;color:#8E2A1E;margin-bottom:7px">{{ aiErrors }} hueco(s) no se pudieron generar. Puedes reintentarlos por separado; el resto se ha guardado.</div>
+<sc-for list="{{ aiSlots }}" as="s" hint-placeholder-count="1">
+<sc-if value="{{ s.isErr }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:center;gap:9px;padding:5px 0"><span style="flex:1;font-size:12.5px;font-weight:600;color:#8E2A1E">{{ s.label }}</span><button onClick="{{ retrySlot }}" data-idx="{{ s.idx }}" style="border:1px solid #C0392B;background:#fff;color:#8E2A1E;border-radius:9px;padding:6px 10px;font-size:11.5px;font-weight:700;flex:none">Reintentar</button></div>
+</sc-if>
+</sc-for>
+</div>
+</sc-if>
+<button onClick="{{ closeAiWeek }}" style="width:100%;border:none;background:var(--terra);color:#F2F9E8;border-radius:12px;padding:13px;font-weight:700;font-size:14px">Ver el menú</button>
+</div>
+</sc-if>
+
+<sc-if value="{{ aiInsufficient }}" hint-placeholder-val="{{ false }}">
+<div style="padding:32px 26px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:13px">
+<div style="width:52px;height:52px;border-radius:50%;background:var(--honey-soft);color:var(--honey);display:flex;align-items:center;justify-content:center"><svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 8v5M12 16.5v.5"/><circle cx="12" cy="12" r="9"/></svg></div>
+<div><div style="font-family:'Baloo 2';font-weight:700;font-size:18px">No hay recetas suficientes en la biblioteca</div><div style="font-size:12.5px;color:var(--ink-2);margin-top:4px;line-height:1.5">{{ aiInsufficientMsg }} Añade recetas a la biblioteca o genera el menú con «solo IA nueva». No se ha añadido nada.</div></div>
+<button onClick="{{ closeAiWeek }}" style="width:100%;border:none;background:var(--terra);color:#F2F9E8;border-radius:12px;padding:13px;font-weight:700;font-size:14px">Entendido</button>
+</div>
+</sc-if>
+
+<sc-if value="{{ aiCapped }}" hint-placeholder-val="{{ false }}">
+<div style="padding:32px 26px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:13px">
+<div style="width:52px;height:52px;border-radius:50%;background:var(--honey-soft);color:var(--honey);display:flex;align-items:center;justify-content:center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg></div>
+<div><div style="font-family:'Baloo 2';font-weight:700;font-size:18px">Límite diario de IA alcanzado</div><div style="font-size:12.5px;color:var(--ink-2);margin-top:4px;line-height:1.5">Generar esta semana necesita {{ aiSlotCount }} generaciones y solo te quedan {{ aiLeft }} hoy. Vuelve mañana o genera los huecos de uno en uno.</div></div>
+<button onClick="{{ closeAiWeek }}" style="width:100%;border:none;background:var(--terra);color:#F2F9E8;border-radius:12px;padding:13px;font-weight:700;font-size:14px">Entendido</button>
+</div>
+</sc-if>
+
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ pastOpen }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ closePast }}" style="position:fixed;inset:0;background:rgba(40,51,31,.4);backdrop-filter:blur(3px);z-index:160;display:flex;align-items:center;justify-content:center;animation:fadeIn .2s ease;padding:16px">
+<div onClick="{{ stop }}" style="background:var(--surface);width:100%;max-width:460px;max-height:86vh;overflow-y:auto;border-radius:22px;animation:popIn .3s ease;box-shadow:0 30px 80px -24px rgba(40,51,31,.6)">
+<div style="padding:18px 20px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px"><div><h3 style="font-family:'Baloo 2';font-weight:700;font-size:18px;margin:0">{{ pastWeek.range }}</h3><span style="font-size:11.5px;color:var(--ink-3)">Semana {{ pastWeek.num }} · archivada · solo lectura</span></div><button onClick="{{ closePast }}" style="border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink-2);border-radius:10px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;flex:none"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+<sc-if value="{{ pastRestoring }}" hint-placeholder-val="{{ false }}">
+<div style="padding:34px 24px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:13px"><div style="width:44px;height:44px;border-radius:50%;border:4px solid var(--surface-2);border-top-color:var(--terra);animation:spin .8s linear infinite"></div><div><div style="font-weight:700;font-size:15px">Restaurando desde almacenamiento frío…</div><div style="font-size:12.5px;color:var(--ink-3);margin-top:3px;line-height:1.45">Las semanas de más de 3 meses se guardan en almacenamiento barato. Puede tardar unos minutos.</div></div></div>
+</sc-if>
+<sc-if value="{{ pastReady }}" hint-placeholder-val="{{ true }}">
+<div style="padding:14px 20px 20px;display:flex;flex-direction:column;gap:2px">
+<sc-for list="{{ pastWeek.items }}" as="it" hint-placeholder-count="5">
+<button onClick="{{ openArchRecipe }}" data-name="{{ it.name }}" style="text-align:left;border:none;background:transparent;display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)"><span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--ink-3);width:82px;flex:none">{{ it.slot }}</span><span style="flex:1;min-width:0"><span style="display:block;font-weight:600;font-size:13.5px">{{ it.name }}</span><span style="display:block;font-size:10.5px;color:var(--ink-3)">{{ it.cands }}</span></span><span style="font-size:11px;color:var(--ink-3);flex:none">{{ it.by }}</span></button>
+</sc-for>
+<div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--terra-deep);margin:16px 0 7px">Lista de la compra de esa semana</div>
+<sc-for list="{{ pastWeek.shopSnapshot }}" as="sn" hint-placeholder-count="4">
+<div style="display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid var(--line)"><span style="width:7px;height:7px;border-radius:50%;background:var(--line-2);flex:none"></span><span style="flex:1;font-size:13px">{{ sn.name }}</span><span style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--ink-3)">{{ sn.qty }} {{ sn.unit }}</span></div>
+</sc-for>
+</div>
+</sc-if>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ confirmOpen }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ cancelConfirm }}" style="position:fixed;inset:0;background:rgba(40,51,31,.46);backdrop-filter:blur(3px);z-index:190;display:flex;align-items:center;justify-content:center;animation:fadeIn .2s ease;padding:18px">
+<div onClick="{{ stop }}" style="background:var(--surface);width:100%;max-width:390px;border-radius:20px;animation:popIn .25s ease;box-shadow:0 30px 80px -24px rgba(40,51,31,.6);padding:20px 22px 20px">
+<h3 style="font-family:'Baloo 2';font-weight:700;font-size:17px;margin:0 0 7px;line-height:1.25">{{ confirmTitle }}</h3>
+<p style="margin:0 0 18px;font-size:13px;color:var(--ink-2);line-height:1.5">{{ confirmBody }}</p>
+<div style="display:flex;gap:9px">
+<button onClick="{{ cancelConfirm }}" style="flex:1;border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink-2);border-radius:11px;padding:12px;font-weight:600;font-size:13.5px">Cancelar</button>
+<button onClick="{{ okConfirm }}" style="flex:1;border:none;background:{{ confirmOkBg }};color:#F2F9E8;border-radius:11px;padding:12px;font-weight:700;font-size:13.5px">{{ confirmOk }}</button>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ adminEditOpen }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ closeAdminEdit }}" style="position:fixed;inset:0;background:rgba(40,51,31,.4);backdrop-filter:blur(3px);z-index:170;display:flex;align-items:center;justify-content:center;animation:fadeIn .2s ease;padding:16px">
+<div onClick="{{ stop }}" style="background:var(--surface);width:100%;max-width:400px;border-radius:20px;animation:popIn .3s ease;box-shadow:0 30px 80px -24px rgba(40,51,31,.6);padding:20px 22px 22px">
+<h3 style="font-family:'Baloo 2';font-weight:700;font-size:18px;margin:0 0 16px">Editar usuario</h3>
+<div style="display:flex;flex-direction:column;gap:11px">
+<div style="display:flex;flex-direction:column;gap:5px"><label style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)">Nombre de usuario</label><input value="{{ adminEdit.username }}" onChange="{{ onField }}" data-group="adminEdit" data-field="username" style="border:1px solid var(--line-2);background:var(--surface-2);border-radius:10px;padding:10px 12px;outline:none"></div>
+<div style="display:flex;flex-direction:column;gap:5px"><label style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)">Nueva contraseña (opcional)</label><input value="{{ adminEdit.password }}" onChange="{{ onField }}" data-group="adminEdit" data-field="password" placeholder="dejar en blanco para no cambiar" style="border:1px solid var(--line-2);background:var(--surface-2);border-radius:10px;padding:10px 12px;outline:none"></div>
+<div style="display:flex;gap:9px;margin-top:6px"><button onClick="{{ closeAdminEdit }}" style="flex:none;border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink-2);border-radius:11px;padding:12px 16px;font-weight:600;font-size:13.5px">Cancelar</button><button onClick="{{ adminSaveEdit }}" style="flex:1;border:none;background:var(--terra);color:#F2F9E8;border-radius:11px;padding:12px;font-weight:700;font-size:14px">Guardar cambios</button></div>
+</div>
+</div>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1240,&quot;height&quot;:900},&quot;startScreen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;login&quot;,&quot;app&quot;,&quot;admin&quot;],&quot;default&quot;:&quot;app&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototipo&quot;},&quot;device&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Móvil&quot;,&quot;Escritorio&quot;],&quot;default&quot;:&quot;Móvil&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototipo&quot;},&quot;liveEditing&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Prototipo&quot;},&quot;simulateOffline&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Prototipo&quot;},&quot;simulateAiFailure&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Prototipo&quot;}}">
+class Component extends DCLogic {
+  constructor(props){ super(props); this.state = this.seed(); }
+  uid(){ this._c=(this._c||0)+1; return 'm'+this._c+Math.random().toString(36).slice(2,6); }
+
+  seed(){
+    const UNITS = ['g','kg','ml','L','ud','lomos','dientes','hoja','cda','cdta','manojo','paquete','rollo','al gusto'];
+    const CAT = {carne:'#C4562F',pescado:'#2F6E8F',legumbres:'#8A6D3B',vegetariano:'#6B7A3A',carbohidratos:'#C98A2E'};
+    const CATL = {carne:'Carne',pescado:'Pescado',legumbres:'Legumbres',vegetariano:'Vegetariano',carbohidratos:'Carbohidratos'};
+    const PU = (s)=>{ const t=String(s||'').trim(); if(!t) return {qty:'',unit:'al gusto'}; const m=t.match(/^([\d.,\/]+)\s*(.*)$/); if(!m) return {qty:'',unit:'al gusto'}; const u=(m[2]||'ud').trim(); return {qty:m[1], unit: UNITS.indexOf(u)>=0?u:'ud'}; };
+    const R = (name,cat,cuisine,diff,time,kcal,author,ing,tools,steps)=>({id:'lib-'+name.toLowerCase().replace(/[^a-z]/g,'').slice(0,10)+Math.random().toString(36).slice(2,5),name,cat,cuisine,diff,time,kcal,author,source:'lib',servings:4,ingredients:ing.map(x=>{const p=PU(x[1]); return {n:x[0],qty:p.qty,unit:p.unit};}),tools,steps});
+    const library = [
+      R('Lentejas estofadas','legumbres','Española','Fácil',45,480,'Marta',[['Lentejas pardinas','400 g'],['Cebolla','1 ud'],['Zanahoria','2 ud'],['Chorizo','100 g'],['Pimentón','1 cdta'],['Aceite de oliva','30 ml'],['Laurel','1 hoja']],['Olla','Cuchillo','Tabla'],['Sofríe la cebolla y la zanahoria picadas.','Añade el pimentón y el chorizo en rodajas.','Incorpora las lentejas y cubre con agua.','Cuece 35 min a fuego lento con el laurel.']),
+      R('Tortilla de patatas','carbohidratos','Española','Media',30,520,'Javi',[['Patata','600 g'],['Huevo','5 ud'],['Cebolla','1 ud'],['Aceite de oliva','200 ml'],['Sal','']],['Sartén','Bol'],['Fríe las patatas y la cebolla a fuego suave.','Bate los huevos con sal.','Mezcla y cuaja por un lado.','Voltea con un plato y termina.']),
+      R('Merluza al horno con verduras','pescado','Española','Fácil',35,360,'Lucía',[['Merluza','4 lomos'],['Patata','400 g'],['Pimiento rojo','1 ud'],['Cebolla','1 ud'],['Vino blanco','100 ml'],['Aceite de oliva','30 ml']],['Fuente de horno','Horno'],['Corta las verduras en rodajas finas.','Coloca la merluza encima.','Riega con vino y aceite.','Hornea 25 min a 200º.']),
+      R('Pollo al limón con arroz','carne','Mediterránea','Fácil',30,540,'Marta',[['Pechuga de pollo','500 g'],['Limón','1 ud'],['Arroz','300 g'],['Ajo','2 dientes'],['Perejil',''],['Aceite de oliva','20 ml']],['Sartén','Cazo'],['Dora el pollo troceado.','Añade el ajo y el zumo de limón.','Cuece el arroz aparte.','Sirve con perejil picado.']),
+      R('Ensalada de garbanzos y espinacas','legumbres','Mediterránea','Fácil',15,320,'Dani',[['Garbanzos cocidos','400 g'],['Espinacas','100 g'],['Tomate cherry','150 g'],['Feta','80 g'],['Aceite de oliva','20 ml'],['Limón','']],['Bol'],['Mezcla los garbanzos con las espinacas.','Añade el tomate y el feta.','Aliña con aceite y limón.']),
+      R('Salmón teriyaki con brócoli','pescado','Japonesa','Media',25,470,'Javi',[['Salmón','4 lomos'],['Brócoli','300 g'],['Salsa teriyaki','60 ml'],['Sésamo','10 g'],['Arroz','200 g']],['Sartén','Vaporera'],['Marca el salmón por ambos lados.','Glasea con la salsa teriyaki.','Cuece el brócoli al vapor.','Sirve con sésamo y arroz.']),
+      R('Pasta boloñesa','carbohidratos','Italiana','Fácil',30,610,'Lucía',[['Pasta','320 g'],['Carne picada','300 g'],['Tomate triturado','400 g'],['Cebolla','1 ud'],['Zanahoria','1 ud'],['Aceite de oliva','20 ml']],['Olla','Sartén'],['Sofríe la cebolla y la zanahoria.','Añade la carne picada.','Incorpora el tomate y cuece 20 min.','Mezcla con la pasta cocida.']),
+      R('Crema de calabaza','vegetariano','Española','Fácil',30,220,'Marta',[['Calabaza','600 g'],['Puerro','1 ud'],['Patata','1 ud'],['Caldo de verduras','500 ml'],['Nata','30 ml']],['Olla','Batidora'],['Rehoga el puerro picado.','Añade la calabaza y la patata.','Cubre con caldo y cuece 20 min.','Tritura con la nata.']),
+      R('Curry de garbanzos','vegetariano','India','Media',35,430,'Dani',[['Garbanzos','400 g'],['Leche de coco','400 ml'],['Tomate','200 g'],['Cebolla','1 ud'],['Curry','1 cda'],['Espinacas','60 g']],['Sartén honda'],['Sofríe la cebolla con las especias.','Añade el tomate rallado.','Incorpora garbanzos y leche de coco.','Cuece 20 min con las espinacas.']),
+      R('Tacos de tinga de pollo','carne','Mexicana','Media',40,500,'Javi',[['Pollo','400 g'],['Tomate','300 g'],['Chipotle','2 ud'],['Cebolla','1 ud'],['Tortillas de maíz','8 ud'],['Aguacate','1 ud']],['Olla','Sartén'],['Cuece y desmecha el pollo.','Tritura el tomate con el chipotle.','Guisa la tinga 10 min.','Rellena las tortillas con aguacate.']),
+      R('Paella valenciana','carbohidratos','Valenciana','Difícil',60,640,'Marta',[['Arroz bomba','400 g'],['Pollo','300 g'],['Conejo','200 g'],['Judía verde','150 g'],['Garrofó','100 g'],['Azafrán',''],['Caldo','1 L']],['Paellera'],['Sofríe las carnes en la paellera.','Añade las verduras.','Incorpora el arroz y el azafrán.','Vierte el caldo y cuece 18 min.']),
+    ];
+    const byName = n => library.find(r=>r.name===n);
+    const mk = (name, author, source) => { const b=byName(name); const c=JSON.parse(JSON.stringify(b)); c.id=this.uid(); c.author=author; if(source) c.source=source; return c; };
+    const slot = (label,key) => ({key,label,candidates:[],defId:null,defBy:null,editingBy:null,disabled:false});
+    const day = (key,name,date) => ({key,name,date,slots:[slot('Comida','lunch'),slot('Cena','dinner')]});
+    const live = this.props.liveEditing !== false;
+
+    const days = [day('mon','Lunes','16 jun'),day('tue','Martes','17 jun'),day('wed','Miércoles','18 jun'),day('thu','Jueves','19 jun'),day('fri','Viernes','20 jun'),day('sat','Sábado','21 jun'),day('sun','Domingo','22 jun')];
+    const D = k => days.find(d=>d.key===k);
+    const set = (dk,sk,cands,defIdx,defBy) => { const s=D(dk).slots.find(x=>x.key===sk); s.candidates=cands; if(defIdx!=null){ s.defId=cands[defIdx].id; s.defBy=defBy; } };
+    set('mon','lunch',[mk('Lentejas estofadas','Marta'),mk('Ensalada de garbanzos y espinacas','Dani')],0,'Marta');
+    set('mon','dinner',[mk('Crema de calabaza','Marta')],0,'Marta');
+    set('tue','lunch',[mk('Pollo al limón con arroz','Marta'),mk('Pasta boloñesa','Lucía')],null,null);
+    set('tue','dinner',[mk('Merluza al horno con verduras','Lucía')],0,'Lucía');
+    set('wed','lunch',[mk('Tortilla de patatas','Javi')],0,'Javi');
+    set('wed','dinner',[mk('Salmón teriyaki con brócoli','Javi','ai')],null,null);
+    if(live) D('wed').slots.find(s=>s.key==='dinner').editingBy='Javi';
+    set('thu','lunch',[mk('Curry de garbanzos','IA','ai')],null,null);
+    set('fri','lunch',[mk('Tacos de tinga de pollo','Lucía')],0,'Lucía');
+    set('fri','dinner',[mk('Merluza al horno con verduras','Dani')],null,null);
+    set('sat','lunch',[mk('Ensalada de garbanzos y espinacas','Dani')],null,null);
+    D('sat').slots.find(s=>s.key==='dinner').disabled=true;
+    { const p=mk('Paella valenciana','Regla'); p.pinned=true; const s=D('sun').slots.find(x=>x.key==='lunch'); s.candidates=[p]; s.defId=p.id; s.defBy='Regla'; }
+
+    const nextDays = [day('mon','Lunes','23 jun'),day('tue','Martes','24 jun'),day('wed','Miércoles','25 jun'),day('thu','Jueves','26 jun'),day('fri','Viernes','27 jun'),day('sat','Sábado','28 jun'),day('sun','Domingo','29 jun')];
+    const ND = k => nextDays.find(d=>d.key===k);
+    const nset = (dk,sk,cands,defIdx,defBy) => { const s=ND(dk).slots.find(x=>x.key===sk); s.candidates=cands; if(defIdx!=null){ s.defId=cands[defIdx].id; s.defBy=defBy; } };
+    nset('mon','lunch',[mk('Pasta boloñesa','Javi')],0,'Javi');
+    nset('tue','dinner',[mk('Crema de calabaza','Lucía'),mk('Merluza al horno con verduras','Marta')],null,null);
+    nset('thu','lunch',[mk('Curry de garbanzos','Dani')],0,'Dani');
+    const weeks = {
+      cur:{id:'w25',num:'25',range:'16–22 jun',tag:'actual',days},
+      next:{id:'w26',num:'26',range:'23–29 jun',tag:'próxima',days:nextDays},
+    };
+
+    const libNames = library.map(r=>r.name);
+    const N = ['0','1','2','3','4','5','6','7'];
+    const rules = [
+      {id:'r-carne',kind:'count',cat:'carne',group:'balance',label:'Comidas con carne',value:'3',options:N},
+      {id:'r-pescado',kind:'count',cat:'pescado',group:'balance',label:'Comidas con pescado',value:'2',options:N},
+      {id:'r-legumbres',kind:'count',cat:'legumbres',group:'balance',label:'Comidas con legumbres',value:'2',options:N},
+      {id:'r-vegetariano',kind:'count',cat:'vegetariano',group:'balance',label:'Comidas vegetarianas',value:'3',options:N},
+      {id:'r-carbohidratos',kind:'count',cat:'carbohidratos',group:'balance',label:'Comidas con carbohidratos',value:'4',options:N},
+      {id:'r-pin-sun',kind:'pin',group:'pin',day:'sun',slot:'lunch',meal:'Paella valenciana'},
+      {id:'r-dis-sat',kind:'disable',group:'disable',day:'sat',slot:'dinner'},
+    ];
+
+    const S = (name,unit,qty,auto,checked,wk) => ({id:this.uid(),name,unit,qty,auto,checked:!!checked,qtyChanged:false,weeks:wk||['cur'],edited:false});
+    const shopping = [S('Lentejas pardinas','g','400',true,false,['cur']),S('Cebolla','ud','4',true,false,['cur','next']),S('Zanahoria','ud','3',true,false,['cur']),S('Calabaza','g','600',true,false,['cur']),S('Merluza','lomos','4',true,false,['cur','next']),S('Patata','kg','1',true,true,['cur']),S('Huevo','ud','6',true,true,['cur']),S('Arroz bomba','g','400',true,false,['cur']),S('Papel de cocina','rollo','2',false),S('Aceite de oliva virgen','L','1',false,true),S('Sal','paquete','1',false)];
+
+    const UC = {Marta:'#C4562F',Javi:'#2F6E8F','Lucía':'#7A3E6B',Dani:'#6B7A3A',Admin:'#8A6D3B'};
+    const users = [
+      {id:'u-admin',username:'admin',role:'admin',name:'Admin',meta:'Administrador · creado en el despliegue',removable:false,mustSetPassword:false},
+      {id:'u-marta',username:'marta',role:'user',name:'Marta',meta:'Usuario · activo ahora',removable:true,mustSetPassword:false},
+      {id:'u-javi',username:'javi',role:'user',name:'Javi',meta:'Usuario · activo ahora',removable:true,mustSetPassword:false},
+      {id:'u-lucia',username:'lucia',role:'user',name:'Lucía',meta:'Usuario · hace 5 min',removable:true,mustSetPassword:false},
+      {id:'u-dani',username:'dani',role:'user',name:'Dani',meta:'Usuario · ayer · contraseña restablecida',removable:true,mustSetPassword:true},
+    ];
+    const presence = [{name:'Marta',initial:'M',color:'#C4562F'},{name:'Javi',initial:'J',color:'#2F6E8F'},{name:'Lucía',initial:'L',color:'#7A3E6B'}];
+
+    const SS = (name,qty,unit,checked)=>({name,qty,unit,checked:!!checked});
+    const history = [
+      {id:'h24',num:'24',range:'9–15 jun',meals:'14',by:'Marta, Javi, Lucía',cold:false,items:[{slot:'Lun · Comida',name:'Cocido madrileño',by:'Marta',cands:'3 candidatas'},{slot:'Lun · Cena',name:'Crema de calabaza',by:'Marta',cands:'1 candidata'},{slot:'Mar · Cena',name:'Merluza al horno con verduras',by:'Lucía',cands:'2 candidatas'},{slot:'Mié · Comida',name:'Pollo al limón con arroz',by:'Javi',cands:'2 candidatas'},{slot:'Vie · Cena',name:'Pasta boloñesa',by:'Dani',cands:'1 candidata'},{slot:'Dom · Comida',name:'Paella valenciana',by:'Marta',cands:'1 candidata · fijada por regla'}],shopSnapshot:[SS('Garbanzos cocidos','800','g',true),SS('Merluza','4','lomos',true),SS('Arroz bomba','400','g',true),SS('Cebolla','5','ud',true),SS('Nata','200','ml',false)]},
+      {id:'h23',num:'23',range:'2–8 jun',meals:'12',by:'Marta, Dani',cold:false,items:[{slot:'Lun · Comida',name:'Ensalada de garbanzos y espinacas',by:'Dani',cands:'2 candidatas'},{slot:'Mié · Cena',name:'Tortilla de patatas',by:'Marta',cands:'1 candidata'},{slot:'Sáb · Comida',name:'Curry de garbanzos',by:'Dani',cands:'3 candidatas'}],shopSnapshot:[SS('Garbanzos','400','g',true),SS('Leche de coco','400','ml',true),SS('Huevo','12','ud',false)]},
+      {id:'h22',num:'22',range:'26 may–1 jun',meals:'13',by:'Javi, Lucía',cold:true,items:[{slot:'Mar · Comida',name:'Lentejas estofadas',by:'Lucía',cands:'2 candidatas'},{slot:'Jue · Cena',name:'Salmón teriyaki con brócoli',by:'Javi',cands:'1 candidata'}],shopSnapshot:[SS('Lentejas pardinas','400','g',true),SS('Salmón','4','lomos',true)]},
+      {id:'h21',num:'21',range:'19–25 may',meals:'11',by:'Marta, Javi',cold:true,items:[{slot:'Lun · Comida',name:'Ensalada de garbanzos y espinacas',by:'Marta',cands:'1 candidata'},{slot:'Vie · Comida',name:'Tacos de tinga de pollo',by:'Javi',cands:'2 candidatas'}],shopSnapshot:[SS('Pollo','400','g',true),SS('Tortillas de maíz','8','ud',true)]},
+    ];
+
+    const start = this.props.startScreen || 'login';
+    const dev = this.props.device || 'Móvil';
+    return {
+      screen: start==='admin'?'app':start, tab: start==='admin'?'admin':'summary', isMobile: dev !== 'Escritorio', live, confirmDeleteRule:null,
+      currentUser: start==='admin'?{role:'admin',name:'Admin',username:'admin'}:(start==='app'?{role:'user',name:'Marta',username:'marta'}:null),
+      loginDraft:{username:'',password:''}, loginError:false, pendingUser:null, setPwDraft:{password:'',confirm:''},
+      CAT, CATL, UC, UNITS, library, weeks, activeWeek:'cur', todayIdx:2, servings:4, rules, shopping, users, history,
+      toasts:[], recipe:null, online:true,
+      addMeal:{open:false,day:null,slot:null,method:null,target:null,editingId:null}, aiBusy:false, aiPreview:null,
+      aiWeek:{open:false,step:'confirm',mode:'mix',override:false,slots:[],targetWeek:'cur'},
+      overrideRules:[], pastWeek:null, pastRestoring:false, adminEdit:null, confirm:null,
+      aiUsed:3, aiCap:10, loginFails:0, lockedUntil:0, adminError:'', pwError:'',
+      addDraft:{name:'',cat:'carne',cuisine:'Española',diff:'Fácil',ingRows:[{n:'',qty:'',unit:'g'}],tools:'',steps:''},
+      aiDraft:{ref:'',ing:'',tools:'',cuisine:'Española',diff:'Media'},
+      shopDraft:{name:'',qty:'1',unit:'ud'}, adminDraft:{username:'',password:''},
+      librarySearch:'', aiRefSearch:'', pinMealSearch:'', addLibSearch:'', libFilterCuisine:'', libFilterDiff:'', addLibFilterCuisine:'', addLibFilterDiff:'', aiRefFilterCuisine:'', aiRefFilterDiff:'', pinCuisineFilter:'', pinDiffFilter:'',
+    };
+  }
+
+  componentDidMount(){
+    if(this.props.liveEditing===false) return;
+    this._rt = setTimeout(()=>{
+      if(this.state.screen!=='app') return;
+      const ws = this.cloneWeeks();
+      const b = this.state.library.find(r=>r.name==='Pasta boloñesa');
+      const c = JSON.parse(JSON.stringify(b)); c.id=this.uid(); c.author='Javi';
+      ws.cur.days.find(d=>d.key==='thu').slots.find(s=>s.key==='dinner').candidates.push(c);
+      this.setState({weeks:ws});
+      this.pushToast('Javi añadió una candidata a Jueves · Cena (semana actual)');
+    }, 6500);
+    if(this.props.simulateOffline === false) return;
+    this._off = setTimeout(()=>{
+      if(this.state.screen!=='app') return;
+      this.setState({online:false});
+      this._on = setTimeout(()=>{ this.setState({online:true}); this.pushToast('Conexión restablecida · estado resincronizado'); }, 5200);
+    }, 15000);
+  }
+  componentWillUnmount(){ clearTimeout(this._rt); clearTimeout(this._off); clearTimeout(this._on); clearTimeout(this._gen); }
+  componentDidUpdate(prevProps){
+    if(prevProps.device !== this.props.device){
+      this.setState({isMobile: this.props.device !== 'Escritorio'});
+    }
+  }
+
+  pushToast=(text)=>{ const id=this.uid(); this.setState(s=>({toasts:[...s.toasts,{id,text}]})); setTimeout(()=>this.setState(s=>({toasts:s.toasts.filter(t=>t.id!==id)})),3400); };
+  stop=(e)=>{ e.stopPropagation(); };
+  cloneWeeks=()=>JSON.parse(JSON.stringify(this.state.weeks));
+  aw=()=>this.state.weeks[this.state.activeWeek];
+  norm=(s)=>String(s||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  findMeal=(id)=>{ for(const k of ['cur','next']) for(const d of this.state.weeks[k].days) for(const s of d.slots) for(const c of s.candidates) if(c.id===id) return c; for(const r of this.state.library) if(r.id===id) return r; return null; };
+  setWeek=(e)=>{ this.setState({activeWeek:e.currentTarget.dataset.week}); };
+  askConfirm=(c)=>this.setState({confirm:c});
+  cancelConfirm=()=>this.setState({confirm:null});
+  okConfirm=()=>{ const c=this.state.confirm; if(!c) return; this.setState({confirm:null}); const fn=this['do_'+c.action]; if(fn) fn(c.payload); };
+
+  doLogin=(e)=>{
+    if(e && e.preventDefault) e.preventDefault();
+    if(this.state.lockedUntil && Date.now()<this.state.lockedUntil){ this.pushToast('Demasiados intentos. Espera unos segundos antes de volver a intentarlo.'); return; }
+    if(this.state.lockedUntil && Date.now()>=this.state.lockedUntil){ this.setState({lockedUntil:0,loginFails:0}); }
+    const uname=(this.state.loginDraft.username||'').trim().toLowerCase();
+    const pass=(this.state.loginDraft.password||'').trim();
+    const user=this.state.users.find(u=>u.username.toLowerCase()===uname);
+    if(!uname || !pass || !user){ const n=this.state.loginFails+1;
+      if(n>=3){ const until=Date.now()+30000; this.setState({loginError:true,loginFails:n,lockedUntil:until}); this.pushToast('Demasiados intentos. Espera 30 segundos antes de volver a intentarlo.'); this._lockTick=setInterval(()=>{ if(Date.now()>=this.state.lockedUntil){ clearInterval(this._lockTick); this.setState({lockedUntil:0,loginFails:0}); } else this.forceUpdate(); },1000); return; }
+      this.setState({loginError:true,loginFails:n}); this.pushToast('Usuario o contraseña incorrectos'); return; }
+    if(user.mustSetPassword){
+      this.setState({screen:'setpw', pendingUser:{id:user.id,username:user.username,role:user.role,name:user.name}, loginDraft:{username:'',password:''}, setPwDraft:{password:'',confirm:''}});
+      return;
+    }
+    this.setState({screen:'app', tab:user.role==='admin'?'admin':'summary', currentUser:{role:user.role,name:user.name,username:user.username}, loginDraft:{username:'',password:''}});
+    if(this._rt) clearTimeout(this._rt);
+    this.componentDidMount();
+  };
+  submitSetPassword=(e)=>{
+    if(e && e.preventDefault) e.preventDefault();
+    const d=this.state.setPwDraft, pu=this.state.pendingUser;
+    const BLOCK=['contraseña1','contrasena1','123456789','1234567890','qwertyuiop','password12','iloveyou12','madrid1234','barcelona1'];
+    if(!d.password || d.password.length<10){ this.setState({pwError:'La contraseña debe tener al menos 10 caracteres. Sin reglas de mayúsculas o símbolos.'}); return; }
+    if(BLOCK.indexOf(this.norm(d.password))>=0){ this.setState({pwError:'Esa contraseña aparece en listas de contraseñas filtradas o comunes. Elige otra.'}); return; }
+    if(d.password!==d.confirm){ this.setState({pwError:'Las contraseñas no coinciden.'}); return; }
+    this.setState({pwError:''});
+    this.setState(s=>({
+      users: s.users.map(u=>u.id===pu.id?{...u,mustSetPassword:false}:u),
+      screen:'app', tab:pu.role==='admin'?'admin':'summary', currentUser:{role:pu.role,name:pu.name,username:pu.username},
+      pendingUser:null, setPwDraft:{password:'',confirm:''}
+    }));
+    this.pushToast('Contraseña establecida');
+    if(this._rt) clearTimeout(this._rt);
+    this.componentDidMount();
+  };
+  cancelSetPassword=()=>{ this.setState({screen:'login', pendingUser:null, setPwDraft:{password:'',confirm:''}, loginError:false}); };
+  doLogout=()=>{ this.setState({screen:'login', currentUser:null, tab:'summary', loginDraft:{username:'',password:''}, loginError:false}); };
+  goTab=(e)=>{ this.setState({tab:e.currentTarget.dataset.tab}); };
+  toggleDevice=()=>{ this.setState(s=>({isMobile:!s.isMobile})); };
+  onField=(e)=>{ const {group,field}=e.currentTarget.dataset; const v=e.target.value; if(group==='root'){ this.setState({[field]:v}); } else { this.setState(s=>({[group]:{...s[group],[field]:v}, ...(group==='loginDraft'?{loginError:false}:null)})); } };
+
+  openRecipe=(e)=>{ const m=this.findMeal(e.currentTarget.dataset.mealId); if(m) this.setState({recipe:m}); };
+  closeRecipe=()=>this.setState({recipe:null});
+  addToLibrary=(e)=>{ const id=e.currentTarget.dataset.mealId; const m=this.findMeal(id); if(!m) return;
+    const dup=this.state.library.some(r=>this.norm(r.name)===this.norm(m.name));
+    if(dup){ this.askConfirm({title:'Ya existe una receta con ese nombre',body:'«'+m.name+'» ya está en la biblioteca. Se creará una entrada nueva a partir de esta comida, sin tocar la existente.',okLabel:'Guardar de todos modos',action:'saveLib',payload:id,tone:'warn'}); return; }
+    this.do_saveLib(id); };
+  do_saveLib=(id)=>{ const m=this.findMeal(id); if(!m) return; const c=JSON.parse(JSON.stringify(m)); c.id=this.uid(); c.author=this.state.currentUser.name; c.source='lib'; this.setState(s=>({library:[c,...s.library],recipe:null})); this.pushToast('Guardada en la biblioteca'); };
+
+  emptyDraft=()=>({name:'',cat:'carne',cuisine:'Española',diff:'Fácil',ingRows:[{n:'',qty:'',unit:'g'}],tools:'',steps:''});
+  draftFrom=(r)=>({name:r.name,cat:r.cat,cuisine:r.cuisine,diff:r.diff,ingRows:(r.ingredients||[]).map(i=>({n:i.n,qty:i.qty,unit:i.unit||'ud'})).concat([{n:'',qty:'',unit:'g'}]),tools:(r.tools||[]).join('\n'),steps:(r.steps||[]).join('\n')});
+  openAdd=(e)=>{ const {day,slot}=e.currentTarget.dataset; this.setState({addMeal:{open:true,day,slot,method:null,target:'slot',editingId:null},addDraft:this.emptyDraft(),aiPreview:null}); };
+  openAddLibrary=()=>{ this.setState({addMeal:{open:true,day:null,slot:null,method:null,target:'library',editingId:null},addDraft:this.emptyDraft(),aiPreview:null}); };
+  editLibrary=(e)=>{ const r=this.state.library.find(x=>x.id===e.currentTarget.dataset.libId); if(!r) return; this.setState({addMeal:{open:true,day:null,slot:null,method:'scratch',target:'library',editingId:r.id},addDraft:this.draftFrom(r),aiPreview:null}); };
+  editCand=(e)=>{ const {day,slot,cid}=e.currentTarget.dataset; const m=this.findMeal(cid); if(!m) return; this.setState({addMeal:{open:true,day,slot,method:'scratch',target:'slot',editingId:cid},addDraft:this.draftFrom(m),aiPreview:null}); };
+  addIngRow=()=>{ this.setState(s=>({addDraft:{...s.addDraft,ingRows:[...s.addDraft.ingRows,{n:'',qty:'',unit:'g'}]}})); };
+  removeIngRow=(e)=>{ const i=parseInt(e.currentTarget.dataset.idx); this.setState(s=>({addDraft:{...s.addDraft,ingRows:s.addDraft.ingRows.filter((x,j)=>j!==i)}})); };
+  onIngField=(e)=>{ const {idx,field}=e.currentTarget.dataset, i=parseInt(idx), v=e.target.value; this.setState(s=>({addDraft:{...s.addDraft,ingRows:s.addDraft.ingRows.map((r,j)=>j===i?{...r,[field]:v}:r)}})); };
+  deleteLibrary=(e)=>{ const id=e.currentTarget.dataset.libId; const r=this.state.library.find(x=>x.id===id); if(!r) return;
+    const pins=this.state.rules.filter(x=>x.kind==='pin' && x.meal===r.name);
+    const extra=pins.length?' Se eliminará también '+(pins.length===1?'la regla que la fija':'las '+pins.length+' reglas que la fijan')+' en el menú.':'';
+    this.askConfirm({title:'Eliminar «'+r.name+'»',body:'La receta saldrá de la biblioteca compartida. Los menús que ya la usan conservan su copia.'+extra,okLabel:'Eliminar',action:'delLib',payload:id,tone:'danger'}); };
+  do_delLib=(id)=>{ const r=this.state.library.find(x=>x.id===id); this.setState(s=>({library:s.library.filter(x=>x.id!==id),rules:s.rules.filter(x=>!(x.kind==='pin'&&r&&x.meal===r.name))})); this.pushToast('Receta eliminada de la biblioteca'); };
+  setMethod=(e)=>{ this.setState(s=>({addMeal:{...s.addMeal,method:e.currentTarget.dataset.method}})); };
+  backMethod=()=>{ this.setState(s=>({addMeal:{...s.addMeal,method:null}})); };
+  closeAdd=()=>this.setState({addMeal:{open:false,day:null,slot:null,method:null,target:null,editingId:null},aiBusy:false});
+
+  slotIn=(ws,wk,day,slot)=>ws[wk].days.find(d=>d.key===day).slots.find(x=>x.key===slot);
+  slotLabel=(day,slot)=>{ const D={mon:'Lunes',tue:'Martes',wed:'Miércoles',thu:'Jueves',fri:'Viernes',sat:'Sábado',sun:'Domingo'}; return D[day]+' · '+(slot==='lunch'?'Comida':'Cena'); };
+  addCandidate=(meal)=>{ const {day,slot}=this.state.addMeal; const wk=this.state.activeWeek; const dup=this.slotIn(this.state.weeks,wk,day,slot).candidates.some(c=>this.norm(c.name)===this.norm(meal.name));
+    if(dup){ this._pending=meal; this.askConfirm({title:'Candidata duplicada',body:'«'+meal.name+'» ya figura como candidata en '+this.slotLabel(day,slot)+'. ¿Añadirla igualmente?',okLabel:'Añadir igualmente',action:'addCand',payload:null,tone:'warn'}); return; }
+    this.do_addCand(meal); };
+  do_addCand=(meal)=>{ const m=meal||this._pending; this._pending=null; if(!m) return; const {day,slot}=this.state.addMeal; const wk=this.state.activeWeek; const ws=this.cloneWeeks(); this.slotIn(ws,wk,day,slot).candidates.push(m); this.setState({weeks:ws,addMeal:{open:false},aiPreview:null}); this.pushToast('Candidata añadida a '+this.slotLabel(day,slot)); };
+  pickLibrary=(e)=>{ const lib=this.state.library.find(r=>r.id===e.currentTarget.dataset.libId); const m=JSON.parse(JSON.stringify(lib)); m.id=this.uid(); m.source='lib'; m.author=this.state.currentUser.name; this.addCandidate(m); };
+
+  buildMealFromDraft=(source)=>{ const d=this.state.addDraft; const ing=d.ingRows.filter(r=>String(r.n||'').trim()).map(r=>({n:r.n.trim(),qty:String(r.qty||'').trim(),unit:r.unit||'ud'})); const tools=d.tools.split('\n').map(l=>l.trim()).filter(Boolean); const steps=d.steps.split('\n').map(l=>l.trim()).filter(Boolean); return {id:this.uid(),name:d.name||'Receta sin título',cat:d.cat,cuisine:d.cuisine||'Española',diff:d.diff,time:30,kcal:450,servings:this.state.servings,author:this.state.currentUser.name,source,ingredients:ing.length?ing:[{n:'Ingredientes por definir',qty:'',unit:'al gusto'}],tools:tools.length?tools:['—'],steps:steps.length?steps:['Procedimiento por definir.']}; };
+
+  saveScratch=()=>{ const {target,editingId}=this.state.addMeal; const meal=this.buildMealFromDraft('user');
+    if(target==='library'){
+      if(editingId){ meal.id=editingId; this.setState(s=>({library:s.library.map(r=>r.id===editingId?{...meal,author:r.author}:r),addMeal:{open:false}})); this.pushToast('Receta actualizada · sincronizada con todos'); return; }
+      const dup=this.state.library.some(r=>this.norm(r.name)===this.norm(meal.name));
+      if(dup){ this._pending=meal; this.askConfirm({title:'Ya existe una receta con ese nombre',body:'«'+meal.name+'» ya está en la biblioteca. Se creará una entrada nueva.',okLabel:'Guardar de todos modos',action:'newLib',payload:null,tone:'warn'}); return; }
+      this.do_newLib(); return;
+    }
+    if(editingId){ const ws=this.cloneWeeks(); const wk=this.state.activeWeek; const {day,slot}=this.state.addMeal; const s=this.slotIn(ws,wk,day,slot); s.candidates=s.candidates.map(c=>c.id===editingId?{...meal,id:editingId,author:c.author,source:c.source}:c); this.setState({weeks:ws,addMeal:{open:false}}); this.pushToast('Comida actualizada · visible para todos'); return; }
+    this.addCandidate(meal); };
+  do_newLib=()=>{ const meal=this._pending||this.buildMealFromDraft('user'); this._pending=null; this.setState(s=>({library:[meal,...s.library],addMeal:{open:false}})); this.pushToast('Receta añadida a la biblioteca'); };
+
+  genAiMeal=()=>{ if(this.state.aiBusy) return;
+    if(this.state.aiUsed>=this.state.aiCap){ this.pushToast('Has alcanzado tu límite diario de generaciones con IA. Vuelve a intentarlo mañana.'); return; }
+    this.setState({aiBusy:true,aiPreview:null});
+    setTimeout(()=>{ const a=this.state.aiDraft; let meal;
+      if(a.ref){ const base=this.state.library.find(r=>r.name===a.ref); meal=JSON.parse(JSON.stringify(base)); meal.id=this.uid(); meal.name=base.name+' (variante IA)'; meal.diff=a.diff; }
+      else { const main=(a.ing.split(',')[0]||'temporada').trim(); const ings=a.ing.split(',').map(x=>x.trim()).filter(Boolean).map(x=>({n:x.charAt(0).toUpperCase()+x.slice(1),qty:'200',unit:'g'})); meal={id:this.uid(),name:'Salteado de '+main+' estilo '+a.cuisine,cat:'vegetariano',cuisine:a.cuisine,diff:a.diff,time:30,kcal:460,ingredients:ings.length?ings:[{n:'Verduras de temporada',qty:'400',unit:'g'},{n:'Aceite de oliva',qty:'20',unit:'ml'}],tools:a.tools?a.tools.split(',').map(x=>x.trim()):['Sartén'],steps:['Prepara y corta los ingredientes.','Saltea a fuego fuerte al estilo '+a.cuisine.toLowerCase()+'.','Ajusta de sal y sirve caliente.']}; }
+      meal.source='ai'; meal.author='IA'; meal.servings=this.state.servings;
+      this.setState(s=>({aiBusy:false,aiPreview:meal,aiUsed:s.aiUsed+1}));
+    }, 1500); };
+  discardPreview=()=>{ this.setState({aiPreview:null}); this.pushToast('Propuesta descartada'); };
+  acceptPreview=()=>{ const meal=this.state.aiPreview; if(!meal) return; if(this.state.addMeal.target==='library'){ this.setState(s=>({library:[meal,...s.library],addMeal:{open:false},aiPreview:null})); this.pushToast('Receta guardada en la biblioteca'); } else { this.addCandidate(meal); } };
+
+  makeDefinitive=(e)=>{ const {day,slot,cid}=e.currentTarget.dataset; const wk=this.state.activeWeek; const s0=this.slotIn(this.state.weeks,wk,day,slot);
+    if(s0.defId && s0.defId!==cid){ this.askConfirm({title:'Sustituir la definitiva',body:'«'+(s0.candidates.find(c=>c.id===s0.defId)||{}).name+'» dejará de ser la definitiva de '+this.slotLabel(day,slot)+'.',okLabel:'Sustituir',action:'setDef',payload:{day,slot,cid,wk},tone:'warn'}); return; }
+    this.do_setDef({day,slot,cid,wk}); };
+  do_setDef=(p)=>{ const ws=this.cloneWeeks(); const s=this.slotIn(ws,p.wk,p.day,p.slot); const m=s.candidates.find(c=>c.id===p.cid); s.defId=p.cid; s.defBy=this.state.currentUser.name; this.setState({weeks:ws}); this.pushToast('Definitiva: '+m.name+' · por ti · en vivo'); };
+  clearDefinitive=(e)=>{ const {day,slot}=e.currentTarget.dataset; this.askConfirm({title:'Quitar la definitiva',body:'Todas las comidas de '+this.slotLabel(day,slot)+' volverán a ser candidatas.',okLabel:'Quitar',action:'clearDef',payload:{day,slot,wk:this.state.activeWeek},tone:'warn'}); };
+  do_clearDef=(p)=>{ const ws=this.cloneWeeks(); const s=this.slotIn(ws,p.wk,p.day,p.slot); s.defId=null; s.defBy=null; this.setState({weeks:ws}); this.pushToast('Selección definitiva retirada'); };
+  removeCand=(e)=>{ const {day,slot,cid}=e.currentTarget.dataset; const m=this.findMeal(cid); this.askConfirm({title:'Quitar candidata',body:'Se quitará «'+(m?m.name:'')+'» de '+this.slotLabel(day,slot)+'.',okLabel:'Quitar',action:'delCand',payload:{day,slot,cid,wk:this.state.activeWeek},tone:'danger'}); };
+  do_delCand=(p)=>{ const ws=this.cloneWeeks(); const s=this.slotIn(ws,p.wk,p.day,p.slot); s.candidates=s.candidates.filter(c=>c.id!==p.cid); if(s.defId===p.cid){ s.defId=null; s.defBy=null; } this.setState({weeks:ws}); this.pushToast('Candidata eliminada'); };
+
+  aiTargets=(wk)=>{ const S=this.state; const dis=new Set(S.rules.filter(r=>r.kind==='disable').map(r=>r.day+'|'+r.slot)); const out=[];
+    S.weeks[wk].days.forEach((d,di)=>{ if(wk==='cur' && di<S.todayIdx) return; d.slots.forEach(s=>{ if(dis.has(d.key+'|'+s.key)) return; out.push({day:d.key,slot:s.key,label:this.slotLabel(d.key,s.key),status:'wait'}); }); });
+    return out; };
+  openAiWeek=()=>{ const wk=this.state.activeWeek; const t=this.aiTargets(wk); this.setState({aiWeek:{open:true,step:'confirm',mode:'mix',override:false,slots:t,targetWeek:wk}}); };
+  setAiMode=(e)=>this.setState(s=>({aiWeek:{...s.aiWeek,mode:e.currentTarget.dataset.mode}}));
+  toggleOverride=(e)=>{ e.stopPropagation(); this.setState(s=>{ const on=!s.aiWeek.override; const ov=on?s.rules.filter(r=>r.kind!=='x').map(r=>({...r})):[]; return {aiWeek:{...s.aiWeek,override:on},overrideRules:ov}; }); };
+  setOverrideRule=(e)=>{ const id=e.currentTarget.dataset.ruleId,v=e.target.value; this.setState(s=>({overrideRules:s.overrideRules.map(r=>r.id===id?{...r,value:v}:r)})); };
+  setOverrideField=(e)=>{ const {ruleId,field}=e.currentTarget.dataset, v=e.target.value; this.setState(s=>({overrideRules:s.overrideRules.map(r=>r.id===ruleId?{...r,[field]:v}:r)})); };
+  confirmAiWeek=()=>{ const S=this.state; if(S.aiWeek.step!=='confirm') return;
+    const wk=S.aiWeek.targetWeek; const targets=this.aiTargets(wk);
+    if(S.aiUsed+targets.length>S.aiCap){ this.setState(s=>({aiWeek:{...s.aiWeek,step:'cap'}})); return; }
+    if(S.aiWeek.mode!=='ai' && S.library.length<targets.length){ this.setState(s=>({aiWeek:{...s.aiWeek,step:'insufficient',insufficientMsg:'La biblioteca tiene '+S.library.length+' receta(s) y hacen falta '+targets.length+' para cubrir los huecos.'}})); return; }
+    this.setState(s=>({aiWeek:{...s.aiWeek,step:'loading',slots:targets},aiUsed:s.aiUsed+targets.length}));
+    this.runGen(0);
+  };
+  runGen=(i)=>{ const S=this.state; const aw=S.aiWeek; if(!aw.open) return;
+    if(i>=aw.slots.length){ const errs=aw.slots.filter(s=>s.status==='error').length; this.setState(s=>({aiWeek:{...s.aiWeek,step:'done'},aiAdded:s.aiWeek.slots.filter(x=>x.status==='ok').length,aiErrors:errs})); this.pushToast('Menú generado · '+(aw.slots.length-errs)+' huecos con candidata nueva'); return; }
+    this._gen=setTimeout(()=>{
+      const t=this.state.aiWeek.slots[i]; const fail = this.props.simulateAiFailure!==false && i===2;
+      if(fail){ this.setState(s=>({aiWeek:{...s.aiWeek,slots:s.aiWeek.slots.map((x,j)=>j===i?{...x,status:'error'}:x)}})); this.runGen(i+1); return; }
+      this.genSlot(t.day,t.slot,i);
+      this.setState(s=>({aiWeek:{...s.aiWeek,slots:s.aiWeek.slots.map((x,j)=>j===i?{...x,status:'ok'}:x)}}));
+      this.runGen(i+1);
+    }, 260);
+  };
+  genSlot=(day,slot,i)=>{ const S=this.state; const wk=S.aiWeek.targetWeek; const mode=S.aiWeek.mode;
+    const pool=S.library; const base=pool[i%pool.length]; const m=JSON.parse(JSON.stringify(base)); m.id=this.uid(); m.servings=S.servings;
+    const asAi = mode==='ai' || (mode==='mix' && i%2===1);
+    if(asAi){ m.source='ai'; m.author='IA'; m.name=base.name+' (IA)'; } else { m.source='lib'; m.author=S.currentUser?S.currentUser.name:'IA'; }
+    const ws=this.cloneWeeks(); this.slotIn(ws,wk,day,slot).candidates.push(m); this.setState({weeks:ws});
+  };
+  retrySlot=(e)=>{ if(this.state.aiUsed>=this.state.aiCap){ this.pushToast('Has alcanzado tu límite diario de generaciones con IA. Vuelve a intentarlo mañana.'); return; } const i=parseInt(e.currentTarget.dataset.idx); const t=this.state.aiWeek.slots[i]; this.genSlot(t.day,t.slot,i); this.setState(s=>({aiWeek:{...s.aiWeek,slots:s.aiWeek.slots.map((x,j)=>j===i?{...x,status:'ok'}:x)},aiErrors:Math.max(0,(s.aiErrors||0)-1),aiAdded:(s.aiAdded||0)+1,aiUsed:s.aiUsed+1})); this.pushToast('Hueco regenerado: '+t.label); };
+  closeAiWeek=()=>{ clearTimeout(this._gen); this.setState({aiWeek:{open:false,step:'confirm',mode:'mix',override:false,slots:[],targetWeek:this.state.activeWeek},overrideRules:[]}); };
+
+  autoSync=()=>{ const S=this.state; const map={};
+    const feed=(wk)=>{ S.weeks[wk].days.forEach((d,di)=>{ if(wk==='cur' && di<S.todayIdx) return; d.slots.forEach(s=>{ const def=s.candidates.find(c=>c.id===s.defId); if(!def) return; (def.ingredients||[]).forEach(ing=>{ const unit=ing.unit||'ud'; const key=this.norm(ing.n)+'|'+unit; const num=parseFloat(ing.qty); if(!map[key]) map[key]={name:ing.n,unit,qty:isNaN(num)?(ing.qty||''):num,num:!isNaN(num),weeks:[wk]}; else { if(map[key].num && !isNaN(num)) map[key].qty+=num; if(map[key].weeks.indexOf(wk)<0) map[key].weeks.push(wk); } }); }); }); };
+    feed('cur'); feed('next');
+    const wanted=Object.values(map);
+    const prev=S.shopping;
+    const out=[];
+    wanted.forEach(x=>{
+      const old=prev.find(i=>i.auto && this.norm(i.name)===this.norm(x.name) && i.unit===x.unit);
+      const qty=String(x.qty);
+      if(old){ const changed = old.checked && old.qty!==qty && !old.edited; out.push({...old, qty: old.edited?old.qty:qty, weeks:x.weeks, qtyChanged: old.qtyChanged||changed}); }
+      else out.push({id:this.uid(),name:x.name,unit:x.unit,qty,auto:true,checked:false,qtyChanged:false,edited:false,weeks:x.weeks});
+    });
+    const keptStale=prev.filter(i=>i.auto && i.checked && !out.some(o=>o.id===i.id));
+    const keptEdited=prev.filter(i=>i.auto && i.edited && !i.checked && !out.some(o=>o.id===i.id));
+    const manual=prev.filter(i=>!i.auto);
+    this.setState({shopping:[...out,...keptStale,...keptEdited,...manual]});
+    this.pushToast('Lista sincronizada · '+out.length+' artículos de las comidas definitivas'); };
+  toggleCheck=(e)=>{ const id=e.currentTarget.dataset.id; this.setState(s=>({shopping:s.shopping.map(i=>i.id===id?{...i,checked:!i.checked,qtyChanged:false}:i)})); };
+  addShopItem=()=>{ const d=this.state.shopDraft; if(!d.name.trim()) return; this.setState(s=>({shopping:[...s.shopping,{id:this.uid(),name:d.name,qty:d.qty||'1',unit:d.unit||'ud',auto:false,checked:false,qtyChanged:false,edited:false,weeks:[]}],shopDraft:{name:'',qty:'1',unit:'ud'}})); this.pushToast('Artículo añadido'); };
+  onShopUnit=(e)=>{ const id=e.currentTarget.dataset.id,v=e.target.value; this.setState(s=>({shopping:s.shopping.map(i=>i.id===id?{...i,unit:v,edited:true}:i)})); };
+  simRollover=()=>{ this.askConfirm({title:'Simular cierre de semana',body:'La semana 25 se archivará como solo lectura, la 26 pasará a ser la semana actual, se creará una semana 27 vacía y la lista de la compra se limpiará de lo ya comprado que no haga falta.',okLabel:'Simular cierre',action:'rollover',payload:null,tone:'warn'}); };
+  do_rollover=()=>{ const S=this.state; const cur=S.weeks.cur, next=S.weeks.next;
+    const items=[]; cur.days.forEach(d=>d.slots.forEach(s=>{ const def=s.candidates.find(c=>c.id===s.defId); if(def) items.push({slot:this.slotLabel(d.key,s.key),name:def.name,by:def.author===S.currentUser.name?'tú':def.author,cands:s.candidates.length+(s.candidates.length===1?' candidata':' candidatas')}); }));
+    const snap=S.shopping.map(i=>({name:i.name,qty:i.qty,unit:i.unit,checked:i.checked}));
+    const archived={id:'h'+cur.num,num:cur.num,range:cur.range,meals:String(items.length),by:'Marta, Javi, Lucía',cold:false,items,shopSnapshot:snap};
+    const needed=new Set(); next.days.forEach(d=>d.slots.forEach(s=>{ const def=s.candidates.find(c=>c.id===s.defId); if(def) (def.ingredients||[]).forEach(ing=>needed.add(this.norm(ing.n)+'|'+(ing.unit||'ud'))); }));
+    const shopping=S.shopping.filter(i=>!i.checked || (i.auto && needed.has(this.norm(i.name)+'|'+i.unit))).map(i=>({...i,weeks:(i.weeks&&i.weeks.length)?['cur']:i.weeks}));
+    const nn=String(parseInt(next.num)+1);
+    const slot=(label,key)=>({key,label,candidates:[],defId:null,defBy:null,editingBy:null,disabled:false});
+    const day=(key,name,date)=>({key,name,date,slots:[slot('Comida','lunch'),slot('Cena','dinner')]});
+    const fresh={id:'w'+nn,num:nn,range:'30 jun–6 jul',tag:'próxima',days:[day('mon','Lunes','30 jun'),day('tue','Martes','1 jul'),day('wed','Miércoles','2 jul'),day('thu','Jueves','3 jul'),day('fri','Viernes','4 jul'),day('sat','Sábado','5 jul'),day('sun','Domingo','6 jul')]};
+    this.setState({ weeks:{cur:{...next,tag:'actual'},next:fresh}, activeWeek:'cur', todayIdx:0, shopping, history:[archived,...S.history] });
+    this.pushToast('Semana '+cur.num+' archivada · la '+next.num+' es ahora la actual'); };
+  stepShopQty=(e)=>{ const {id,delta}=e.currentTarget.dataset, d=parseFloat(delta); this.setState(s=>({shopping:s.shopping.map(i=>{ if(i.id!==id) return i; const cur=parseFloat(i.qty); const n=isNaN(cur)?(d>0?1:0):Math.max(0,cur+d); return {...i,qty:String(n)}; })})); };
+  removeShopItem=(e)=>{ const id=e.currentTarget.dataset.id; const it=this.state.shopping.find(i=>i.id===id); this.askConfirm({title:'Quitar de la lista',body:'Se quitará «'+(it?it.name:'')+'» de la lista compartida.',okLabel:'Quitar',action:'delShop',payload:id,tone:'danger'}); };
+  do_delShop=(id)=>{ this.setState(s=>({shopping:s.shopping.filter(i=>i.id!==id)})); this.pushToast('Artículo eliminado'); };
+  onShopName=(e)=>{ const id=e.currentTarget.dataset.id,v=e.target.value; this.setState(s=>({shopping:s.shopping.map(i=>i.id===id?{...i,name:v,edited:i.auto?true:i.edited}:i)})); };
+  onShopQty=(e)=>{ const id=e.currentTarget.dataset.id,v=e.target.value; this.setState(s=>({shopping:s.shopping.map(i=>i.id===id?{...i,qty:v,edited:i.auto?true:i.edited}:i)})); };
+
+  setRule=(e)=>{ const id=e.currentTarget.dataset.ruleId,v=e.target.value; this.setState(s=>({rules:s.rules.map(r=>r.id===id?{...r,value:v}:r)})); this.pushToast('Regla actualizada · sincronizada con todos'); };
+  setRuleField=(e)=>{ const {ruleId,field}=e.currentTarget.dataset, v=e.target.value; this.setState(s=>({rules:s.rules.map(r=>r.id===ruleId?{...r,[field]:v}:r)})); this.pushToast('Regla actualizada · sincronizada con todos'); };
+  firstFreeSlot=(rules)=>{ const used=new Set(rules.filter(r=>r.kind==='pin'||r.kind==='disable').map(r=>r.day+'|'+r.slot));
+    for(const d of ['mon','tue','wed','thu','fri','sat','sun']) for(const sl of ['lunch','dinner']) if(!used.has(d+'|'+sl)) return {day:d,slot:sl};
+    return null; };
+  addPinRule=()=>{ this.setState(s=>{ const free=this.firstFreeSlot(s.rules);
+    if(!free){ setTimeout(()=>this.pushToast('No quedan huecos libres: las 14 comidas ya tienen una regla.'),0); return {}; }
+    const meal=(s.library[0]||{}).name||''; return {rules:[...s.rules,{id:this.uid(),kind:'pin',group:'pin',...free,meal}]}; }); };
+  addDisableRule=()=>{ this.setState(s=>{ const free=this.firstFreeSlot(s.rules);
+    if(!free){ setTimeout(()=>this.pushToast('No quedan huecos libres: las 14 comidas ya tienen una regla.'),0); return {}; }
+    return {rules:[...s.rules,{id:this.uid(),kind:'disable',group:'disable',...free}]}; }); };
+  askRemoveRule=(e)=>{ this.setState({confirmDeleteRule:e.currentTarget.dataset.ruleId}); };
+  cancelRemoveRule=()=>this.setState({confirmDeleteRule:null});
+  confirmRemoveRule=(e)=>{ const id=e.currentTarget.dataset.ruleId; this.setState(s=>({rules:s.rules.filter(r=>r.id!==id),confirmDeleteRule:null})); this.pushToast('Regla eliminada'); };
+
+  openPast=(e)=>{ const h=this.state.history.find(x=>x.id===e.currentTarget.dataset.id); if(!h) return;
+    if(h.cold){ this.setState({pastWeek:h,pastRestoring:true}); setTimeout(()=>this.setState({pastRestoring:false}),1800); return; }
+    this.setState({pastWeek:h,pastRestoring:false}); };
+  closePast=()=>this.setState({pastWeek:null,pastRestoring:false});
+  openArchRecipe=(e)=>{ const n=e.currentTarget.dataset.name; const r=this.state.library.find(x=>this.norm(x.name)===this.norm(n));
+    this.setState({recipe: r || {id:'arch',name:n,cat:'carbohidratos',cuisine:'Española',diff:'Media',time:35,kcal:480,servings:this.state.servings,source:'lib',author:'Usuario desconocido',ingredients:[{n:'Receta archivada',qty:'',unit:'al gusto'}],tools:['—'],steps:['Copia archivada de la semana cerrada.']}}); };
+
+  adminCreate=()=>{ const d=this.state.adminDraft; const u=d.username.trim(); if(!u) return;
+    if(this.norm(u)==='usuario desconocido'){ this.setState({adminError:'«Usuario desconocido» es un nombre reservado del sistema.'}); return; }
+    if(this.state.users.some(x=>this.norm(x.username)===this.norm(u))){ this.setState({adminError:'Ya existe una cuenta activa con el nombre «'+u+'».'}); return; }
+    if(!d.password.trim()){ this.setState({adminError:'Asigna una contraseña temporal inicial.'}); return; }
+    this.setState(s=>({users:[...s.users,{id:this.uid(),username:u,role:'user',name:u,meta:'Usuario · creado ahora',removable:true,mustSetPassword:true}],adminDraft:{username:'',password:''},adminError:''}));
+    this.pushToast('Usuario «'+u+'» creado · contraseña temporal, deberá crear la suya al entrar'); };
+  adminOpenEdit=(e)=>{ const u=this.state.users.find(x=>x.id===e.currentTarget.dataset.uid); this.setState({adminEdit:{id:u.id,username:u.username,password:''}}); };
+  closeAdminEdit=()=>this.setState({adminEdit:null});
+  adminSaveEdit=()=>{ const ed=this.state.adminEdit; const u=ed.username.trim();
+    if(!u){ this.setState({adminError:'El nombre de usuario no puede quedar vacío.'}); return; }
+    if(this.norm(u)==='usuario desconocido'){ this.setState({adminError:'«Usuario desconocido» es un nombre reservado del sistema.'}); return; }
+    if(this.state.users.some(x=>x.id!==ed.id && this.norm(x.username)===this.norm(u))){ this.setState({adminError:'Ya existe una cuenta activa con el nombre «'+u+'».'}); return; }
+    this.setState(s=>({users:s.users.map(x=>x.id===ed.id?{...x,username:u,name:u,mustSetPassword:ed.password?true:x.mustSetPassword}:x),adminEdit:null,adminError:''}));
+    this.pushToast('Usuario actualizado'+(ed.password?' · contraseña temporal, deberá crear una nueva al entrar':'')); };
+  adminReset=(e)=>{ const uid=e.currentTarget.dataset.uid; const u=this.state.users.find(x=>x.id===uid);
+    this.askConfirm({title:'Restablecer la contraseña de «'+u.username+'»',body:'Se cerrarán todas sus sesiones activas y la contraseña que asignes será temporal: solo servirá para llegar a la pantalla de nueva contraseña.',okLabel:'Restablecer',action:'reset',payload:uid,tone:'warn'}); };
+  do_reset=(uid)=>{ const u=this.state.users.find(x=>x.id===uid); this.setState(s=>({users:s.users.map(x=>x.id===uid?{...x,mustSetPassword:true}:x)})); this.pushToast('Contraseña de «'+u.username+'» restablecida · sesiones cerradas'); };
+  adminRemove=(e)=>{ const id=e.currentTarget.dataset.uid; const u=this.state.users.find(x=>x.id===id);
+    this.askConfirm({title:'Eliminar la cuenta «'+u.username+'»',body:'Se cerrarán sus sesiones. Todo lo que haya creado (candidatas, recetas, definitivas, reglas, artículos) se conserva y pasa a atribuirse a «Usuario desconocido».',okLabel:'Eliminar cuenta',action:'delUser',payload:id,tone:'danger'}); };
+  do_delUser=(id)=>{ const S=this.state; const u=S.users.find(x=>x.id===id); if(!u) return; const GH='Usuario desconocido';
+    const re=(a)=>a===u.name?GH:a;
+    const ws=this.cloneWeeks(); ['cur','next'].forEach(k=>ws[k].days.forEach(d=>d.slots.forEach(s=>{ s.candidates.forEach(c=>{ c.author=re(c.author); }); if(s.defBy) s.defBy=re(s.defBy); })));
+    this.setState({users:S.users.filter(x=>x.id!==id), weeks:ws, library:S.library.map(r=>({...r,author:re(r.author)}))});
+    this.pushToast('Cuenta eliminada · su contenido se atribuye a «Usuario desconocido»'); };
+
+  renderVals(){
+    const S=this.state, CAT=S.CAT, CATL=S.CATL, UC=S.UC;
+    const me = S.currentUser?S.currentUser.name:'';
+    const catTargets={}; S.rules.filter(r=>r.kind==='count').forEach(r=>catTargets[r.cat]=parseInt(r.value)||0);
+    const counts={carne:0,pescado:0,legumbres:0,vegetariano:0,carbohidratos:0};
+    const authorLine=(a)=>a==='Regla'?'regla':(a==='IA'?'IA':(a===me?'tú':a));
+    const porLine=(a)=>{ const l=authorLine(a); return l==='tú'?'ti':l; };
+    const disabledSet = new Set(S.rules.filter(r=>r.kind==='disable').map(r=>r.day+'|'+r.slot));
+    const week = S.weeks[S.activeWeek];
+    const isCur = S.activeWeek==='cur';
+    const viewDays = week.days.map((d,di)=>{
+      let decided=0, total=0;
+      const past = isCur && di<S.todayIdx;
+      const isToday = isCur && di===S.todayIdx;
+      const slots=d.slots.map(s=>{
+        const disabled = disabledSet.has(d.key+'|'+s.key);
+        const def=s.candidates.find(c=>c.id===s.defId)||null;
+        if(!disabled) total++;
+        if(def){ decided++; if(counts[def.cat]!=null) counts[def.cat]++; }
+        const cands=s.candidates.map(c=>{ const isDef=c.id===s.defId, isAI=c.source==='ai'; return {...c, isDef, isAI, meta:c.cuisine+' · '+c.diff+' · '+c.time+' min', authorLine:authorLine(c.author),
+          borderCol:isDef?'var(--olive)':'var(--line)', bgCol:isDef?'var(--olive-soft)':'var(--surface)',
+          checkBorder:isDef?'var(--olive)':'var(--line-2)', checkBg:isDef?'var(--olive)':'transparent', checkFg:isDef?'#fff':'transparent' }; });
+        return {...s, disabled, def, cands, hasDef:!!def, notDisabled:!disabled, isEmpty:s.candidates.length===0,
+          sumName:def?def.name:'— sin decidir', sumColor:def?'var(--ink)':'var(--ink-3)', defName:def?def.name:'', defId:s.defId, defBy:s.defBy?porLine(s.defBy):'' };
+      });
+      const full=decided>=total&&total>0;
+      return {...d, slots, past, isToday, dayOpacity: past?'.62':'1',
+        statusText: past?'pasado':(total===0?'—':(full?'Completo':decided+'/'+total)),
+        statusColor: past?'var(--ink-3)':(full?'var(--olive)':'var(--ink-2)'),
+        statusBg: past?'var(--surface-2)':(full?'var(--olive-soft)':'var(--surface)') };
+    });
+    const CATC=[['carne','Carne'],['pescado','Pescado'],['legumbres','Legumbres'],['vegetariano','Vegetariano'],['carbohidratos','Carbohidratos']];
+    const balance=CATC.map(([k,l])=>({key:k,label:l,color:CAT[k],have:counts[k],target:catTargets[k]||0}));
+
+    const decorate=r=>({...r, catColor:CAT[r.cat], catLabel:CATL[r.cat], isAI:r.source==='ai', meta:r.cuisine+' · '+r.diff+' · '+r.time+' min'});
+    const nrm=this.norm;
+    const cuisineOptions=[]; S.library.forEach(r=>{ if(!cuisineOptions.some(c=>nrm(c)===nrm(r.cuisine))) cuisineOptions.push(r.cuisine); });
+    const diffOptions=['Fácil','Media','Difícil'];
+    const match=(r,q,cu,df)=>nrm(r.name).includes(nrm(q)) && (!cu||nrm(r.cuisine)===nrm(cu)) && (!df||r.diff===df);
+    const libFiltered=S.library.filter(r=>match(r,S.librarySearch,S.libFilterCuisine,S.libFilterDiff)).map(decorate);
+    const addLibFiltered=S.library.filter(r=>match(r,S.addLibSearch,S.addLibFilterCuisine,S.addLibFilterDiff)).map(decorate);
+    const libEmpty=libFiltered.length===0;
+
+    const dupKeys={}; S.shopping.forEach(i=>{ const k=nrm(i.name)+'|'+i.unit; dupKeys[k]=(dupKeys[k]||0)+1; });
+    const shopMap=i=>({...i, dot:i.auto?'var(--olive)':'var(--honey)', originLabel:i.auto?(i.edited?'del menú · editado':'del menú'):'manual',
+      dup:dupKeys[nrm(i.name)+'|'+i.unit]>1, weekTag:(i.weeks||[]).length===2?'ambas semanas':((i.weeks||[])[0]==='next'?'próxima':((i.weeks||[])[0]==='cur'?'actual':'')) });
+    const shopOpen=S.shopping.filter(i=>!i.checked).map(shopMap);
+    const shopDone=S.shopping.filter(i=>i.checked).map(shopMap);
+    const shopEmpty=S.shopping.length===0;
+
+    const DAYNAMES={mon:'Lunes',tue:'Martes',wed:'Miércoles',thu:'Jueves',fri:'Viernes',sat:'Sábado',sun:'Domingo'};
+    const SLOTNAMES={lunch:'Comida',dinner:'Cena'};
+    const dayName=k=>DAYNAMES[k]||k, slotName=k=>SLOTNAMES[k]||k;
+    const dayChoices=Object.keys(DAYNAMES).map(v=>({v,l:DAYNAMES[v]}));
+    const slotChoices=Object.keys(SLOTNAMES).map(v=>({v,l:SLOTNAMES[v]}));
+    const mealChoices=S.library.map(r=>({v:r.name,l:r.name}));
+
+    const disabledCount=S.rules.filter(r=>r.kind==='disable').length;
+    const availableSlots=14-disabledCount;
+    const countRules=S.rules.filter(r=>r.kind==='count');
+    const countSum=countRules.reduce((a,r)=>a+(parseInt(r.value)||0),0);
+    const ruleGroups=[
+      {title:'Equilibrio semanal', color:'var(--terra)', rules:countRules.map(r=>{
+        const others=countSum-(parseInt(r.value)||0);
+        const max=Math.max(0, availableSlots-others);
+        const opts=[]; for(let i=0;i<=Math.max(max,parseInt(r.value)||0);i++) opts.push(String(i));
+        return {...r, options:opts};
+      })},
+    ];
+    const aiPartialWeek = S.activeWeek==='cur' && S.todayIdx>0;
+    const ruleWarnOn=countSum>availableSlots;
+    const ruleWarnText='Los objetivos suman '+countSum+' comidas pero solo hay '+availableSlots+' huecos generables por semana (14 menos los desactivados). Baja alguno para que las reglas sean satisfacibles.';
+    const pinFilterOptions=cuisineOptions;
+    const pinMealChoices=S.library.filter(r=>match(r,S.pinMealSearch,S.pinCuisineFilter,S.pinDiffFilter)).map(r=>({v:r.name,l:r.name}));
+    const pinMealCount=pinMealChoices.length+' de '+S.library.length;
+    const aiRefChoices=S.library.filter(r=>match(r,S.aiRefSearch,S.aiRefFilterCuisine,S.aiRefFilterDiff)).map(r=>({v:r.name,l:r.name+' · '+r.cuisine}));
+    const aiRefEmpty=aiRefChoices.length===0;
+    const aiRefSize=S.aiRefSearch?Math.min(6,aiRefChoices.length+1):1;
+    // occupied slots: any day|slot already claimed by another pin or disable rule
+    const taken={}; S.rules.forEach(r=>{ if(r.kind==='pin'||r.kind==='disable') (taken[r.day+'|'+r.slot]=taken[r.day+'|'+r.slot]||[]).push(r); });
+    const freeFor=(rule)=>{
+      const slotOpts=slotChoices.filter(o=>o.v===rule.slot||!(taken[rule.day+'|'+o.v]||[]).length);
+      const dayOpts=dayChoices.filter(o=>o.v===rule.day||slotChoices.some(s=>!(taken[o.v+'|'+s.v]||[]).length));
+      return {dayOpts,slotOpts};
+    };
+    const clashText=(rule)=>{
+      const others=(taken[rule.day+'|'+rule.slot]||[]).filter(o=>o.id!==rule.id);
+      if(!others.length) return '';
+      const o=others[0];
+      if(o.kind==='disable') return 'Choca con un hueco sin generación · quita una de las dos reglas';
+      if(rule.kind==='disable') return 'Hay una comida fijada en este hueco · quita una de las dos reglas';
+      return 'Ya hay otra comida fija en '+dayName(rule.day)+' · '+slotName(rule.slot);
+    };
+    const pinRules=S.rules.filter(r=>r.group==='pin').map(r=>{ const ct=clashText(r); const mealOpts=pinMealChoices.some(o=>o.v===r.meal)?pinMealChoices:[{v:r.meal,l:r.meal},...pinMealChoices];
+      return {...r, confirming:S.confirmDeleteRule===r.id, notConfirming:S.confirmDeleteRule!==r.id, ...freeFor(r), mealOpts, conflict:!!ct, conflictText:ct }; });
+    const disableRules=S.rules.filter(r=>r.group==='disable').map(r=>{ const ct=clashText(r);
+      return {...r, confirming:S.confirmDeleteRule===r.id, notConfirming:S.confirmDeleteRule!==r.id, ...freeFor(r), conflict:!!ct, conflictText:ct }; });
+    const activeRules=[
+      ...S.rules.filter(r=>r.kind==='count').map(r=>({label:r.label,value:r.value})),
+      ...S.rules.filter(r=>r.kind==='pin').map(r=>({label:dayName(r.day)+' · '+slotName(r.slot),value:r.meal})),
+      ...S.rules.filter(r=>r.kind==='disable').map(r=>({label:dayName(r.day)+' · '+slotName(r.slot),value:'no se genera'})),
+    ].slice(0,8);
+
+    const tc=k=>S.tab===k?'var(--terra)':'var(--ink-3)';
+    const tabCols={menu:tc('menu'),summary:tc('summary'),library:tc('library'),shopping:tc('shopping'),rules:tc('rules'),history:tc('history'),admin:tc('admin')};
+
+    const isMobile=S.isMobile;
+    const frameStyle = isMobile
+      ? {width:'404px',maxWidth:'95vw',height:'842px',maxHeight:'84vh',background:'#22301D',borderRadius:'54px',padding:'13px',boxShadow:'0 2px 6px rgba(40,51,31,.2),0 46px 90px -34px rgba(40,51,31,.7)'}
+      : {width:'min(1180px,97vw)',height:'min(858px,84vh)',background:'transparent',borderRadius:'26px',padding:'0'};
+    const shellStyle = isMobile
+      ? {width:'100%',height:'100%',background:'var(--paper)',borderRadius:'42px',overflow:'hidden',display:'flex',flexDirection:'column',position:'relative'}
+      : {width:'100%',height:'100%',background:'var(--paper)',border:'1px solid var(--line)',borderRadius:'26px',overflow:'hidden',display:'flex',flexDirection:'column',position:'relative',boxShadow:'0 2px 6px rgba(40,51,31,.06),0 46px 90px -40px rgba(40,51,31,.5)'};
+
+    const am=S.addMeal;
+    const addTitle = !am.open?'':(am.target==='library'?(am.editingId?'Editar receta':'Nueva receta'):(am.editingId?'Editar comida':('Añadir a '+(week.days.find(d=>d.key===am.day)||{}).name+' · '+(am.slot==='lunch'?'Comida':'Cena'))));
+    const dressRecipe=(r)=>({...r, isAI:r.source==='ai', catColor:CAT[r.cat]||'var(--ink-3)', catLabel:CATL[r.cat]||'Sin categoría', servingsLabel:(r.servings||S.servings)+' comensales',
+      authorLabel:porLine(r.author),
+      ingredients:(r.ingredients||[]).map(i=>({n:i.n, q:(i.qty?i.qty+' ':'')+(i.unit||'')})),
+      stepsN:(r.steps||[]).map((t,i)=>({n:i+1,t}))});
+    const recipe = S.recipe?dressRecipe(S.recipe):null;
+    const preview = S.aiPreview?dressRecipe(S.aiPreview):null;
+    const ingRows=S.addDraft.ingRows.map((r,i)=>({...r,idx:i}));
+    const aiSlots=(S.aiWeek.slots||[]).map((s,i)=>({...s,idx:i,
+      dotBg: s.status==='ok'?'var(--olive)':(s.status==='error'?'#C0392B':'var(--line-2)'),
+      isErr:s.status==='error', isOk:s.status==='ok', isWait:s.status==='wait',
+      statusLabel: s.status==='ok'?'listo':(s.status==='error'?'error':'en cola')}));
+    const aiTargetW = S.weeks[S.aiWeek.targetWeek||'cur'];
+    const conf=S.confirm||{};
+    const okBg = conf.tone==='danger'?'#C0392B':(conf.tone==='warn'?'var(--honey)':'var(--terra)');
+
+    const modeBtn=m=>S.aiWeek.mode===m?{bd:'var(--aub)',bg:'var(--aub-soft)',fg:'var(--aub)'}:{bd:'var(--line-2)',bg:'var(--surface-2)',fg:'var(--ink-2)'};
+    const meUser=S.currentUser?S.currentUser.username:'';
+    const users=S.users.map(u=>{ const isMe=u.username===meUser; return {...u, initial:(u.name||u.username).charAt(0).toUpperCase(), color:UC[u.name]||'#8A6D3B', roleLabel:u.role==='admin'?'admin':'usuario',
+      isMe, canEdit:!isMe && u.role!=='admin', canReset:!isMe, removable:u.removable && u.role!=='admin',
+      pending:!!u.mustSetPassword, meta:isMe?'Tu cuenta · no puedes cambiar tu propia contraseña':u.meta }; });
+    const historyView=S.history.map(h=>({...h, coldLabel:h.cold?'almacenamiento frío':'archivada', shopCount:(h.shopSnapshot||[]).length}));
+
+    return {
+      ...S,
+      isLogin:S.screen==='login', isApp:S.screen==='app', isSetPassword:S.screen==='setpw', pendingUser:S.pendingUser||{}, setPwDraft:S.setPwDraft,
+      loginErrBorder: S.loginError?'#C0392B':'var(--line-2)', loginErrBg: S.loginError?'#FBEAE8':'var(--surface-2)',
+      isRoleAdmin: !!(S.currentUser && S.currentUser.role==='admin'),
+      isRoleUser: !(S.currentUser && S.currentUser.role==='admin'),
+      isMobile, notMobile:!isMobile,
+      isMenu:S.tab==='menu', isSummary:S.tab==='summary', isLibrary:S.tab==='library', isShopping:S.tab==='shopping', isRules:S.tab==='rules', isHistory:S.tab==='history', isAdminTab:S.tab==='admin',
+      viewDays, balance, libFiltered, addLibFiltered, libEmpty, libCount:S.library.length, shopOpen, shopDone, shopEmpty, hasDone:shopDone.length>0,
+      ruleGroups, pinRules, disableRules, pinMealChoices, pinMealCount, pinFilterOptions, activeRules, tabCols,
+      aiRefChoices, aiRefEmpty, aiRefSize, aiRefSearch:S.aiRefSearch, pinMealSearch:S.pinMealSearch,
+      ruleWarnOn, ruleWarnText, cuisineOptions, diffOptions, units:S.UNITS, ingRows,
+      weekNum:week.num, weekRange:week.range, weekTag:week.tag, weekTitle:'Semana '+week.num,
+      weekHeading:isCur?'Semana actual':'Semana próxima', weekFull:'Semana '+week.num+' · '+week.range,
+      isCurWeek:isCur, isNextWeek:!isCur, prevCol:isCur?'var(--ink-3)':'var(--ink-2)', nextCol:isCur?'var(--ink-2)':'var(--ink-3)',
+      online:S.online, offline:!S.online,
+      shopScope:'De hoy en adelante (semana '+S.weeks.cur.num+') + toda la semana '+S.weeks.next.num+' · lista única compartida',
+      aiUsed:S.aiUsed, aiCap:S.aiCap, aiLeft:Math.max(0,S.aiCap-S.aiUsed), servingsLabel:S.servings+' comensales',
+      users, history:historyView,
+      frameStyle, shellStyle,
+      recipeOpen:!!S.recipe, recipe,
+      addOpen:am.open, addTitle, addHasMethod:!!am.method, addNotLibrary:am.target!=='library', addSaveLabel:am.editingId?'Guardar cambios':'Añadir',
+      mNone:am.open&&!am.method, mLib:am.method==='library', mScratch:am.method==='scratch', mAi:am.method==='ai',
+      aiBusy:S.aiBusy, aiIdle:!S.aiBusy,
+      aiOpen:S.aiWeek.open, aiConfirm:S.aiWeek.step==='confirm', aiLoading:S.aiWeek.step==='loading', aiDone:S.aiWeek.step==='done', aiAdded:S.aiAdded||0,
+      aiInsufficient:S.aiWeek.step==='insufficient', aiInsufficientMsg:S.aiWeek.insufficientMsg||'', aiCapped:S.aiWeek.step==='cap', aiSlots, aiSlotCount:aiSlots.length, aiPartialWeek,
+      aiErrors:S.aiErrors||0, aiHasErrors:(S.aiErrors||0)>0, aiNoErrors:(S.aiErrors||0)===0,
+      aiTargetLabel:'Semana '+aiTargetW.num+' · '+aiTargetW.range+' · '+aiTargetW.tag,
+      aiPreviewOn:!!S.aiPreview, aiNoPreview:!S.aiPreview, preview,
+      overrideRules:S.overrideRules.map(r=>{
+        if(r.kind==='count') return {id:r.id,label:r.label,value:r.value,options:r.options};
+        if(r.kind==='pin') return {id:r.id,label:'Fijar en '+dayName(r.day)+' · '+slotName(r.slot),value:r.meal,options:S.library.map(x=>x.name)};
+        return {id:r.id,label:dayName(r.day)+' · '+slotName(r.slot),value:'no se genera',options:['no se genera','sí generar']};
+      }),
+      confirmOpen:!!S.confirm, confirmTitle:conf.title||'', confirmBody:conf.body||'', confirmOk:conf.okLabel||'Confirmar', confirmOkBg:okBg,
+      pastRestoring:S.pastRestoring, pastReady:!!S.pastWeek&&!S.pastRestoring,
+      pwError:S.pwError, pwHasError:!!S.pwError, adminError:S.adminError, adminHasError:!!S.adminError,
+      loginLocked:!!(S.lockedUntil && Date.now()<S.lockedUntil), loginBtnBg:(S.lockedUntil && Date.now()<S.lockedUntil)?'var(--ink-3)':'var(--terra)', loginBtnOpacity:(S.lockedUntil && Date.now()<S.lockedUntil)?'.6':'1', loginBtnLabel:(S.lockedUntil && Date.now()<S.lockedUntil)?'Espera '+Math.max(0,Math.ceil((S.lockedUntil-Date.now())/1000))+'s':'Entrar',
+      aiModeLib:modeBtn('lib'), aiModeAi:modeBtn('ai'), aiModeMix:modeBtn('mix'),
+      overrideOn:S.aiWeek.override, ovTrackBg:S.aiWeek.override?'var(--aub)':'var(--line-2)', ovKnobX:S.aiWeek.override?'18px':'2px',
+      pastOpen:!!S.pastWeek, pastWeek:S.pastWeek,
+      adminEditOpen:!!S.adminEdit, adminEdit:S.adminEdit,
+      doLogin:this.doLogin, doLogout:this.doLogout, submitSetPassword:this.submitSetPassword, cancelSetPassword:this.cancelSetPassword, goTab:this.goTab, toggleDevice:this.toggleDevice, onField:this.onField, stop:this.stop,
+      openRecipe:this.openRecipe, closeRecipe:this.closeRecipe, addToLibrary:this.addToLibrary,
+      openAdd:this.openAdd, openAddLibrary:this.openAddLibrary, editLibrary:this.editLibrary, deleteLibrary:this.deleteLibrary,
+      setMethod:this.setMethod, backMethod:this.backMethod, closeAdd:this.closeAdd, pickLibrary:this.pickLibrary, saveScratch:this.saveScratch, genAiMeal:this.genAiMeal,
+      makeDefinitive:this.makeDefinitive, removeCand:this.removeCand,
+      openAiWeek:this.openAiWeek, setAiMode:this.setAiMode, toggleOverride:this.toggleOverride, setOverrideRule:this.setOverrideRule, confirmAiWeek:this.confirmAiWeek, closeAiWeek:this.closeAiWeek,
+      autoSync:this.autoSync, addShopItem:this.addShopItem, removeShopItem:this.removeShopItem, onShopName:this.onShopName, onShopQty:this.onShopQty, stepShopQty:this.stepShopQty,
+      setRule:this.setRule, setRuleField:this.setRuleField, addPinRule:this.addPinRule, addDisableRule:this.addDisableRule, askRemoveRule:this.askRemoveRule, cancelRemoveRule:this.cancelRemoveRule, confirmRemoveRule:this.confirmRemoveRule, openPast:this.openPast, closePast:this.closePast,
+      adminCreate:this.adminCreate, adminOpenEdit:this.adminOpenEdit, closeAdminEdit:this.closeAdminEdit, adminSaveEdit:this.adminSaveEdit, adminReset:this.adminReset, adminRemove:this.adminRemove,
+      setWeek:this.setWeek, editCand:this.editCand, clearDefinitive:this.clearDefinitive,
+      addIngRow:this.addIngRow, removeIngRow:this.removeIngRow, onIngField:this.onIngField,
+      toggleCheck:this.toggleCheck, onShopUnit:this.onShopUnit, simRollover:this.simRollover,
+      acceptPreview:this.acceptPreview, discardPreview:this.discardPreview, retrySlot:this.retrySlot,
+      okConfirm:this.okConfirm, cancelConfirm:this.cancelConfirm, openArchRecipe:this.openArchRecipe,
+    };
+  }
+}
+</script>
+</body>
+</html>

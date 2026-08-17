@@ -259,3 +259,281 @@ path** — `cd "$TMPDIR" || cd <scratchpad>` silently resolved elsewhere.
 during the session. These look like the **initial frontend code drop** that P7
 and feature 20 are waiting on. The owner was told and has not yet said to read
 them.
+
+---
+
+## Session — 2026-08-16 (continued) · Parts P and Q, `data_model.md`, discoverability
+
+**Agent:** leader, acting directly (docs-only).
+**Feature in progress:** none.
+
+Continuation of the entry above; that summary was written before this work landed.
+
+### Part P (G-80) — derived-artifact resync
+
+Two explicit owner lifts, one per document. **No requirement amended, no new
+decision taken** — Part P only propagated G-74, G-75, G-76 and G-79 into derived
+artifacts missed when those decisions landed.
+
+- `app_user_stories.md` **US4** — struck "definitive selections" (G-79), "rule
+  edits" (G-76), "shopping list items" (G-75); candidates and library recipes survive.
+- `app_user_stories.md` **US16** — struck "and who made them definitive", which
+  *is* the removed `FR-SUM-02`.
+- `requirements.md` **§13 matrix** — dropped `FR-SUM-02` and `FR-SHOP-11`, plus a
+  note recording that removed ids are **dropped** from the matrix, not struck.
+  G-68 already set that convention; G-74 and G-79 struck their rows but never
+  cleaned the matrix.
+
+### `docs/data_model.md` created — now the persistence source of truth
+
+The owner deleted both review records (`access_patterns_review.md`,
+`data_structure_review.md`). Their content was extracted first: the table and its
+9 item types (§1), key formats and their traps (§2), shared-partition sort order
+(§3), all 27 patterns to operations (§4), concurrency (§5), read-time resolution
+(§6), **settled-do-not-reopen (§7)**, verified constraints (§8), parked scope (§9).
+
+**§7 is the section that earns its place** — it carries the rejected alternatives
+(login GSI, indexed library filters, separate lock partition, denormalized
+`nombrePlato`), which is what stops a future session re-litigating settled ground
+once the review history is gone.
+
+### Part Q (G-81) — the last dangling reference
+
+`coverage_analysis.md` §4 closed with the project's one outstanding human-owned
+question — `NFR-AI-01` needs an *enforcing* cost-cap path, and AWS Budgets only
+alert — then deferred to a review doc about to be deleted. Made self-contained,
+and the question given a durable home in **`feature_list.json` #17 `ai_lambda`**:
+the feature whose code the answer changes, and read every session by `init.sh`.
+
+**A review document was never a good home for an open question** — it is a
+working record, deleted when the work finishes, which is exactly what happened.
+
+**Deliberately left:** three references in `gaps_and_resolutions.md` (Parts I, K,
+L). They are historical citations inside dated records. **A dangling reference in
+a historical log is correct; one attached to an open question is not.**
+
+### Re-verification pass
+
+Sheet re-parsed from disk (unchanged since the previous pass). 27 patterns, 9
+item types, no secondary indexes — **no defect found in the design.** Eleven
+*documentation* defects found and fixed. The two that could have misled an
+implementer:
+
+1. `access_patterns_review.md` §4/§6 still called `FR-ARCH-04`'s
+   reverse-chronological browse "a descending range read **for free**". **D27
+   refuted this** — `idSemana` is in the *partition* key, which DynamoDB cannot
+   list or sort.
+2. `data_structure_review.md` §0 scoped out "rows 38–43 (`EJEMPLOS`)". Rows had
+   shifted; 38 and 39 were by then two live item types. Re-anchored to the
+   `EJEMPLOS` marker instead of row numbers.
+
+`feature_list.json` #6 `rules_model` carried a live desync — acceptance still
+required rule author attribution, which **G-76 removed**.
+
+### Discoverability fix
+
+`architecture.md` §1.2.1 sourced the 27 patterns to a **file outside the repo**
+(`Desktop/lab-final-patrones-acceso.xlsx`) and never named the in-repo copy;
+`AGENTS.md`'s map listed neither review document. An agent following the
+documented cold-start path could reach the model only by accident. Both fixed.
+
+Gap numbering closed at **G-01–G-81, Parts A–Q** (nine freeze lifts).
+
+---
+
+## Session — 2026-08-17 · gga triage, prototype relocation, and P7 closed
+
+**Agent:** leader, acting directly (docs, config and `feature_list.json` only —
+no code written, permitted by `CLAUDE.md`).
+**Feature in progress:** none. Feature 1 `project_scaffold` prepared but not started.
+
+### Goal
+
+The owner tried to commit and `gga` (Gentleman Guardian Angel, a pre-commit AI
+review) failed on `frontend/wireframe/support.js`. Triage that, then decide
+whether the repo was ready to start feature 1.
+
+### Result
+
+**Of gga's four findings, one was real.** The headline finding was false and was
+the one that would have been acted on.
+
+| Finding | Verdict |
+|---|---|
+| CDN-loaded React "quietly pre-decides" the frontend framework, so mark it `blocked` | **Refuted.** `architecture.md` §1.1 — the *Decided* section — already specified a React-based stack, before the prototype existed. There is no `package.json` under `frontend/`, so nothing in the repo *declared* React at all; the `unpkg` URLs are the prototype runtime's own boot |
+| `support.js` cannot be regenerated here | True, and **what a read-only reference input is.** Not a defect |
+| No `specs/` entry backs it | Same category error |
+| It sits under `frontend/`, the SPA's own toolchain root, with nothing marking it non-shippable | **Upheld** |
+
+### Prototype relocated
+
+`frontend/wireframe/` to **`prototypes/wireframe/`**, with a new `README.md` as the
+in-tree marker that was missing. Feature 1 turns `frontend/` into a real toolchain
+root, and every tool it acquires would have globbed into `wireframe/` and needed
+its own exclusion. Moving it makes contamination **structural rather than
+configuration-dependent**.
+
+Repointed: `AGENTS.md` §2 (plus a new `prototypes/wireframe/` row),
+`frontend_prototype.md` §0/§0.1, `architecture.md` §3 tree, `feature_list.json` #20.
+
+### gga coverage corrected — two errors of mine
+
+1. **Framing.** I called this "a Python backend project". **It is full-stack.**
+   gga's `*.ts,*.tsx,*.js,*.jsx` was therefore the *right* pattern set for
+   `frontend/` and simply had **no pattern for `backend/`** — every line of
+   Python, features 2–13 included, would have passed review unread. `*.py` added.
+2. **"gga cannot see `architecture.md`."** False. `lib/gga/providers.sh:322` runs
+   `claude --print`, so the reviewer is Claude Code *with file access*. It could
+   have opened §1.1 and instead wrote "**if** `docs/architecture.md` §2 still
+   lists the frontend stack as pending". It guessed where it could have checked.
+
+The remedy was therefore in the rules file, not a workaround: **`AGENTS.md` §0.0
+is new** — a block addressed to automated reviewers telling them to verify against
+`architecture.md` §1, `conventions.md`, `data_model.md` §2 and
+`gaps_and_resolutions.md` before asserting a violation, and to lower an
+unverifiable claim to a question.
+
+**gga gotcha, verified against the matcher at `~/bin/gga:1072`:** an
+`EXCLUDE_PATTERNS` entry starting with `*` is a plain **suffix match on the full
+path** and cannot express a directory — `*prototypes/*` would silently never
+match. Patterns *without* a leading star are glob-matched against the full path,
+so `prototypes/*` works. Recorded in `.gga`'s comments.
+
+Also: gga reviews only the **staged** set (`--diff-filter=ACM`, so deletions and
+renames are skipped), sends **whole files rather than diffs**, and its prompt is
+only `RULES_FILE` plus those files.
+
+### P7 CLOSED — idiomatic React
+
+Two premises collapsed in sequence:
+
+1. The owner confirmed **there is no frontend code drop coming — the prototype
+   was it.** So `architecture.md` §1.1 and `conventions.md` § *Confirmed at the
+   initial code drop* both described a mechanism that could never happen.
+2. Web search confirmed **"DC" is Claude Design's internal authoring runtime**,
+   not a distributable framework. So §1.1's "React-based **DC** framework" never
+   named anything obtainable.
+
+The owner asked for the options to be explained (he does not work in JS) and
+chose **idiomatic React: function components, hooks, JSX; Vite; Vitest; ESLint +
+Prettier; plain JS/ESM, no TypeScript.**
+
+**Decided on reachable help, not on merit of style.** The alternative was
+honouring `conventions.md` as written — class components and `createElement` — a
+legacy shape whose every online answer would need translating first. Identical
+reasoning to Prettier + ESLint over Biome. Worth remembering that the "no JSX"
+and "logic class" rules were **reverse-engineered from the DC runtime**, never
+chosen on merit.
+
+Recorded following the P1 precedent: struck in §2, decided in §1.1 under
+*Formerly P7*. `conventions.md` was **amended, not replaced** — the stack
+paragraph, the separation table (*Logic class* to *Custom hook*), the naming table,
+`matchMedia`, Testing and the templating prohibition (JSX explicitly carved out).
+**Unchanged, and it is the bulk of the section:** inline CSS with a tokens module,
+no CSS framework, the single es-ES messages module, no business logic in the
+client, fluid-first responsiveness, the whole Do-not list.
+
+Feature 20 `frontend_spa` is now blocked on **feature 16 alone** (REST contract, P5).
+This also closes the "Noticed, not opened" item at the end of the previous entry.
+
+### Feature 1 rescoped: 11 to 20 acceptance criteria
+
+Now covers **both** toolchain roots. Frontend half: `package.json`, React + Vite +
+Vitest + ESLint + Prettier, the `messages` and `tokens` modules, the `es-ES`
+locale constant, mutual isolation of the two toolchains from each other and from
+`prototypes/`, and a bootstrap mounting **one placeholder component** — no
+product screens.
+
+### Prototype extraction rule — measured, not assumed
+
+**Colour lifts. Type and spacing must not.** The 13 colour custom properties are
+all on `Sobremesa.dc.html:33` and copy verbatim. The rest was never tokenised:
+
+| Property | Distinct values |
+|---|---|
+| `font-size` | **24** — including `10.5px`, `11.5px`, `12.5px`, `13.5px`, `14.5px`, `15.5px` |
+| `padding` | **91** |
+| `border-radius` | 19 |
+| `gap` | 15 |
+
+Twenty-four font sizes in half-pixel steps is drift, not a scale — exactly what
+`conventions.md` predicts when inline styles have no shared tokens. Copying those
+numbers into `src/tokens/` would defeat the module built to prevent it. Written
+into `frontend_prototype.md` §2.4.
+
+### Method lessons
+
+- **An automated reviewer's findings get verified against the docs before acting.**
+  gga reads `AGENTS.md` but not `architecture.md`, so it reasons about what P2–P7
+  *might* cover and guesses wide.
+- **Closing an architecture item leaves stale references that are actively
+  wrong**, not merely dated. Closing P7 left feature 1's ESLint criterion reading
+  *"no JSX plugin — conventions.md forbids JSX files"*, which would have had an
+  implementer configure a linter that rejects the required markup format. Grep
+  the item's name afterwards — and note `AP7` is an access pattern, a false positive.
+- **Check `git status` before claiming a filesystem move is done.** The move left
+  the old paths staged (`AD`), so gga would have flagged the same file at the same
+  path; the exclusion was inert until the index was synced.
+
+### Housekeeping
+
+`docs/decisiones_arquitectura.md` was referenced **nowhere durable** — the rule
+that it is the owner's personal record and must not be reconciled with
+`architecture.md` lived only in `progress/current.md`, which is wiped at session
+close. Added to the `AGENTS.md` §2 map, where a fresh session will actually see it.
+
+### Standing instructions as they stood at session close
+
+Carried here because `progress/current.md` resets to its template. These are
+working rules accumulated across sessions, not findings from this one.
+
+- **Do not raise committing, staging or version control.** The owner commits on
+  his own schedule and has said so.
+- **State a defect in one sentence before giving the fix.** Leading with the
+  remedy and the trade-off cost three round trips on D31.
+- **Verify an automated reviewer's findings against the docs before acting.**
+  `gga` reads `AGENTS.md` but never `architecture.md`, so it guesses wide about
+  what P2–P6 cover. Its headline finding has already been flat wrong once.
+- **When a decision ripples, name the complete affected set and ask for approval
+  on all of it** — do not amend only the ids the owner happened to mention.
+- **Closing an architecture item leaves stale references that are actively
+  wrong.** Grep the item's name across `docs/`, `AGENTS.md` and
+  `feature_list.json` afterwards.
+- **The frozen docs need a fresh, explicit lift every time.** No permission is
+  standing. Each lift is a new lettered Part with continuous `G-nn` numbering;
+  removed requirements are struck through inline, never deleted.
+- **Doc drift is agent work, not a finding for the owner to action** — fix it.
+- **Before debating how to reconstruct a value, check whether it needs
+  reconstructing at all.** D31 was framed as store-vs-re-derive; the answer was
+  neither.
+- **Verify claims about what was parked before raising them as defects.** The
+  parked list is `data_model.md` §9; the do-not-reopen list is §7.
+- **Real-time does not belong in the access patterns.** Do not raise it.
+- **`prototypes/` is read-only reference material.** Never edit, lint or port it.
+  If a tool reaches it, exclude the tool. Colour tokens lift; type and spacing
+  must not (`frontend_prototype.md` §2.4).
+- **Row numbers and AP numbers are positions, not identifiers.** Refer to
+  patterns by title and item types by name.
+- **If the spreadsheet is in play, re-read it from disk at the start of any turn
+  that touches it** — the owner edits and saves mid-conversation. Unzip inside
+  the scratchpad with an absolute path and parse `xl/worksheets/sheet1.xml`
+  against `xl/sharedStrings.xml` with Node. Match `<si\s*/>|<si>([\s\S]*?)</si>`,
+  use a lazy attribute group, print with explicit column letters — a naive regex
+  silently misaligns the table.
+- **Key formats go in `data_model.md` §2, never in the spreadsheet** (D28).
+- **`docs/decisiones_arquitectura.md` is the owner's personal record,
+  permanently.** Never reconcile it with `architecture.md`; it unblocks nothing.
+  *(Now also recorded in the `AGENTS.md` §2 map, which a fresh session reads.)*
+
+### State at close
+
+- **P1 closed** (DynamoDB, single table) · **P7 closed** (React/Vite/Vitest).
+  **P2–P6 pending and human-owned.**
+- Requirements frozen, `G-01`–`G-81`, Parts A–Q, nine freeze lifts.
+- Data model closed and verified: 9 item types, one `data` table, no secondary
+  indexes. `docs/data_model.md`.
+- **No code exists. No feature has been through `spec_author`.**
+- Next actionable: **feature 1 `project_scaffold`**, 20 acceptance criteria,
+  nothing open on it. Owner gates every feature start — confirm before launching.
+- Still owed by the human: P2–P6; the `NFR-AI-01` enforcing cost cap (G-81); the
+  `al gusto` / `lomos` / `hoja` unit decision.

@@ -6,6 +6,36 @@
 
 ---
 
+## 0.0 If you are an automated code reviewer — read this first
+
+You were handed this file as your rule set, plus the contents of some changed
+files. **This file is a map, not the full standard.** It deliberately does not
+restate what the other documents decide. Reviewing against this file alone
+produces confident, wrong findings.
+
+**You have file access. Use it before you conclude anything.**
+
+1. **Never call something an undecided architecture question without opening
+   `docs/architecture.md` and checking §1 first.** §1 is *Decided*; §2 is
+   *Pending*. A decision recorded in §1 is settled — flagging it as pending is
+   a false finding, and it has already happened once — a reviewer called the
+   frontend framework "undecided" when §1.1 had already decided it.
+2. **Read `docs/conventions.md` before flagging style, layering, naming,
+   testing or language.** That file, not this one, is the standard.
+3. **Read `docs/data_model.md` §2 before flagging anything about keys or
+   persistence.** Four key formats carry traps and exist nowhere else.
+4. **Check `docs/gaps_and_resolutions.md` before flagging a missing feature.**
+   Roughly 80 gaps are resolved there, many by *deliberate removal*. Absence is
+   usually a decision, not an oversight.
+5. **`prototypes/` is read-only reference material and is excluded from review.**
+   If a file from it ever reaches you, the correct finding is that the exclusion
+   is broken — not anything about the file's contents.
+
+If you cannot verify a claim against a document, **say so and lower the finding
+to a question.** Do not phrase a guess as a violation.
+
+---
+
 ## 0. What this project is
 
 A collaborative weekly meal planner (web app, Castilian Spanish UI) built as the
@@ -38,7 +68,8 @@ pending decision, you **stop** — you do not choose for them.
 | `progress/current.md` | State of the active session | Always, at the start |
 | `progress/history.md` | Append-only log of previous sessions | When you need historical context |
 | `specs/<feature>/` | `requirements.md` + `design.md` + `tasks.md` (Kiro-style) | Before implementing any `"sdd": true` feature |
-| `docs/architecture.md` | What "good work" means here; decided vs pending architecture | Before implementing |
+| `docs/architecture.md` | What "good work" means here; decided vs pending architecture. **§1 = decided, §2 = pending. Authoritative for both** | Before implementing |
+| `docs/decisiones_arquitectura.md` | The owner's **personal** working record, permanently. **Not authoritative and not to be reconciled with `architecture.md`.** It never unblocks anything — if it and §2 disagree, §2 wins | Only if the owner points you at it |
 | `docs/data_model.md` | **The persistence source of truth.** The `data` table and its 9 item types (§1), **the key formats — which exist nowhere else, and four carry traps (§2)**, all 27 access patterns mapped to concrete operations (§4), the concurrency rules (§5), and what is settled and must not be re-opened (§7) | **Before writing any persistence code** |
 | `docs/conventions.md` | Style, naming, structure, error handling, language rules | Before writing code |
 | `docs/specs.md` | SDD process: EARS notation, the 3 files, the human approval gate | Before writing or reading a spec |
@@ -48,7 +79,9 @@ pending decision, you **stop** — you do not choose for them.
 | `backend/core/` | `planner_core`: pure domain, application, ports. Zero runtime deps. Tier 1 lives here. | To implement domain logic |
 | `backend/lambda_api/`, `backend/lambda_ai/` | The two Lambda packages: handler + wiring + adapters | To implement a Lambda |
 | `backend/tests/contract/` | Port suites run against both the fake and the real adapter | To verify an adapter |
-| `frontend/` | The SPA (own toolchain root) | To implement the UI |
+| `frontend/` | The SPA (own toolchain root). **Contains source only** — reference material lives in `prototypes/` | To implement the UI |
+| `prototypes/wireframe/` | The **Claude design prototype**. **Read-only reference material, outside every toolchain root**: never edit it, never lint it, never port it, and never let a build reach it | Only through `docs/frontend_prototype.md` |
+| `docs/frontend_prototype.md` | Analysis of the prototype in `prototypes/wireframe/`. Executable wireframe: read it, mine it, **do not port it**. **§4 lists eleven places where it contradicts the frozen requirements** | Before writing any spec or code for a UI-facing feature |
 
 The full tree and its rules are in `docs/architecture.md` §3. Note the backend
 is a **uv workspace** (`backend/` is its root), and the frontend is a separate
@@ -61,7 +94,7 @@ toolchain root.
 | `docs/requirements.md` | The ~90 numbered requirements (`FR-*`, `NFR-*`). **The contract.** |
 | `docs/app_user_stories.md` | The 27 original user stories (`US1`–`US27`) |
 | `docs/coverage_analysis.md` | Story→requirement coverage audit |
-| `docs/gaps_and_resolutions.md` | `G-01`–`G-67`: every ambiguity and *why* it was resolved that way |
+| `docs/gaps_and_resolutions.md` | `G-01`–`G-81`, Parts A–Q: every ambiguity and *why* it was resolved that way |
 | `docs/gaps_pending_stakeholders.md` | `PEND-01`–`PEND-15`, all closed — historical record |
 
 These five files are the frozen output of a completed requirements phase.
@@ -90,6 +123,71 @@ rejected there, with reasons.
 - **Never add a dependency** without it being justified in an approved `design.md`.
 - **Document as you go** in `progress/current.md`, not at the end.
 - **If you do not know something, look in `docs/`** before inventing it.
+
+## 3.1 Working conventions
+
+Accumulated with the owner across sessions. §3 is what you must not do; these are
+how the work actually goes. Each one is here because ignoring it cost real time.
+
+**Talking to the owner**
+
+- **Do not raise committing, staging or version control.** He commits on his own
+  schedule and has said so. Mention it only when it is load-bearing for the
+  question he actually asked.
+- **State the defect in one sentence before giving the fix.** Leading with the
+  remedy and its trade-off cost three round trips on D31. The sentence that
+  worked named the broken chain, not the repair.
+- **When a decision ripples, name the complete affected set and ask for approval
+  on all of it.** Do not amend the ids he happened to mention and flag the rest —
+  that hands his review work back to him.
+- **Doc drift is agent work, not a finding to hand him.** Fix it and say you did.
+- **Follow the templates as written.** `progress/current.md` resets to *its*
+  template at session close, not to an improved version of it. If a template
+  seems to lose something important, say so — do not quietly redesign it.
+
+**Before asserting anything**
+
+- **Verify an automated reviewer's findings against the docs before acting.**
+  `gga` receives only `AGENTS.md` and reasons about what §2 *might* still cover;
+  its headline finding has already been flat wrong once, calling the frontend
+  framework undecided when §1.1 had decided it. Same standard applies to any
+  agent report.
+- **Verify what was parked before raising it as a defect.** The parked list is
+  `docs/data_model.md` §9; the settled-do-not-reopen list is §7. A past session
+  raised the archive as a gap that had already been parked by decision.
+- **Before debating how to reconstruct a value, check whether it needs
+  reconstructing at all.** D31 was framed as store-vs-re-derive; the answer was
+  neither.
+
+**When something changes**
+
+- **Closing an architecture item leaves stale references that are actively
+  wrong**, not merely dated. After closing one, grep its name across `docs/`,
+  `AGENTS.md` and `feature_list.json`. Closing P7 left a criterion instructing an
+  implementer to configure a linter that rejects the required markup format.
+- **The frozen docs need a fresh, explicit lift every time** — no permission is
+  standing. Each lift is a new lettered Part with continuous `G-nn` numbering,
+  and removed requirements are struck through inline, never deleted.
+- **Row numbers and `AP` numbers are positions, not identifiers.** Rows get
+  inserted. Refer to patterns by title and item types by name.
+
+**Persistence and the spreadsheet**
+
+- **Key formats go in `docs/data_model.md` §2, never in the spreadsheet** (D28).
+  The workbook is the catalogue plus key *templates*; formats, folding rules and
+  id-generation constraints do not belong in it — no column, no note, no example.
+- **If the spreadsheet is in play, re-read it from disk at the start of any turn
+  that touches it.** The owner edits and saves mid-conversation. Unzip **inside
+  the scratchpad with an absolute path** (a `$TMPDIR` fallback once scattered
+  `xl/` and `[Content_Types].xml` across the repo root), then parse
+  `xl/worksheets/sheet1.xml` against `xl/sharedStrings.xml` with Node. Match
+  `<si\s*/>|<si>([\s\S]*?)</si>`, use a lazy attribute group, and print with
+  explicit column letters — a naive regex silently misaligns the table and
+  produces a plausible but wrong reading.
+
+**Do not raise**
+
+- **Real-time does not belong in the access patterns.** Settled; do not reopen.
 
 ## 4. Workflow (SDD)
 

@@ -16,8 +16,12 @@ uv run pytest -q          # default: unit + contract tiers, no AWS marker
 ```
 
 `./init.sh` runs all of them. SonarQube runs in the project's quality pipeline
-and is not an agent's responsibility to invoke. The frontend has its own gate,
-added with its initial code drop (`docs/conventions.md` § Frontend).
+and is not an agent's responsibility to invoke.
+
+The frontend has its **own** gate, over `frontend/` only — `prettier --check`,
+`eslint` and `vitest run`, added by feature 1 `project_scaffold`. It has no
+type-checking step: the SPA is plain JavaScript, so there is no `mypy`
+counterpart by design (`docs/conventions.md` § *Frontend conventions*).
 
 ## Test tiers
 

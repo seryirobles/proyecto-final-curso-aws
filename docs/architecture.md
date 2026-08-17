@@ -14,12 +14,37 @@
 ### 1.1 Frontend
 
 - A **single-page application**, responsive, desktop + mobile (`FR-UX-02`).
-- Markup is **HTML with inline CSS**, driven by a **JS logic class**, on a
-  **React-based DC framework**. **No separate templating language** — markup is
-  produced from JavaScript.
-- Logic class and markup are separated like backend layers: the class owns state
-  and handlers, the markup is a pure function of that state. Full rules in
-  `docs/conventions.md` § *Frontend conventions*.
+- **React, written idiomatically: function components and hooks, with JSX.**
+  Built with **Vite**, tested with **Vitest**, formatted and linted with
+  **Prettier + ESLint**. Plain JavaScript, ESM — no TypeScript.
+- **State and markup are separated like backend layers**: a **custom hook** owns
+  state, handlers and API calls; the **component** is a pure function of its
+  props. Full rules in `docs/conventions.md` § *Frontend conventions*.
+- Styling is **inline `style` objects** referencing a shared tokens module. **No
+  stylesheet, no CSS framework, no CSS-in-JS library** — see `conventions.md`.
+
+#### Formerly P7 — decided by the human 2026-08-17
+
+The frozen requirements never named a frontend framework; earlier drafts of this
+section said "a **React-based DC framework**", pinned down from *"the human's
+initial version of the frontend code"*.
+
+**Both halves of that turned out to be unobtainable.** "DC" was Claude Design's
+own authoring runtime (`.dc.html`, `<x-dc>`, a generated `support.js` marked *do
+not edit*) — an Anthropic-internal format, not a framework anyone can install.
+And the initial code drop **already happened**: it *is* the prototype now in
+`prototypes/wireframe/`, which `docs/frontend_prototype.md` establishes is not
+portable. So P7 could never have been resolved the way this document described.
+
+The human decided it outright instead. **Idiomatic React was chosen over keeping
+the prototype's class-and-`createElement` shape for one reason: reachable help.**
+Every tutorial, answer and assistant assumes hooks and JSX; the alternative is a
+legacy style whose answers all need translating first. Same reasoning that chose
+Prettier + ESLint over Biome.
+
+What this does **not** change: inline CSS with a tokens module, the single es-ES
+messages module, no business logic in the client, and fluid-first layout with
+`matchMedia`. Those were never DC-specific.
 - **No business logic in the client.** Week boundaries, scoping, aggregation and
   rule satisfiability live in `backend/core` (`planner_core.domain`). The SPA
   displays results.
@@ -28,8 +53,11 @@
 - Inline CSS cannot express `@media` queries, so layout is **fluid-first**
   (flex/grid, `clamp()`, `minmax()`); genuine breakpoints go through
   `matchMedia` and become state. See `docs/conventions.md`.
-- The human supplies the **initial version of the frontend code**. Until it
-  exists, no agent writes frontend code (`frontend_spa` is `blocked`).
+- ~~The human supplies the **initial version of the frontend code**. Until it
+  exists, no agent writes frontend code (`frontend_spa` is `blocked`).~~
+  **Superseded 2026-08-17** — the drop already happened and was the prototype.
+  `frontend_spa` stays `blocked`, but now only on **feature 16** (it needs the
+  REST contract, P5), no longer on the stack.
 
 ### 1.2 Backend
 
@@ -125,7 +153,7 @@ Hitting any of these means: mark the feature `blocked`, write the reason in
 | P4 | **AI provider and model** (Bedrock? external API?) | `ai` Lambda, and the enforcing path for the €50/month **global** cap (`G-70`, supersedes `G-38`) |
 | P5 | **REST API contract** (resources, verbs, payload shapes, error format) | `api` Lambda handlers |
 | P6 | **Deployment topology** (API Gateway config, VPC, cold-storage wiring) | anything touching AWS |
-| P7 | **Frontend framework identity, bootstrap idiom and test runner** — the stack is specified (§1.1); only these are pinned down from the human's initial code drop | `frontend_spa` |
+| ~~P7~~ | ~~**Frontend framework identity, bootstrap idiom and test runner**~~ — **DECIDED 2026-08-17: idiomatic React (function components, hooks, JSX), Vite, Vitest. See §1.1.** | — |
 
 ### 2.1 Not pending — decide these in a spec, not in chat
 
@@ -175,6 +203,11 @@ backend/                     uv workspace root; shared ruff/mypy/pytest config
 frontend/                    Own toolchain root (see docs/conventions.md § Frontend).
   src/
   tests/
+prototypes/                  Read-only reference material. NOT a toolchain root; no
+                             linter, bundler or test runner may reach it, and nothing
+                             here ships.
+  wireframe/                 The Claude design prototype. Analysed in
+                             docs/frontend_prototype.md — read it, mine it, do not port it.
 ```
 
 `core` is the settled part of §2: it holds pure domain, application services and
