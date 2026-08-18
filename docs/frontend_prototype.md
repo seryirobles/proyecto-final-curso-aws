@@ -137,7 +137,7 @@ The colour choice for AI content (`--aub` purple, consistently applied to the
 `IA` badge and generation buttons) is a genuinely good decision worth keeping:
 it makes AI-authored content scannable at a glance.
 
-> ⚠ **Colour lifts. Type and spacing must not.** The 13 colour custom properties
+> ⚠ **Colour lifts. Type and spacing must not.** The 18 colour custom properties
 > sit on one line (`Sobremesa.dc.html:33`) and can be copied verbatim. The rest of
 > the visual system was never tokenised — it is inline literals, and it has
 > already drifted:
@@ -274,7 +274,7 @@ Not blocking; recorded so they are not lost.
 
 1. ~~**P7 is still open.**~~ **CLOSED 2026-08-17** — idiomatic React, Vite,
    Vitest (`docs/architecture.md` §1.1). Note what the prototype supplies and
-   what it must not: the **13 colour tokens** on line 33 lift cleanly, but the
+   what it must not: the **18 colour tokens** on line 33 lift cleanly, but the
    **type and spacing scales must not be copied** — 24 distinct `font-size`
    values with half-pixel steps and 91 distinct `padding` values are drift, not
    a system, and lifting them would defeat the tokens module.

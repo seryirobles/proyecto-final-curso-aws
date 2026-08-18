@@ -4,11 +4,14 @@ __pycache__/
 *.egg-info/
 .Python
 build/
-dist/
 
 # uv / virtualenv
 .venv/
 venv/
+
+# JavaScript / frontend
+node_modules/
+dist/
 
 # Tooling caches
 .pytest_cache/
