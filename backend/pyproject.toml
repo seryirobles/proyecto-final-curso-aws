@@ -1,0 +1,30 @@
+# Virtual workspace root: no [project] table, since the root itself ships
+# nothing. Shared ruff/mypy/pytest config lives here so every member inherits
+# it (docs/architecture.md section 1.3, 3).
+[tool.uv.workspace]
+members = ["core", "lambda_api", "lambda_ai"]
+
+[dependency-groups]
+dev = [
+    "mypy>=2.3.1",
+    "pre-commit>=4.4.0",
+    "pytest>=9.1.1",
+    "ruff>=0.16.3",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+strict = true
+python_version = "3.13"
+
+[tool.pytest.ini_options]
+markers = [
+    "aws: marks tests that hit real AWS services; deselected by default (see docs/verification.md)",
+]
+addopts = "-m \"not aws\""
