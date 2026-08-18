@@ -537,3 +537,139 @@ working rules accumulated across sessions, not findings from this one.
   nothing open on it. Owner gates every feature start — confirm before launching.
 - Still owed by the human: P2–P6; the `NFR-AI-01` enforcing cost cap (G-81); the
   `al gusto` / `lomos` / `hoja` unit decision.
+
+---
+
+## 2026-08-17/18 — Feature 1 `project_scaffold` (tier 0) — DONE
+
+- **Feature:** 1 `project_scaffold` (`sdd: false`, no spec phase, no approval gate)
+- **Agent:** leader + 3 implementer subagents + reviewer
+- **Detail reports:** `progress/impl_project_scaffold_{backend,frontend,rootwiring}.md`,
+  `progress/review_project_scaffold.md`, `progress/impl_npm_hardening.md`,
+  `progress/impl_gga_{findings,observations}_fix.md`
+
+**Done:**
+
+- Decomposed into three parts split so no two writers touch the same file.
+  A (backend toolchain root) and B (frontend toolchain root) ran in parallel;
+  C (root wiring: `.pre-commit-config.yaml`, `init.sh` frontend gate) ran after.
+- **Reviewer APPROVED, 0 blocking defects.** All 20 acceptance criteria
+  re-verified independently rather than accepted from the three reports.
+- `./init.sh` fully green, exit 0, both toolchains running all seven gates:
+  `ruff format`, `ruff check`, `mypy` (strict), `pytest`, `prettier --check`,
+  `eslint`, `vitest`.
+- **Feature 1 set to `done` in `feature_list.json` by the human.**
+
+**Decisions taken this session:**
+
+- **Backend pinned to Python 3.13** (`backend/.python-version`), provisioned by
+  uv rather than reusing the local 3.14.6. `requires-python = ">=3.13"` stays a
+  floor.
+- **2026-08-17: harden npm in place; do NOT migrate to pnpm/yarn/bun.**
+  Switching package manager does not reduce registry exposure — all four install
+  from `registry.npmjs.org` and differ in *defaults, not capabilities*. Measured
+  exposure was small (11 direct deps, 314 transitive, 1 install script —
+  `fsevents`, macOS-only, inert here; `npm audit` clean). Migrating would reopen
+  feature 1's frontend acceptance criteria, `init.sh`, `.pre-commit-config.yaml`
+  and add an `architecture.md` §1.3 entry. **Revisit at feature 22
+  `cicd_pipeline`**, where installs run unattended with deploy credentials.
+  Applied instead: `frontend/.npmrc` with `ignore-scripts=true`,
+  `min-release-age=7` and `audit-level=moderate`. The research doc
+  `docs/js_supply_chain_security.md` was written, read and then **deleted on the
+  human's instruction** — this entry is its record.
+- **A second change was applied without approval, and reverted 2026-08-18.** The
+  implementer also changed all five `npx` call sites to `npx --no --`, treating
+  "harden npm in place" as authorising it. The human had only asked for the `npx`
+  registry fallback to be *analysed*; he never approved the edit. Reverted in
+  `init.sh` and `.pre-commit-config.yaml`; `progress/impl_npm_hardening.md`
+  carries the struck-through record. **A recorded decision authorises the change
+  it names, and nothing else.**
+
+**Traps and gotchas worth carrying forward:**
+
+- **Ruff stops config discovery at the first `pyproject.toml` walking up.** In a
+  uv workspace each member needs `[tool.ruff] extend = "../pyproject.toml"` or it
+  silently falls back to ruff defaults — wrong line length included — *while the
+  gate still reports green*. Proven empirically by the reviewer: a 102-char line
+  inside a member fires `E501 (102 > 100)`.
+- **`pre-commit run --all-files` can report exit 0 with every hook `Skipped`.**
+  It operates on git-*tracked* files, and most of the tree is still untracked.
+  Use `pre-commit run --files <real paths>` until the tree is tracked. Re-verified
+  that way: all five hooks genuinely Passed, and all five *skip* on
+  `prototypes/`.
+- **`TZ` is not honoured for IANA zone names by Node on this Windows machine** —
+  only `TZ=UTC` takes effect; everything else silently falls back to
+  `Europe/Madrid`. A "passes under 5 timezones" sweep is worth almost nothing
+  here. **Prove timezone determinism by construction, not by sweeping `TZ`.**
+  This matters directly for feature 2.
+- **An inert guard is worse than none.** Two were removed or declined on that
+  reasoning: `../prototypes/**` in `.prettierignore` (Prettier resolves ignore
+  patterns relative to the ignore file) and `'../backend/**'` /
+  `'../prototypes/**'` in `eslint.config.js` (flat-config `ignores` match
+  relative to the config base path and never begin with `../`). The real
+  guarantee is cwd-scoping, and the comments now say so.
+- **Closing an item leaves references that are *actively wrong*, not merely
+  dated** (`AGENTS.md` §3.1). This session's own doc fix caused one: correcting
+  `docs/frontend_prototype.md` from 13 to 18 colour tokens left
+  `frontend/src/tokens/colors.js` citing "the 13 colour tokens is that document's
+  own count". Found by `gga`, not by us.
+- **`String.replace` with a *string* replacement interprets `$&`, `` $` ``,
+  `$'`, `$$` and `$<name>`.** `vite-plugins/htmlMessages.js` now uses a callback,
+  with a regression test asserting a message containing `` $& `` substitutes
+  literally — the test is what stops someone "simplifying" the callback away.
+
+**Doc drift fixed:**
+
+- `docs/frontend_prototype.md` claimed 13 colour custom properties on
+  `Sobremesa.dc.html:33`; the line actually carries **18** (the count omitted the
+  `-2` / `-3` / `-deep` / `-soft` variants). Corrected in §2.4 and §6.1, and in
+  feature 20's `blocked_reason`. All 18 are now in `frontend/src/tokens/colors.js`
+  with their provenance in a comment.
+- `frontend/index.html` had hardcoded `<title>Planificador semanal</title>` — an
+  es-ES user-facing string outside `src/messages/`, which the acceptance
+  criterion forbids unconditionally. Now `APP_TITLE` + an `%APP_TITLE%`
+  placeholder resolved by a `transformIndexHtml` plugin, covered by a test and
+  verified in a real `vite build`.
+
+**`gga` review round:** first run FAILED with 3 findings, **all three verified
+correct against the files before acting**. Second run PASSED with 2 observations,
+both actioned. Third run PASSED clean. Note `gga` could not execute the gates in
+either run (permission prompts blocked `npm run lint`, `npm test` and
+`./init.sh`) — its verdict is a **static** read. The gates were run independently
+by the leader.
+
+### Open questions left for the human
+
+1. **Feature 22 `cicd_pipeline`** is human-owned and unwritten. CI runs installs
+   unattended with deploy credentials, so the same posture should be reflected
+   there: `npm ci` (lockfile-exact) rather than `npm install`; decide whether CI
+   inherits `frontend/.npmrc` or needs the settings passed explicitly; and check
+   whether `ignore-scripts` is viable there given the build must still run.
+2. **Plain `npx` has a registry fallback, at five call sites** (`init.sh` and
+   `.pre-commit-config.yaml`). When a binary does not resolve locally — a typo, a
+   missing `node_modules`, a renamed package — `npx` downloads and executes
+   whatever the registry returns for that name. `npx --no --` removes the
+   fallback and changes nothing when the binary resolves locally (verified:
+   `npx --no -- eslint --version` → `v9.39.5`, exit 0; `npx --no -- cowsay` →
+   refused, exit 1). It was applied without approval and **reverted 2026-08-18**.
+   Open for the human to decide on merit. `pnpm dlx` / `yarn dlx` / `bunx` share
+   the hole, so migrating would not fix it.
+3. **`frontend/src/locale.js` — `formatDate` passes no `timeZone`**, so it renders
+   in the browser's zone. Not a violation today (`conventions.md` only requires
+   the *locale* pinned, and week computation is backend domain code). But
+   `architecture.md` §4 invariant 7 requires every user to agree on which week is
+   current, so when feature 20 renders day labels a user outside Madrid could see
+   a different day than the backend scoped. **Decide this in feature 20's
+   `design.md`, not in the scaffold.**
+
+### State at close
+
+- **Feature 1 `done`.** First code in the repo. Both toolchain roots green.
+- Work is **staged but not committed** (`git status`: 50 paths in the index).
+- **P1 closed** (DynamoDB, single table) · **P7 closed** (React/Vite/Vitest).
+  **P2–P6 pending and human-owned.**
+- Next actionable: **feature 2 `week_calendar`** (tier 1, `"sdd": true`,
+  `depends_on: [1]`) — the **first real SDD cycle**: full `spec_author` pass and
+  the human approval gate at `spec_ready` before any code.
+- Still owed by the human: P2–P6; the `NFR-AI-01` enforcing cost cap (G-81); the
+  `al gusto` / `lomos` / `hoja` unit decision.

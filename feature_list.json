@@ -52,7 +52,7 @@
         "No Terraform, no CI workflow, and no runtime dependency on core is added"
       ],
       "sdd": false,
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": 2,
@@ -397,7 +397,7 @@
       ],
       "sdd": true,
       "status": "blocked",
-      "blocked_reason": "Blocked on feature 16 ONLY - the SPA needs the REST contract (P5). P7 was CLOSED 2026-08-17: idiomatic React (function components, hooks, JSX), Vite, Vitest, ESLint + Prettier, plain JS/ESM - see docs/architecture.md section 1.1. A Claude Design prototype was supplied 2026-08-16 (prototypes/wireframe/, moved out of frontend/ on 2026-08-17 so no SPA toolchain can reach it) and analysed in docs/frontend_prototype.md: it is an executable wireframe, NOT portable code (Anthropic-internal DC runtime, CDN-loaded React, single-file inline styles, no components or tests). Mine it for the 13 colour tokens, the es-ES strings, the screen inventory and the handler names - but NOT for the type or spacing scale (24 distinct font sizes with half-pixel steps, 91 distinct paddings: that is drift, not a system). Read docs/frontend_prototype.md section 4 first - the prototype contradicts eleven frozen requirements, including the shopping re-sync rule settled by G-77. Conventions: docs/conventions.md section 'Frontend conventions'."
+      "blocked_reason": "Blocked on feature 16 ONLY - the SPA needs the REST contract (P5). P7 was CLOSED 2026-08-17: idiomatic React (function components, hooks, JSX), Vite, Vitest, ESLint + Prettier, plain JS/ESM - see docs/architecture.md section 1.1. A Claude Design prototype was supplied 2026-08-16 (prototypes/wireframe/, moved out of frontend/ on 2026-08-17 so no SPA toolchain can reach it) and analysed in docs/frontend_prototype.md: it is an executable wireframe, NOT portable code (Anthropic-internal DC runtime, CDN-loaded React, single-file inline styles, no components or tests). Mine it for the 18 colour tokens, the es-ES strings, the screen inventory and the handler names - but NOT for the type or spacing scale (24 distinct font sizes with half-pixel steps, 91 distinct paddings: that is drift, not a system). Read docs/frontend_prototype.md section 4 first - the prototype contradicts eleven frozen requirements, including the shopping re-sync rule settled by G-77. Conventions: docs/conventions.md section 'Frontend conventions'."
     },
     {
       "id": 21,
