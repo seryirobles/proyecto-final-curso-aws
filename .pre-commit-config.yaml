@@ -1,0 +1,66 @@
+# Pre-commit configuration for the two toolchain roots (docs/architecture.md
+# section 3): backend/ (Python, uv workspace) and frontend/ (JS, npm root).
+#
+# Both gates use `repo: local` + `language: system` rather than pre-commit's
+# isolated mirror repos. The Python hooks must run inside the backend uv
+# workspace venv that `init.sh` already gates on (backend/pyproject.toml) --
+# a mirror repo would resolve its own, separate environment and the two would
+# drift apart. Same reasoning for the JS hooks: they must use the toolchain
+# already installed in frontend/node_modules, not a second copy pre-commit
+# would manage on its own.
+#
+# `prototypes/` is read-only reference material (see
+# prototypes/wireframe/README.md, AGENTS.md section 0.0 point 5) and is never
+# a toolchain root. It is excluded at the top level so neither gate can ever
+# reach it, regardless of how its per-hook `files` patterns are written.
+exclude: ^prototypes/
+
+repos:
+  - repo: local
+    hooks:
+      # --- Python gates: only ever see files under backend/ ---
+      - id: ruff-format
+        name: ruff format (backend)
+        entry: uv run --project backend ruff format
+        language: system
+        files: ^backend/.*\.py$
+        exclude: ^backend/\.venv/
+
+      - id: ruff-check
+        name: ruff check (backend)
+        entry: uv run --project backend ruff check
+        language: system
+        files: ^backend/.*\.py$
+        exclude: ^backend/\.venv/
+
+      - id: mypy
+        name: mypy (backend)
+        # mypy's config discovery only looks in the current directory, not
+        # up the tree (unlike ruff), so --config-file is explicit here to
+        # reach backend/pyproject.toml's [tool.mypy] (strict = true) even
+        # though pre-commit invokes hooks from the repo root.
+        entry: uv run --project backend mypy --config-file backend/pyproject.toml backend
+        language: system
+        files: ^backend/.*\.py$
+        exclude: ^backend/\.venv/
+        pass_filenames: false
+
+      # --- JS gates: only ever see files under frontend/ ---
+      # pre-commit passes repo-root-relative paths (e.g. frontend/src/x.jsx);
+      # both tools run with frontend/ as cwd (matching how init.sh runs them),
+      # so the frontend/ prefix is stripped before handing paths to npx.
+      - id: eslint
+        name: eslint (frontend)
+        entry: >-
+          bash -c 'cd frontend && printf "%s\n" "$@" | sed "s#^frontend/##" | xargs npx eslint' --
+        language: system
+        files: ^frontend/.*\.(js|jsx)$
+        exclude: ^frontend/(node_modules|dist)/
+
+      - id: prettier
+        name: prettier --check (frontend)
+        entry: >-
+          bash -c 'cd frontend && printf "%s\n" "$@" | sed "s#^frontend/##" | xargs npx prettier --check' --
+        language: system
+        files: ^frontend/.*\.(js|jsx)$
+        exclude: ^frontend/(node_modules|dist)/

@@ -49,6 +49,10 @@ ok "python -> $("${PY_CMD[@]}" -c 'import platform; print(platform.python_versio
 BACKEND_READY=0
 if [ -f "backend/pyproject.toml" ]; then BACKEND_READY=1; fi
 
+# The frontend is a separate toolchain root rooted at frontend/.
+FRONTEND_READY=0
+if [ -f "frontend/package.json" ]; then FRONTEND_READY=1; fi
+
 if command -v uv >/dev/null 2>&1; then
   ok "uv -> $(uv --version 2>&1)"
   HAS_UV=1
@@ -59,6 +63,19 @@ else
     EXIT_CODE=1
   else
     warn "uv is not installed yet — required from feature 1 (project_scaffold) onward"
+  fi
+fi
+
+if command -v npm >/dev/null 2>&1; then
+  ok "npm -> $(npm --version 2>&1)"
+  HAS_NPM=1
+else
+  HAS_NPM=0
+  if [ "$FRONTEND_READY" -eq 1 ]; then
+    fail "npm is not installed but frontend/package.json exists (see docs/architecture.md 1.1)"
+    EXIT_CODE=1
+  else
+    warn "npm is not installed yet — required from feature 1 (project_scaffold) onward"
   fi
 fi
 
@@ -251,6 +268,31 @@ else
     fail "pytest — there are failing tests"
     EXIT_CODE=1
   fi
+fi
+
+if [ "$FRONTEND_READY" -eq 0 ]; then
+  warn "No frontend/package.json yet — skipping gates until feature 1 (project_scaffold) is done"
+elif [ "$HAS_NPM" -eq 0 ]; then
+  fail "frontend/package.json exists but npm is missing — cannot run the quality gates"
+  EXIT_CODE=1
+elif [ ! -d "frontend/node_modules" ]; then
+  warn "frontend/node_modules is absent — run 'npm install' inside frontend/ (init.sh never installs it for you)"
+else
+  # Gates run from the toolchain root so the resolved config/plugins match
+  # what a developer would get running the same command by hand.
+  run_gate() {
+    local label="$1"; shift
+    if (cd frontend && "$@") >/dev/null 2>&1; then
+      ok "$label"
+    else
+      fail "$label — rerun from frontend/ to see the output: $*"
+      EXIT_CODE=1
+    fi
+  }
+
+  run_gate "prettier --check" npx prettier --check .
+  run_gate "eslint"           npx eslint .
+  run_gate "vitest"           npx vitest run
 fi
 
 echo ""
