@@ -27,8 +27,12 @@ raise ValueError("quantity must be positive")
 
 ## Python style
 
-- **Version:** Python 3.12 (pinned in `pyproject.toml`; confirm against the
-  Lambda runtime once §2 P6 of `docs/architecture.md` is decided).
+- **Version:** Python 3.13 — `requires-python = ">=3.13, <3.14"` in each member
+  `pyproject.toml`, with the interpreter pinned by `backend/.python-version` so
+  uv provisions it rather than reusing whatever is installed locally. The upper
+  bound is deliberate: it is a **bounded range, not a floor**, so a new minor
+  release cannot silently change the interpreter under the gates. Confirm
+  against the Lambda runtime once §2 P6 of `docs/architecture.md` is decided.
 - **Formatting and linting:** `ruff format` + `ruff check`. Line length 100.
 - **Typing:** `mypy` in strict mode. Every public function is fully annotated.
   No bare `Any` without an inline justification comment.
@@ -113,6 +117,12 @@ Rules:
 - One import namespace per member: `planner_core`, `planner_api`, `planner_ai`.
 - **`core` carries zero runtime dependencies.** Adding one is a design smell —
   it usually means adapter code leaked into `core`.
+- A port's **default implementation** — one importing nothing outside the
+  standard library, such as `SystemClock` — lives in `planner_core/ports/`
+  beside the `Protocol` it satisfies, and is **not** a smell: it adds no
+  dependency. What belongs in a Lambda package is an implementation that pulls
+  in an external one (`boto3`, an AI SDK, an HTTP client). See
+  `docs/architecture.md` §1.2.2. `wiring.py` still names whichever it selects.
 - A Lambda's own dependencies (AWS SDK, AI provider SDK) are declared in **that
   Lambda's** `pyproject.toml`, added only when its adapter is built (P1 / P4),
   and only through an approved `design.md`.

@@ -28,7 +28,18 @@ changes. You do not edit code.
      handler, or an AWS SDK? → reject.
    - Does anything in `core` import `boto3`/an AWS SDK, or a Lambda package? → reject.
    - Does `core` declare a runtime dependency? → reject.
-   - Does `planner_core` call `datetime.now()`? → reject.
+   - Ambient time and `SystemClock` placement in `planner_core`:
+     `backend/core/tests/test_no_ambient_time.py` **is the authority**, not this
+     line. It encodes the rule and its one sanctioned exception
+     (`docs/architecture.md` §1.2.2). If that module passes, do **not** reject on
+     those grounds — the exception and the modules it exempts are deliberate.
+     Reject only if the guard itself was weakened: an exemption widened, an
+     allowance loosened, a self-check deleted, or a new ambient call added
+     outside what it permits.
+     *(Written this way on purpose. Earlier revisions of this line restated the
+     rule in prose and went stale twice as the rule gained an exception — once
+     instructing a reviewer to reject approved code. A pointer to the mechanical
+     check cannot rot; a paraphrase of it will.)*
    - Does `planner_core/application/` import an adapter or a handler? → reject.
    - Does an adapter get imported anywhere except its Lambda's `wiring.py`? → reject.
 7. **Invariants** (`docs/architecture.md` §4): for every invariant the feature

@@ -72,7 +72,7 @@
         "Tests use a fixed FakeClock; no real clock, no network"
       ],
       "sdd": true,
-      "status": "pending"
+      "status": "in_progress"
     },
     {
       "id": 3,
@@ -390,7 +390,7 @@
       "tier": 4,
       "title": "Single-page application",
       "description": "The responsive es-ES SPA: two live weeks, candidates and the three-way authoring flow (library pick / from scratch / AI, reused by library authoring minus the self-pick), definitive selection, library, rules, shopping list, summary and archive.",
-      "covers": ["FR-MENU-04", "FR-MENU-05", "FR-MENU-07", "FR-CAND-02", "FR-CAND-03", "FR-LIB-01", "FR-LIB-02", "FR-LIB-04", "FR-UX-01", "FR-UX-02", "FR-UX-03", "FR-UX-04", "FR-UX-05", "FR-UX-06", "FR-UX-07"],
+      "covers": ["FR-MENU-01", "FR-MENU-04", "FR-MENU-05", "FR-MENU-07", "FR-CAND-02", "FR-CAND-03", "FR-LIB-01", "FR-LIB-02", "FR-LIB-04", "FR-UX-01", "FR-UX-02", "FR-UX-03", "FR-UX-04", "FR-UX-05", "FR-UX-06", "FR-UX-07"],
       "depends_on": [16],
       "acceptance": [
         "Deferred until the initial frontend code is supplied"

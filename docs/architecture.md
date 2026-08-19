@@ -110,6 +110,55 @@ This closes P1 and unblocks `persistence_ports` (feature 14). It does **not**
 decide P6 — DynamoDB TTL configuration, cold-storage wiring and table
 provisioning remain deployment topology, and remain human-owned.
 
+### 1.2.2 A port's dependency-free default implementation ships with the port
+
+**Decided by the human 2026-08-18.** Not one of the P1–P7 items; raised while
+reviewing feature 2 `week_calendar`, where nothing said where a real
+`SystemClock` should live.
+
+**Rule.** An implementation of a port that imports **nothing outside the
+standard library** lives in `planner_core/ports/`, in the same module as the
+`Protocol` it satisfies. It is a **default implementation**, not an adapter.
+Only implementations that pull in an external dependency — `boto3`, an AI SDK, an
+HTTP client — are adapters, and those live in the Lambda package that owns the
+dependency (§3.1 rule 3, unchanged).
+
+**Why.** The ports-and-adapters boundary exists to isolate what **differs by
+runtime environment**. Persistence genuinely differs — DynamoDB in production, a
+fake in tests. *"What time is it now?"* does not: there is exactly one correct
+implementation, identical in every environment, and it will never be swapped.
+Java put `Clock` in `java.time` with `Clock.systemUTC()` beside it; .NET 8 put
+`TimeProvider.System` in the base class library next to `TimeProvider`. Both had
+the option to make the system clock an infrastructure concern and neither took
+it. `core`'s **zero runtime dependencies** guarantee is untouched, because a
+default implementation by definition adds none.
+
+**The concrete cost this avoids.** Under Lambda ownership, `lambda_api` and
+`lambda_ai` would each carry their own copy of a three-line class — two
+independent chances to write `datetime.utcnow()`, which returns a **naive**
+datetime and is deprecated from 3.12. `planner_core.domain.calendar.civil_date`
+rejects naive instants with `NaiveInstant` precisely because that footgun is
+real; duplicating the one class that must not trip it is backwards.
+
+**The objection, and how it is answered.** A real clock inside `core` sits within
+reach of every `core` test, which §3.1 rule 6 exists to prevent. That is a reason
+for a **stronger control, not a different directory**: a directory boundary only
+works until someone types the import. `backend/core/tests/test_no_ambient_time.py`
+scans the sources mechanically and is **the authority** on both the sanctioned
+ambient-time call and which modules may reach for `SystemClock`. Enforcement is
+mechanical rather than geographic.
+
+Deliberately not restated here: which call it allows, and which modules it
+exempts. This document has already gone stale twice by paraphrasing that guard —
+each paraphrase is a claim that must be re-verified whenever the guard changes,
+and one of them overstated the very control this paragraph relies on. **Read the
+module.**
+
+**What would reverse this.** A `Clock` implementation that needs a real
+dependency — time from an AWS service, a distributed clock. Then it is a true
+adapter and moves to the Lambda that owns that dependency. Nothing in
+`docs/requirements.md` points that way.
+
 ### 1.3 Toolchain
 
 | Concern | Tool |
@@ -182,6 +231,9 @@ backend/                     uv workspace root; shared ruff/mypy/pytest config
       domain/                Pure logic. No IO, no AWS SDK, no framework, no clock.
       application/           Use cases. Orchestrate domain objects through ports.
       ports/                 Interfaces (typing.Protocol): persistence, ai, clock, ids.
+                             Also holds a port's DEFAULT implementation when that
+                             implementation imports nothing outside the standard
+                             library (e.g. SystemClock). See §1.2.2.
     tests/                   Tier 1 lives here (features 2–13).
       support/               Fakes implementing the ports. Never mocks of our own code.
   lambda_api/                Distribution: planner-api. Depends: planner-core (+ AWS deps at P1).
@@ -223,13 +275,23 @@ Tier 1 of the backlog (features 2–13) is exactly `core`.
    never a handler.
 3. **`core` never imports a Lambda package, and never imports an AWS SDK.**
    `core` defines the *port*; the *adapter* that imports `boto3` lives in the
-   Lambda package that uses it.
+   Lambda package that uses it. The test is the **dependency**, not the fact of
+   being an implementation: a default implementation importing nothing beyond
+   the standard library stays in `ports/` beside its `Protocol` (§1.2.2).
 4. Adapters implement `ports/`. Nothing imports an adapter except its Lambda's
    `wiring.py`.
 5. Dependencies point **inward**. Nothing outside `domain/` is imported by it.
 6. Time is a **port**, never `datetime.now()` inside `core` — week rollover and
    "today onward" scoping (`FR-MENU-02`, `FR-AI-11`, `FR-SHOP-05`) must be
-   deterministically testable.
+   deterministically testable. **One sanctioned exception (§1.2.2, added
+   2026-08-19):** the port's default implementation, `SystemClock.now` in
+   `planner_core/ports/clock.py`, is the single ambient-time call permitted in
+   `core`. Nothing in `domain/` or `application/` may construct it — selecting a
+   `Clock` is `wiring.py`'s job — and
+   `backend/core/tests/test_no_ambient_time.py` enforces both halves
+   mechanically. That module is **the authority** on exactly which call is
+   allowed and which modules may reach for `SystemClock`; it is deliberately not
+   paraphrased here (see §1.2.2).
 
 A feature is "architecture-independent" exactly when it lives in
 `planner_core/domain/` and its tests need no fake beyond a fixed clock. Those
@@ -357,7 +419,9 @@ not "helpfully" scaffold a `main.tf`.
 - ❌ Do not import `boto3` (or any AWS SDK) inside `core` — not in `domain/`,
   `application/`, or `ports/`. Adapters live in the Lambda packages.
 - ❌ Do not import a Lambda package (`planner_api`, `planner_ai`) from `core`.
-- ❌ Do not call `datetime.now()` inside `core`. Inject a clock port.
+- ❌ Do not call `datetime.now()` inside `core`. Inject a clock port. The lone
+  exception is `SystemClock.now` in `planner_core/ports/clock.py`, the port's
+  default implementation (§1.2.2, §3.1 rule 6) — do not add a second.
 - ❌ Do not mix IO with domain logic.
 - ❌ Do not add a runtime dependency to `core`. It stays stdlib-only.
 - ❌ Do not add a third Lambda, a queue, a cache, or any service without an

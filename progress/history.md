@@ -563,8 +563,11 @@ working rules accumulated across sessions, not findings from this one.
 **Decisions taken this session:**
 
 - **Backend pinned to Python 3.13** (`backend/.python-version`), provisioned by
-  uv rather than reusing the local 3.14.6. `requires-python = ">=3.13"` stays a
-  floor.
+  uv rather than reusing the local 3.14.6. Each member declares
+  `requires-python = ">=3.13, <3.14"` — a **bounded range, not a floor**, so a
+  new minor release cannot silently change the interpreter under the gates.
+  (`docs/conventions.md` § *Python style* said 3.12 until 2026-08-18; corrected
+  then, along with this line, which had described the constraint as a floor.)
 - **2026-08-17: harden npm in place; do NOT migrate to pnpm/yarn/bun.**
   Switching package manager does not reduce registry exposure — all four install
   from `registry.npmjs.org` and differ in *defaults, not capabilities*. Measured
@@ -673,3 +676,193 @@ by the leader.
   the human approval gate at `spec_ready` before any code.
 - Still owed by the human: P2–P6; the `NFR-AI-01` enforcing cost cap (G-81); the
   `al gusto` / `lomos` / `hoja` unit decision.
+
+---
+
+## 2026-08-18 — Feature 1 committed in slices · Feature 2 `week_calendar` implemented and approved
+
+- **Features:** 1 `project_scaffold` (committed) · 2 `week_calendar` (`in_progress`, approved by the reviewer, **awaiting the human's `done`**)
+- **Agents:** leader + `spec_author` + `implementer` ×2 + `reviewer` ×2
+- **Detail reports:** `specs/week_calendar/{requirements,design,tasks}.md`,
+  `progress/impl_week_calendar.md`, `progress/review_week_calendar.md`
+
+**Done:**
+
+- **Feature 1 committed as five work-unit slices** (`be30f54` → `d48fdbe`):
+  backend workspace, frontend toolchain, root wiring, npm hardening, closure.
+  Each slice leaves the repo working on its own.
+- **Feature 2 through the full SDD cycle** — the first real one in this repo.
+  22 EARS requirements, 41 tasks, **30 tests**, all seven gates green.
+  Reviewer verdict: CHANGES_REQUESTED (F1–F7), then **APPROVED** after fixes.
+
+**Decisions taken by the human this session:**
+
+- **The unapproved `npx --no --` change was REVERTED.** It had been applied under
+  cover of the 2026-08-17 "harden npm in place" decision, which never named it.
+  `frontend/.npmrc` stands; the `npx` registry fallback is back to being an
+  **open finding awaiting a decision**, recorded in the feature 1 entry above.
+- **RULING: `domain/` functions take a plain `date` or instant, never a `Clock`.**
+  The `Clock` protocol lives in `ports/`; only `application/` reads it, once.
+  Binding on **all of tier 1 (features 3–13)**, not just feature 2. Raised
+  because `docs/architecture.md` §3 ("domain: … no clock") and `docs/specs.md`'s
+  own task example (`current_week(clock)` in `domain/`) contradicted each other.
+  `docs/specs.md` has been corrected.
+- **`tzdata` approved, dev group only.** Required: `ZoneInfo("Europe/Madrid")`
+  raises `ZoneInfoNotFoundError` on this Windows machine, so nothing in this
+  feature is testable without it. Verified absent from all three
+  `uv export --no-dev` closures; `planner-core` still declares
+  `dependencies = []`.
+- **The reviewer now runs automatically** after every implementer, never asked.
+- **Standing rule: never commit or touch the repo unasked.** Read-only checks
+  are always fine. The **human** commits, and the **human** marks a feature
+  `done` — no agent does either.
+- **`FR-MENU-01` added to feature 20 `frontend_spa`'s `covers`** (review F6):
+  "shall **present** two live weeks" is not backend work, and feature 2 was the
+  only feature citing it.
+- **Contract-suite gap deferred, dated** (review F2), recorded in
+  `CHECKPOINTS.md` under C4 itself: **feature 14 `persistence_ports`** adds the
+  `Clock` contract suite, and the first `SystemClock` must not land before it.
+
+**Traps and lessons worth carrying forward:**
+
+- **A recorded decision authorises the change it names, and nothing else.**
+  Research surfaces a second defect next to the one being decided; fixing it
+  under the first decision's cover means it ships unreviewed. That is exactly
+  how the `npx` change got in — and because feature 1 was never committed, it
+  never appeared as an isolated diff anywhere.
+- **The telephone game is real and it happened here.** `design.md` §5 correctly
+  reported two doc defects at spec time. The human fixed both. The implementer
+  then **copied the claims forward without re-reading the files**, so its report
+  told the human to redo work already done. Caught as review finding F1. This is
+  `AGENTS.md` §3.1: a closed item's references become *actively wrong*, not
+  merely dated.
+- **Count, do not eyeball.** Review finding F5 listed three requirements
+  combining two `SHALL`s (R4, R8, R22). A mechanical count of every requirement
+  found a **fourth — R16** — that a review specifically hunting for the pattern
+  had missed. The rule is now an explicit checklist item in
+  `.claude/agents/spec_author.md`, with "check this mechanically" spelled out.
+- **`gga` is not deterministic.** Two `--no-cache` runs on an identical tree
+  returned FAILED then PASSED, classifying the same item as a violation once and
+  an observation once. It also caches by file content (so the pre-commit hook's
+  bare `gga run` may review nothing), its `STRICT_MODE` parser rejects its own
+  passing review when the model emits `## STATUS: PASSED`, and its
+  `FILE_PATTERNS` exclude `.sh`, `.yaml` and Markdown — three of feature 1's
+  five commits got "No matching files staged". **A FAILED from gga is a prompt
+  to go look, not a fact**, and it cannot execute the gates at all.
+- **Mutation testing is now the standard for "is this green real?"** The
+  implementer falsified seven guarantees; the reviewer refused to relay those as
+  evidence and ran **eleven of its own**, reporting where its counts disagreed.
+  Both restored from scratchpad copies and verified byte-identical. No git write
+  command was used at any point by any agent.
+
+**Still open, for the human:**
+
+1. **Feature 2 is not `done`.** Reviewer approved; the sign-off is the human's.
+2. **Feature 2 is uncommitted**, along with this session's doc and process
+   corrections. Nothing is staged.
+3. **`npx` registry fallback** (feature 1 entry, open question 2) — decide on
+   merit.
+4. **Review F7:** `ruff`'s isort treats `support` as third-party in the test
+   modules, so `from support.fakes import FakeClock` sorts above `planner_core`.
+   Fixing it means a `known-first-party` setting in shared config. Cosmetic.
+5. `formatDate` pins no `timeZone` — still deferred to feature 20's `design.md`.
+
+### State at close
+
+- **Feature 1 `done` and committed** (5 commits, `be30f54`…`d48fdbe`).
+- **Feature 2 `in_progress`**, spec approved, implementation approved,
+  **uncommitted**. `./init.sh` green, 30 tests.
+- **P1 closed** (DynamoDB) · **P7 closed** (React/Vite/Vitest). **P2–P6 pending
+  and human-owned.** New this session: the domain/`Clock` layering ruling.
+- Next actionable: **feature 3 `text_and_units`** (tier 1, `"sdd": true`,
+  `depends_on: [1]`) — needs the full `spec_author` pass and the human approval
+  gate before any code.
+
+---
+
+## 2026-08-19 — Feature 2 `week_calendar`: `SystemClock` decision, six review rounds, APPROVED
+
+- **Feature:** 2 `week_calendar` — **`in_progress`, reviewer-APPROVED, awaiting the human's `done`**
+- **Agents:** leader + `implementer` ×2 + `reviewer` ×4 (rounds three to six)
+- **Record:** `progress/review_week_calendar.md` (six rounds, append-only),
+  `progress/impl_week_calendar.md` (Addenda 2–3)
+
+**The decision that drove the session.**
+
+**`SystemClock` is a default implementation, not an adapter** — `docs/architecture.md`
+**§1.2.2**, decided by the human 2026-08-18. A port implementation importing
+nothing outside the standard library ships **beside its `Protocol`** in
+`planner_core/ports/`; only implementations pulling an external dependency
+(`boto3`, an AI SDK) are adapters and live in the Lambda that owns it.
+
+It began as a challenge to a claim the leader had repeated without checking —
+*"adapters are Lambda-owned"*. `architecture.md` §3.1 rule 3 scopes that to
+adapters **that import an AWS SDK**; a `SystemClock` imports nothing, so the
+reasoning never applied. Java ships `Clock.systemUTC()` in `java.time`; .NET
+ships `TimeProvider.System` in the BCL. Duplicating a three-line clock across two
+Lambdas would have meant two chances to write `datetime.utcnow()`, which returns
+a **naive** value — the exact footgun `NaiveInstant` exists to catch.
+
+**The lesson of the six rounds, and it is the durable one.**
+
+Rounds three and four each fixed stale prose **by writing new prose**, and every
+restatement became the next round's finding:
+
+- Round 3 — five statements of "no `datetime.now()` in `core`" left absolute
+  after the exception landed. **Two were agent definitions**: `reviewer.md` would
+  have rejected code the human had just approved, `implementer.md` would have
+  refused to write `SystemClock`.
+- Round 4 — three more, **two introduced by round three's own fixes**. One told a
+  reviewer to reject `SystemClock()` construction outside `wiring.py`, which the
+  guard *requires* the port's test to do.
+- Round 5 — the strategy changed to **pointer-not-paraphrase**: delete the
+  restatements, name `test_no_ambient_time.py` as the authority. One residue left.
+- Round 6 — that residue closed by **making the claim true rather than smaller**.
+
+> **Standing pattern: do not restate a rule in prose next to the mechanical check
+> that enforces it. Point at the check.** A paraphrase is a second claim needing
+> its own verification; `.claude/agents/` is the worst place for one, because a
+> stale instruction makes an agent act against the architecture.
+>
+> And when a rule gains an exception, **`grep` for every statement of that rule** —
+> `docs/`, `CHECKPOINTS.md`, `.claude/agents/` — then **judge each hit**. Two
+> candidates were correctly left alone (`docs/verification.md:89` forbids
+> *mocking*, still true; `tasks.md` T44 already stated its exclusions inline).
+
+**Other decisions by the human this session:**
+
+- **R2 amended** to carry its own exception. It had become **false as written**:
+  `clock.py` calls `datetime.now(UTC)` while R2 forbade it "anywhere in
+  `planner_core`", and the test proving R2 passed only because the scan skipped
+  that line. `docs/specs.md:73` makes a requirement unverifiable if no test proves
+  its exact statement.
+- **A fourth double-`SHALL` requirement, R16**, found by counting mechanically
+  after a review listed only three. The rule is now an explicit item in
+  `.claude/agents/spec_author.md` — *"check this mechanically"*.
+- **P3 closed by adding enforcement, not by weakening the claim.** Rule 6 said the
+  guard *"enforces both halves mechanically"*; it enforced one. Proven: an
+  `application/`-layer `SystemClock()` passed 34/34. Now
+  `test_no_core_module_but_the_port_names_the_real_clock` catches it — verified
+  independently by the leader on a scratchpad copy. **Rule 6 needed no edit: its
+  sentence became true.**
+
+**Verification standard now established:** mutation testing. The implementer
+falsified seven guarantees, then four, then four more; the reviewer refused to
+relay any of them and ran **eleven, ten and its own P3 case**, reporting where
+counts disagreed. Every mutation on scratchpad copies, byte-identity confirmed by
+SHA-256. **No agent ran a git write command at any point.**
+
+### State at close
+
+- **Feature 2 `in_progress`, APPROVED, ready to close.** Round six: *"Nothing
+  remains."* 46/46 tasks, 23 requirements, **35 backend tests**, `./init.sh` exit 0.
+- **Everything is uncommitted** — feature 2, §1.2.2, and every doc correction.
+  Last commit is still `d48fdbe` (feature 1). Nothing staged.
+- **P1** (DynamoDB) · **P7** (React/Vite/Vitest) · **§1.2.2** (default
+  implementations) closed. **P2–P6 pending, human-owned.**
+- Next actionable: **feature 3 `text_and_units`** (tier 1, `"sdd": true`) — full
+  `spec_author` pass and the approval gate before any code.
+- Open by the human's own decision, none owned by feature 2: review **F5**
+  (four accepted double-`SHALL` requirements), **F7** (`ruff` isort groups
+  `support` as third-party), the **C4** `Clock` contract-suite deferral to
+  feature 14, and the `npx` registry fallback from feature 1.

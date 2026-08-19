@@ -72,7 +72,7 @@ SEMANA#<isoYear>-W<ww>          example:  SEMANA#2026-W33
 
 | Rule | Why |
 |---|---|
-| `isoYear` is the **ISO week-numbering year**, never the calendar year | ⚠ They differ at year boundaries: **2026-12-28 belongs to `2027-W01`**. Taking the year from the date and the week from the ISO calendar is wrong once a year — on a rollover week. |
+| `isoYear` is the **ISO week-numbering year**, never the calendar year | ⚠ They differ at year boundaries: **2025-12-31 belongs to `2026-W01`** (taking `date.year` would give `2025-W01`, off by a full year), and **2027-01-01 belongs to `2026-W53`** (`date.year` would give `2027-W53`, a week that does not exist). Taking the year from the date and the week from the ISO calendar is wrong once a year — on a rollover week. *Corrected 2026-08-18: this cell previously cited 2026-12-28 → `2027-W01`. That is wrong — 2026 is a 53-week ISO year, so 2026-12-28 is `2026-W53` (a Monday) and its two years agree, which is precisely the case that does **not** demonstrate the trap.* |
 | `ww` is **zero-padded to two digits**, `W01`–`W53` | Keys sort as bytes. Unpadded, `W9` sorts after `W10`. |
 | Weeks run **Monday→Sunday**, resolved in **Europe/Madrid** | `FR-MENU-01`, `FR-MENU-02`. |
 | The id is **derived from the clock, never stored as state** | Nothing marks a week "current". That is what makes rollover cheap — no week data moves; weeks simply stop being current. |

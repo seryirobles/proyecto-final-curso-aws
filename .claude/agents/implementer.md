@@ -52,9 +52,13 @@ You are an implementer. Your job is to execute **one single** feature from
 - ❌ Never silence a mypy error with `# type: ignore` instead of fixing the type.
 - ✅ Every piece of code ships with its test before you move to the next task.
 - ✅ Respect the layering in `docs/architecture.md` §3. `core` imports no AWS
-  SDK, no Lambda package, declares no runtime dependency, and never calls
-  `datetime.now()`. Adapters live in the Lambda packages; `wiring.py` is the only
-  place that names them, selected by environment.
+  SDK, no Lambda package, and declares no runtime dependency. It calls
+  `datetime.now()` in exactly one sanctioned place — `SystemClock.now` in
+  `planner_core/ports/clock.py`, the `Clock` port's default implementation
+  (§1.2.2). Do not add a second, and do not construct a `SystemClock` inside
+  `domain/` or `application/`. Adapters — implementations that pull in an
+  external dependency — live in the Lambda packages; `wiring.py` is the only
+  place that names any concrete implementation, selected by environment.
 - ✅ Respect the invariants in `docs/architecture.md` §4. When code implements a
   specific resolved gap, cite it in a comment (`# ... (G-44)`).
 - ✅ User-facing strings go in the es-ES messages module, never inline.

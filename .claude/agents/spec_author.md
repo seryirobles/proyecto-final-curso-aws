@@ -38,6 +38,20 @@ the "obvious" alternative you are about to propose.
 3. Read every `FR-*` in that feature's `covers` array, in `docs/requirements.md`.
    Follow the `(see G-xx)` pointers.
 4. Write `requirements.md` in **strict EARS** (see `docs/specs.md`). Rules:
+   - **Exactly one `SHALL` per `R<n>`.** `docs/specs.md` says *"Never combine
+     several `SHALL`s in one requirement. Split instead."* This includes a
+     `SHALL NOT` paired with a `SHALL` — *"the system SHALL derive X … and SHALL
+     NOT use Y"* is **two** requirements, however naturally the guard reads as
+     part of the rule. Split it: the positive gets one `R<n>`, the prohibition
+     gets its own. A combined requirement lets a half-implementation claim
+     compliance, and it makes the `R<n> → test` row ambiguous about which half a
+     test actually proves. **Check this mechanically before you finish** — count
+     the `SHALL`s in each `R<n>` rather than eyeballing them. *(Added
+     2026-08-18: feature 2 `week_calendar` shipped four combined requirements —
+     R4, R8, R16, R22 — because this checklist did not name the rule, even
+     though `docs/specs.md` did. The review that caught them listed only three;
+     R16 surfaced from a mechanical count. They are recorded in that spec as an
+     accepted deviation; do not use them as a pattern.)*
    - Every `R<n>` carries an `Implements:` line citing `FR-*` ids.
    - Every `FR-*` in `covers` appears in at least one `R<n>`.
    - Every acceptance criterion in `feature_list.json` is covered.

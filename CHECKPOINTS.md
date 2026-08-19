@@ -30,7 +30,10 @@
 - [ ] `core` imports no AWS SDK and no Lambda package, and declares **zero**
       runtime dependencies.
 - [ ] `planner_core/application/` never imports an adapter or a handler.
-- [ ] No `datetime.now()` inside `planner_core`.
+- [ ] No `datetime.now()` inside `planner_core`, except the one sanctioned
+      `SystemClock.now` call in `ports/clock.py` (`docs/architecture.md` §1.2.2,
+      §3.1 rule 6). `backend/core/tests/test_no_ambient_time.py` checks this
+      mechanically — a green suite ticks the box.
 - [ ] There are exactly two Lambda packages: `lambda_api` and `lambda_ai`.
 - [ ] Adapters are imported only by their Lambda's `wiring.py`, selected by
       environment.
@@ -45,6 +48,29 @@
 - [ ] `core` tests run with no AWS, no network, no real clock.
 - [ ] Each member's `tests/` has at least one test module per source module.
 - [ ] Every port has a contract suite; live-AWS runs are marked `@pytest.mark.aws`.
+      > **Deferral, 2026-08-18 — the `Clock` port (feature 2 `week_calendar`).**
+      > `backend/tests/contract/` is empty and this box stays unticked
+      > deliberately. **Feature 14 `persistence_ports` adds the suite**, whose
+      > third acceptance criterion already requires *"a contract suite in
+      > `backend/tests/contract` … parametrized to run against any
+      > implementation (fake now, real adapter later)"*. It must cover `Clock`
+      > alongside the persistence ports. Recorded because the alternative —
+      > silence — means discovering the gap when the persistence adapters
+      > arrive. Raised as F2 in `progress/review_week_calendar.md`.
+      >
+      > *Amended 2026-08-18.* The original note justified the deferral with *"no
+      > real `Clock` adapter exists yet — adapters are Lambda-owned"* and
+      > required that *"the first `SystemClock` must not land before it"*. **That
+      > reasoning was wrong.** `docs/architecture.md` §3.1 rule 3 scopes Lambda
+      > ownership to adapters that import an external dependency; a `SystemClock`
+      > imports nothing. The human decided on 2026-08-18 that a port's
+      > dependency-free **default implementation** ships beside its `Protocol` in
+      > `planner_core/ports/` (`docs/architecture.md` §1.2.2), so `SystemClock`
+      > lands with feature 2 and this deferral does not gate it. The deferral
+      > itself still stands: with `Clock` and `SystemClock` both dependency-free,
+      > a contract suite parametrized over them adds little beyond
+      > `test_fake_clock_satisfies_the_clock_port`, and the real value arrives
+      > when feature 14 brings implementations that genuinely differ.
 
 ## C5 — The session closed properly
 

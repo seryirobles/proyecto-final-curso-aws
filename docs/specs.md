@@ -128,13 +128,22 @@ Discrete, ordered steps, each with a checkbox. Each task references at least one
 
 ```markdown
 - [ ] T1 — Add `Clock` protocol in `core/src/planner_core/ports/clock.py`. Covers: R3.
-- [ ] T2 — Add `current_week(clock)` in `core/src/planner_core/domain/calendar.py`. Covers: R1.
-- [ ] T3 — Add `days_from_today(week, clock)` in `core/src/planner_core/domain/calendar.py`. Covers: R2.
-- [ ] T4 — Add `FakeClock` in `core/tests/support/fakes.py`. Covers: R1, R2, R3.
-- [ ] T5 — Add `test_current_week_is_iso_week_in_madrid`. Covers: R1.
-- [ ] T6 — Add `test_scope_excludes_days_before_today`. Covers: R2.
-- [ ] T7 — Add `test_naive_clock_raises_ambiguous_instant`. Covers: R3.
+- [ ] T2 — Add `current_week(today)` in `core/src/planner_core/domain/calendar.py`. Covers: R1.
+- [ ] T3 — Add `days_from_today(week, today)` in `core/src/planner_core/domain/calendar.py`. Covers: R2.
+- [ ] T4 — Add `resolve_live_weeks(clock)` in `core/src/planner_core/application/live_weeks.py`. Covers: R1, R2.
+- [ ] T5 — Add `FakeClock` in `core/tests/support/fakes.py`. Covers: R1, R2, R3.
+- [ ] T6 — Add `test_current_week_is_iso_week_in_madrid`. Covers: R1.
+- [ ] T7 — Add `test_scope_excludes_days_before_today`. Covers: R2.
+- [ ] T8 — Add `test_naive_clock_raises_ambiguous_instant`. Covers: R3.
 ```
+
+Note the layering in T2–T4, decided by the human 2026-08-18: **`domain/`
+functions take a plain `date` or instant, never a `Clock`.** The `Clock`
+protocol lives in `ports/`, and a thin `application/` function reads it once and
+passes the resulting civil date down — `docs/architecture.md` §3 (*"domain: pure
+logic … no clock"*) and §3.1 rule 1 (`domain/` never imports `ports/`). An
+earlier version of this example showed `current_week(clock)` in `domain/`; that
+was wrong and is corrected here.
 
 The `implementer` ticks `[x]` as each task completes. The `reviewer` rejects if
 any `[ ]` remains without a documented justification.
