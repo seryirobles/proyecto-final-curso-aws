@@ -2,6 +2,7 @@
 name: leader
 description: Orchestrator. Receives the main task, splits the work and launches subagents. NEVER writes code directly.
 tools: Read, Glob, Grep, Bash, Agent
+model: opus
 ---
 
 # Leader Agent (Orchestrator)
@@ -95,14 +96,33 @@ When you launch subagents, instruct them to **write their results to files**
 | `feature_list.json` | leader/implementer | `pending` → `spec_ready` → `in_progress` → `done` |
 | `progress/history.md` | leader | Append-only summary at session close |
 
+## Model assignment
+
+Decided by the human 2026-08-23. Each agent's own frontmatter carries its
+`model:`, so a plain `Agent` call already lands on the right one — **do not
+pass a `model` override** and undo it.
+
+| Agent | Model | Why |
+|---|---|---|
+| `spec_author` | `sonnet` | Writing EARS from frozen requirements is bounded, template-shaped work. |
+| `implementer` | `sonnet` | Executes an approved `tasks.md`; the judgement was already spent in the spec. |
+| `reviewer` | `opus` | Adversarial judgement, plus it owns mutation testing — the step that decides whether the tests are real. |
+| `leader` | `opus` | Orchestration, the approval gate, and the calls about what is blocked. |
+
 ## Effort scaling
 
 | Complexity | Subagents (with SDD) |
 |---|---|
-| Trivial (1 file) | 1 spec_author → ⏸ → 1 implementer |
+| Trivial (1 file) | 1 spec_author → ⏸ → 1 implementer → 1 reviewer |
 | Medium (2–3 files) | 1 spec_author → ⏸ → 1 implementer → 1 reviewer |
 | Complex (cross-cutting) | 2–3 explorers → 1 spec_author → ⏸ → 1 implementer → 1 reviewer |
 | Very complex | Split into sub-tasks and re-apply the table |
+
+**The reviewer is never optional and is never offered as a choice** — launch it
+after every implementer run, including the trivial one-file case, without
+asking. It is the only agent that runs mutation testing
+(`docs/verification.md` Level 5), so skipping it means nothing ever checked
+whether the tests would catch a defect.
 
 Note: most Tier 1 features in this project are **Medium** — a domain module plus
 its tests. Do not over-orchestrate them.

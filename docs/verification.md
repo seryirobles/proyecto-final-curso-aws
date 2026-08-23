@@ -81,6 +81,25 @@ must exercise the property, not just the happy path:
 
 A test that only asserts "no exception was raised" does not count as coverage.
 
+## Level 5 — Mutation testing (`reviewer`-owned)
+
+Levels 1–4 prove a test **exists** and **runs**. They cannot prove it would
+**notice**. A suite that asserts the code does what it does is green, traceable
+and worthless.
+
+**This level belongs to the `reviewer`, not the `implementer`.** It is the one
+part of the pipeline that edits source deliberately: plant one small defect,
+run the tests, require a failure, revert. The full procedure and its rules are
+in `.claude/agents/reviewer.md` § *Mutation testing* — that file is the
+authority, this section only says whose job it is and why the job exists.
+
+Two consequences worth stating here:
+
+- An `implementer` never runs mutation testing and is never asked to. Writing
+  tests that survive it is their job; proving they do is not.
+- A surviving mutant is `CHANGES_REQUESTED`, and the fix is a **new test** —
+  never a change to the mutated line, which was reverted anyway.
+
 ## Anti-patterns (do not do)
 
 - ❌ "I added the endpoint, it should work." → no executable test.

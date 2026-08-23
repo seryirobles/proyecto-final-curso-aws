@@ -72,7 +72,7 @@
         "Tests use a fixed FakeClock; no real clock, no network"
       ],
       "sdd": true,
-      "status": "in_progress"
+      "status": "done"
     },
     {
       "id": 3,
@@ -90,7 +90,7 @@
         "A value outside the fixed unit list is rejected with a named domain exception"
       ],
       "sdd": true,
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": 4,

@@ -44,10 +44,15 @@ to implement.
     `"sdd": true`.
   - `subagent_type: "implementer"` → writes code and tests for **one** feature
     whose spec is already approved (`in_progress`).
-  - `subagent_type: "reviewer"` → validates traceability and task completeness
-    before closing.
+  - `subagent_type: "reviewer"` → validates traceability and task completeness,
+    and **runs mutation testing** (`docs/verification.md` Level 5) — the only
+    agent that edits source for that purpose, and the only one asked to.
+    Launch it after **every** implementer run, without asking.
   - If the task needs prior investigation, launch 2–3 parallel subagents
     (Explore or general-purpose) with narrowly scoped questions.
+  - **Models are set in each agent's frontmatter** (`spec_author`/`implementer`
+    → `sonnet`; `reviewer`/`leader` → `opus`). Never pass a `model` override —
+    see `.claude/agents/leader.md` § *Model assignment*.
 
 ### Startup protocol (on receiving the first task)
 

@@ -144,6 +144,33 @@ The exception worth making: when code implements a specific resolved gap, cite i
 # the user actually made. A later shortfall becomes its own unchecked item.
 ```
 
+### Keep them short — long text belongs in docs
+
+**Three lines is the ceiling.** A comment states the *why* in a sentence or two
+and **points** at the document that carries the reasoning. It never reproduces
+that reasoning.
+
+If a comment needs a paragraph, the paragraph belongs in `specs/<feature>/` or
+in `docs/`, and the comment becomes a pointer to it. A long comment is worse
+than no comment: it duplicates a document, and the duplicate goes stale on its
+own schedule while looking authoritative.
+
+```python
+# Wrong - a design document pasted into a source file.
+# casefold() runs before mark removal, per the specified order, but the
+# order is not load-bearing here: NFD already decomposes U+0130 into its
+# base letter plus a combining dot, so mark removal strips that dot under
+# either order. The two orders diverge only on Greek iota-subscript
+# codepoints, none of them in this feature's domain (Castilian ingredient
+# names, docs/data_model.md section 5.2 username key). See the exhaustive
+# sweep in specs/text_and_units/design.md section 5.1.
+
+# Right - one claim, one pointer.
+# Step order is arbitrary on our domain (specs/text_and_units/design.md 5.1).
+```
+
+The same ceiling applies to comments in tests.
+
 ## Frontend conventions
 
 The stack: a **single-page app** in **React**, written idiomatically — **function

@@ -854,10 +854,12 @@ SHA-256. **No agent ran a git write command at any point.**
 
 ### State at close
 
-- **Feature 2 `in_progress`, APPROVED, ready to close.** Round six: *"Nothing
+- ~~**Feature 2 `in_progress`, APPROVED, ready to close.**~~ **CLOSED 2026-08-19:
+  status set to `done` on the human's instruction.** Round six: *"Nothing
   remains."* 46/46 tasks, 23 requirements, **35 backend tests**, `./init.sh` exit 0.
-- **Everything is uncommitted** — feature 2, §1.2.2, and every doc correction.
-  Last commit is still `d48fdbe` (feature 1). Nothing staged.
+- ~~**Everything is uncommitted** — feature 2, §1.2.2, and every doc correction.
+  Last commit is still `d48fdbe` (feature 1). Nothing staged.~~ **Superseded
+  2026-08-19: committed as `25ab9ea`, working tree clean.**
 - **P1** (DynamoDB) · **P7** (React/Vite/Vitest) · **§1.2.2** (default
   implementations) closed. **P2–P6 pending, human-owned.**
 - Next actionable: **feature 3 `text_and_units`** (tier 1, `"sdd": true`) — full
@@ -866,3 +868,71 @@ SHA-256. **No agent ran a git write command at any point.**
   (four accepted double-`SHALL` requirements), **F7** (`ruff` isort groups
   `support` as third-party), the **C4** `Clock` contract-suite deferral to
   feature 14, and the `npx` registry fallback from feature 1.
+
+---
+
+## Session 2026-08-19 — close feature 2, spec feature 3
+
+**Goal:** close feature 2 `week_calendar` now that it is committed, then take
+feature 3 `text_and_units` through `spec_author` to the approval gate.
+
+### Accomplished
+
+- **Feature 2 `week_calendar` CLOSED.** Committed by the human as `25ab9ea`
+  (*"feat(backend): add main clock for calendar"*), then set `in_progress` ->
+  `done` on his explicit instruction. `./init.sh` exit 0, all seven gates green,
+  35 backend tests. `done: 2`, no `in_progress`.
+- **The previous session's own close-out record was annotated**, not left to
+  rot. Its "State at close" claimed feature 2 was still open and the tree
+  uncommitted — both true when written, both false the moment he committed.
+  Struck through inline and dated, per the house strike-through-not-delete
+  pattern.
+- **Feature 3 `text_and_units` specced and left at the gate.**
+  `specs/text_and_units/{requirements,design,tasks}.md`, **22 requirements,
+  27 tasks**, status `pending` -> `spec_ready`. No code written.
+
+### Verified independently, against the source files
+
+The `spec_author` report was checked rather than relayed — the failure mode that
+cost feature 2 three review rounds:
+
+- 22 R-blocks, **exactly one `SHALL` each**, every one carrying an `Implements:`
+  line. Counted mechanically, 0 violations.
+- The only ids cited are `FR-SHOP-03` and `FR-LIB-05` — exactly feature 3's
+  `covers`. Both quoted accurately from `docs/requirements.md`.
+- `docs/architecture.md` **§2.1** lists the literal unit list as *"decide these
+  in a spec, not in chat"*. Proposing it is correct and it is **not** a pending
+  §2 item, so nothing here is blocked.
+- `G-39` confirms the enumeration was left to the design as an implementation
+  detail — and, importantly, calls it *"freely revisable in code"*. The design
+  frames the choice as more permanent than `G-39` does. What does not
+  retro-convert is data already stored; the vocabulary itself can widen later.
+- `docs/data_model.md` §2 (line 147, *"Same treatment `FR-SHOP-03`"*) and §5.2
+  (line 331, *"`fold()` is shared with `FR-SHOP-03`'s ingredient
+  normalization"*) confirm the fold is shared with the **username reservation
+  key**. That is what makes the `ñ` question a data decision rather than a
+  code one.
+
+### State at close
+
+- **Feature 3 `spec_ready`, waiting at the human approval gate. No code until
+  he answers.** Three decisions, all in `specs/text_and_units/design.md` §10:
+  1. **The unit vocabulary.** Proposed: `g`, `ml`, `unit` — one per dimension,
+     because `FR-SHOP-03` forbids cross-unit conversion, so `kg` beside `g`
+     splits the shopping list permanently. Cost: the list reads `2500 g`.
+     Alternative: `G-39`'s parenthetical five.
+  2. **`ñ` survives the fold** (`piña` != `pina`); only vowel accents and `ü`
+     fold. Load-bearing because of the shared `fold()` above.
+  3. **`UnknownUnit` carries no Castilian text**, only the rejected value.
+     Features 9 and 12 own their own messages; the backend messages module's
+     shape still depends on P5.
+- **Uncommitted:** `feature_list.json`, `progress/current.md`,
+  `progress/history.md`, and the untracked `specs/text_and_units/`. Last commit
+  is `25ab9ea`. Nothing staged — no agent ran a git write command.
+- `./init.sh` exit 0: `done: 2, spec_ready: 1, pending: 11, blocked: 9`.
+- **P1** (DynamoDB) · **P7** (React/Vite/Vitest) · **§1.2.2** (default
+  implementations) closed. **P2-P6 pending, human-owned.**
+- Open by the human's own decision, none owned by any active feature: review
+  **F5** (four accepted double-`SHALL` requirements in feature 2's spec),
+  **F7** (`ruff` isort groups `support` as third-party), the **C4** `Clock`
+  contract-suite deferral to feature 14, and the `npx` registry fallback.

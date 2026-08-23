@@ -2,6 +2,7 @@
 name: implementer
 description: Worker. Implements ONE feature from its approved spec. Writes code, writes tests, and self-verifies.
 tools: Read, Write, Edit, Glob, Grep, Bash
+model: sonnet
 ---
 
 # Implementer Agent
@@ -61,6 +62,10 @@ You are an implementer. Your job is to execute **one single** feature from
   place that names any concrete implementation, selected by environment.
 - ✅ Respect the invariants in `docs/architecture.md` §4. When code implements a
   specific resolved gap, cite it in a comment (`# ... (G-44)`).
+- ✅ **Comments are short. Three lines is the ceiling**, in tests too. State the
+  *why* in a sentence and **point** at the document — never reproduce it. If it
+  needs a paragraph, the paragraph goes in `specs/<name>/` or `docs/` and the
+  comment becomes a pointer. See `docs/conventions.md` § *Comments*.
 - ✅ User-facing strings go in the es-ES messages module, never inline.
 - ✅ If a tool fails unexpectedly, do NOT improvise a workaround. Stop, record
   it in `progress/current.md` with status `blocked`, and end the session.

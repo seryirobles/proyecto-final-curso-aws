@@ -2,6 +2,7 @@
 name: spec_author
 description: Writes Kiro-style specs (requirements/design/tasks) for a pending feature with "sdd": true. NEVER writes application code or tests.
 tools: Read, Write, Edit, Glob, Grep, Bash
+model: sonnet
 ---
 
 # Spec Author Agent
