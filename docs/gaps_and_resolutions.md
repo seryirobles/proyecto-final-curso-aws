@@ -803,3 +803,62 @@ left pointing at nothing.
   live pointers a reader must follow. Rewriting them would falsify the record.
   A dangling reference in a historical log is correct; one attached to an open
   question is not. That distinction is the whole of this Part.
+
+---
+
+## Part R — The ingredient-category set moves to one axis (2026-08-24)
+
+Directed by the requirements owner, overriding the freeze in `CLAUDE.md` in the
+same manner as Parts I through Q. Granted for `requirements.md` only, and for
+the single enumeration named below.
+
+### G-82 · `vegetarian` is a diet label in a list of ingredients (amends G-69)
+- **Gap:** `FR-RULE-04` enumerates the ingredient categories as *"(meat, fish,
+  carbohydrates, legumes, vegetarian, …)"* — four terms naming a predominant
+  **ingredient**, one naming a **diet**, and an open ellipsis. Because a recipe
+  stores exactly one *predominant* category (`FR-LIB-03`, `G-69`), the mixed axis
+  gives many dishes two equally valid filings: a chickpea curry is both `legume`
+  and `vegetarian`, pasta al pesto both `carbohydrate` and `vegetarian`.
+  `specs/recipe_model/design.md` §4 closed the ellipsis at exactly the five named
+  terms and raised the ambiguity as its gate question 1 rather than resolving it.
+  The owner then added `eggs` — an addition **inside** the ellipsis, needing no
+  lift — which sharpened the defect instead of settling it: with `eggs` present,
+  `vegetarian` was the only member of the set not naming an ingredient, and
+  vegetable-predominant dishes (menestra, gazpacho, crema de calabaza) still had
+  no home of their own.
+
+- **Decision:** `vegetarian` is **struck** from the set and replaced by
+  `vegetable`. The closed set becomes **meat, fish, carbohydrate, legume,
+  vegetable, eggs** — six members, every one of them an ingredient. A dish is
+  still filed under whichever single member predominates.
+
+- **Reasoning:** The set's purpose is a weekly count per category
+  (`FR-RULE-04`) that is verifiable against each recipe's stored value
+  (`FR-AI-04`). A count is only verifiable if the categories partition the
+  dishes, and a diet label cannot: it overlaps every plant-based member of the
+  list by construction, so the same week yields different counts depending on
+  which of two correct answers each author picked. `vegetable` sits on the same
+  axis as the other five, removes the overlap, and gives the household the
+  quota it actually lacked — vegetable-forward meals per week — which
+  `vegetarian` could never express, since it also counted the pasta.
+
+  **The accepted cost is stated deliberately:** a *"vegetarian meals per week"*
+  rule is no longer expressible. Vegetarian dishes now distribute across
+  `legume`, `carbohydrate`, `vegetable` and `eggs`, and no single count
+  recovers them. `prototypes/wireframe/Sobremesa.dc.html` shows exactly that
+  rule in its rules panel; it is a throwaway prototype (feature 20 replaces it)
+  and was left untouched. The owner judged the diet quota worth less than an
+  unambiguous, countable axis.
+
+- **Requirements:** `FR-RULE-04` (amended — the literal enumeration only).
+  **Amends G-69**, which drew the set from `FR-RULE-04` without questioning its
+  composition; G-69's decision, its "lentejas con chorizo" reasoning and its
+  supersession of G-63 all stand unchanged. Supersedes nothing.
+
+- **Deliberately not changed:** `FR-LIB-03`, `FR-LIB-04` and `FR-AI-04` all
+  reach the set **by reference** ("the fixed category set of FR-RULE-04") rather
+  than enumerating it, so they inherit this edit with no text change. `eggs` is
+  **not** added to `FR-RULE-04`'s enumeration either: the requirement says "at
+  minimum" and ends in an ellipsis, so an addition needs no amendment, while
+  removing a term the frozen text names by hand does. The literal, final list
+  stays where `docs/architecture.md` §2.1 puts it — decided in a spec.

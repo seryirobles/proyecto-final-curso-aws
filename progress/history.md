@@ -936,3 +936,71 @@ cost feature 2 three review rounds:
   **F5** (four accepted double-`SHALL` requirements in feature 2's spec),
   **F7** (`ruff` isort groups `support` as third-party), the **C4** `Clock`
   contract-suite deferral to feature 14, and the `npx` registry fallback.
+
+---
+
+## Session 2026-08-23 — Feature 3 `text_and_units` implemented, reviewed, APPROVED
+
+- **Agent chain:** leader → implementer → reviewer → (two comment-only
+  implementer runs).
+- **Human approved the three §10 gate questions** of
+  `specs/text_and_units/design.md`, all as recommended:
+  1. Unit vocabulary: `g`, `ml`, `unit` — one per dimension, because
+     `FR-SHOP-03` forbids cross-unit conversion.
+  2. `ñ` survives the fold (`piña` != `pina`); only vowel accents and `ü` fold.
+  3. `UnknownUnit` carries no Castilian message, only the rejected value.
+     Features 9 and 12 own their rejection text; no backend messages module
+     before P5.
+
+### Implementation
+
+- `backend/core/src/planner_core/domain/text.py` (`normalize`) and
+  `domain/units.py` (`Unit`, `UnknownUnit`, `parse_unit`). ASCII-only, standard
+  library only, `dependencies = []` untouched.
+- 20 tests across `tests/domain/test_text.py`, `tests/domain/test_units.py` and
+  `tests/test_shared_kernel_guards.py`. Every input taken verbatim from
+  `design.md` §8; all 29 design rows matched on first run.
+- `uv export` for `planner-api` and `planner-ai` resolve with nothing added.
+- `./init.sh` exit 0 — **55 backend tests** (35 → 55).
+
+### Review
+
+- **Reviewer APPROVED** → `progress/review_text_and_units.md`. Its 8-mutation
+  pass killed everything, including the R7 `n`-tilde rule and a second fold
+  planted in `ports/clock.py`, proving the R2 guard's scan reaches beyond
+  `domain/`.
+- **The implementer's surviving mutant was adjudicated as a dead justification,
+  not a missing test.** `unicodedata.normalize("NFD", "İ")` is
+  `U+0049 U+0307`, so mark removal strips the dot under either ordering; an
+  exhaustive `U+0000`–`U+2FFFF` sweep found 64 divergent codepoints, all Greek
+  with iota subscript, zero Latin. Equivalent mutant — no honest test kills it.
+- **Six sites carried the false rationale**, all corrected: four in the spec
+  (`design.md` §5.1, §8, `tasks.md` T7, T24 row 6 + header note), and two in
+  `backend/` closed by comment-only implementer runs. The sixth hid in a test
+  comment and survived one round because the sweep searched only `src/`.
+
+### New convention from the human
+
+- **Comments stay short; long text belongs in docs.** Encoded as a three-line
+  ceiling (tests included) in `docs/conventions.md` § Comments, as a positive
+  rule in `.claude/agents/implementer.md`, and as a reject condition in the
+  reviewer's conventions step. The worked counter-example is this session's own
+  7-line comment.
+- Three over-length blocks in feature 3 shortened (`text.py` ×2, `units.py`);
+  `G-56`/`G-48` citations preserved, files still ASCII-only.
+- **Three over-length blocks remain in feature 2** (`domain/calendar.py:40`,
+  `ports/clock.py:36`, `tests/test_no_ambient_time.py:37`), deliberately
+  untouched: the ruling was "from now on" and feature 2 is closed. Flagged for
+  the human.
+
+### State at close
+
+- Feature 3 → `done` in `feature_list.json`; committed by the human as
+  `fcb0ed0 feat: add units`. Working tree clean.
+- `./init.sh` exit 0: `done: 3, pending: 11, blocked: 9`, 55 backend tests.
+- **Next actionable feature: 4 — `recipe_model`** (tier 1, `sdd: true`,
+  `depends_on: [3]` satisfied).
+- Still open by the human's own decision: **F5** (four accepted double-`SHALL`
+  requirements in feature 2's spec), **F7** (`ruff` isort groups `support` as
+  third-party), the **C4** `Clock` contract-suite deferral to feature 14, and
+  the `npx` registry fallback.

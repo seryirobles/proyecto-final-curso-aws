@@ -1,11 +1,11 @@
 """Source scans for the shared kernel: one name fold, one unit vocabulary, ASCII only.
 
-R2, R16 and R22 are negative claims about the whole planner_core package, so no
-call site can prove them and only a scan of the sources can. Built to the
-discipline `test_no_ambient_time.py` arrived at: every scan asserts its own
-pattern matches inside the module it exempts, and asserts the scanned file list
-is non-empty and contains named modules, so no guard can pass by matching
-nothing.
+R2, R16 and R22 (feature 3) and R8, R9, R15 (feature 4) are negative claims
+about the whole planner_core package, so no call site can prove them and only a
+scan of the sources can. Built to the discipline `test_no_ambient_time.py`
+arrived at: every scan asserts its own pattern matches inside the module it
+exempts, and asserts the scanned file list is non-empty and contains named
+modules, so no guard can pass by matching nothing.
 
 The scans read `src/planner_core` only, so this module -- which is where the
 banned patterns are spelled out -- needs no self-exclusion.
@@ -26,8 +26,15 @@ CORE_SRC = TESTS_ROOT.parent / "src" / "planner_core"
 
 NAME_FOLD_SOURCE = CORE_SRC / "domain" / "text.py"
 UNIT_VOCABULARY_SOURCE = CORE_SRC / "domain" / "units.py"
+INGREDIENT_CATEGORY_SOURCE = CORE_SRC / "domain" / "ingredient_category.py"
+RECIPE_SOURCE = CORE_SRC / "domain" / "recipe.py"
 
-SHARED_KERNEL_MODULES = (NAME_FOLD_SOURCE, UNIT_VOCABULARY_SOURCE)
+SHARED_KERNEL_MODULES = (
+    NAME_FOLD_SOURCE,
+    UNIT_VOCABULARY_SOURCE,
+    RECIPE_SOURCE,
+    INGREDIENT_CATEGORY_SOURCE,
+)
 
 NAME_FOLD = re.compile(r"\bunicodedata\b|\bcasefold\b|\.lower\s*\(")
 
@@ -37,12 +44,41 @@ UNIT_VOCABULARY = re.compile(
     r"^\s*class\s+\w*Unit\w*\b|^\s*(?:GRAM|MILLILITRE|LITRE|KILOGRAM)\b\s*(?::[^=]+)?="
 )
 
+# Same shape as UNIT_VOCABULARY: feature 6 (rules_model) must import
+# IngredientCategory freely; only a second vocabulary is the offence.
+INGREDIENT_CATEGORY_VOCABULARY = re.compile(
+    r"^\s*class\s+\w*IngredientCategory\w*\b"
+    r"|^\s*(?:MEAT|FISH|CARBOHYDRATE|LEGUME|VEGETABLE|EGGS)\b\s*(?::[^=]+)?="
+)
+
+# \b excludes "UnknownUnit(" (embedded, no boundary before "Unit") so the
+# exception raised by feature 3's own parse_unit is not a false hit.
+UNIT_DIRECT_CONSTRUCTION = re.compile(r"\bUnit\(")
+
+# Excludes only the enum's own "class Unit(StrEnum):" line (a declaration, not
+# a call), not any class header - a keyword argument on another class's
+# header, e.g. "class _Sneaky(_Base, unit=Unit(...)):", must still be caught.
+CLASS_HEADER_LINE = re.compile(r"^\s*class\s+Unit\(")
+
 
 def _matches(pattern: re.Pattern[str], sources: list[Path]) -> list[str]:
     """Every line of every source matching the pattern, located."""
     found: list[str] = []
     for source in sources:
         for number, line in enumerate(source.read_text(encoding="utf-8").splitlines(), start=1):
+            hit = pattern.search(line)
+            if hit:
+                found.append(f"{source}:{number}: {line.strip()}")
+    return found
+
+
+def _matches_excluding_class_headers(pattern: re.Pattern[str], sources: list[Path]) -> list[str]:
+    """Like _matches, but skips a class statement's base-class line entirely."""
+    found: list[str] = []
+    for source in sources:
+        for number, line in enumerate(source.read_text(encoding="utf-8").splitlines(), start=1):
+            if CLASS_HEADER_LINE.match(line):
+                continue
             hit = pattern.search(line)
             if hit:
                 found.append(f"{source}:{number}: {line.strip()}")
@@ -113,9 +149,66 @@ def test_the_shared_kernel_modules_are_ascii_only() -> None:
     assert set(SHARED_KERNEL_MODULES) == {
         CORE_SRC / "domain" / "text.py",
         CORE_SRC / "domain" / "units.py",
+        CORE_SRC / "domain" / "recipe.py",
+        CORE_SRC / "domain" / "ingredient_category.py",
     }
 
     for module in SHARED_KERNEL_MODULES:
         source = module.read_text(encoding="utf-8")
         assert source, f"{module} is empty"
         assert source.isascii(), f"{module} contains non-ASCII characters"
+
+
+def test_planner_core_has_one_ingredient_category_vocabulary() -> None:
+    """R8: feature 6 (rules_model) reuses IngredientCategory and must not redeclare it."""
+    for banned in (
+        "class IngredientCategory(StrEnum):",
+        "class FoodIngredientCategory(StrEnum):",
+        '    MEAT = "meat"',
+        '    VEGETABLE: str = "vegetable"',
+    ):
+        assert INGREDIENT_CATEGORY_VOCABULARY.search(banned), banned
+
+    assert not INGREDIENT_CATEGORY_VOCABULARY.search(
+        "from planner_core.domain.ingredient_category import IngredientCategory"
+    )
+    assert not INGREDIENT_CATEGORY_VOCABULARY.search("    return IngredientCategory.MEAT")
+
+    sources = [
+        path for path in sorted(CORE_SRC.rglob("*.py")) if path != INGREDIENT_CATEGORY_SOURCE
+    ]
+
+    assert sources, f"no planner_core sources found under {CORE_SRC}"
+    assert RECIPE_SOURCE in sources
+    assert INGREDIENT_CATEGORY_SOURCE.is_file(), INGREDIENT_CATEGORY_SOURCE
+    assert _matches(INGREDIENT_CATEGORY_VOCABULARY, [INGREDIENT_CATEGORY_SOURCE]), (
+        INGREDIENT_CATEGORY_SOURCE
+    )
+
+    assert _matches(INGREDIENT_CATEGORY_VOCABULARY, sources) == []
+
+
+def test_planner_core_never_constructs_unit_directly() -> None:
+    """R9: bypassing parse_unit would raise a bare ValueError instead of UnknownUnit."""
+    assert UNIT_DIRECT_CONSTRUCTION.search('Unit("g")')
+    assert not UNIT_DIRECT_CONSTRUCTION.search("parse_unit(value)")
+    assert not UNIT_DIRECT_CONSTRUCTION.search("Unit.GRAM")
+
+    sources = sorted(CORE_SRC.rglob("*.py"))
+
+    assert sources, f"no planner_core sources found under {CORE_SRC}"
+    assert RECIPE_SOURCE in sources
+    assert UNIT_VOCABULARY_SOURCE in sources
+
+    assert _matches_excluding_class_headers(UNIT_DIRECT_CONSTRUCTION, sources) == []
+
+
+def test_the_class_header_exclusion_only_hides_units_own_declaration(tmp_path: Path) -> None:
+    """R9 (F1): a Unit(...) construction hiding in another class header is still reported."""
+    sneaky = tmp_path / "sneaky.py"
+    sneaky.write_text('class _Sneaky(_Base, unit=Unit("g")):\n    pass\n', encoding="utf-8")
+    assert _matches_excluding_class_headers(UNIT_DIRECT_CONSTRUCTION, [sneaky])
+
+    genuine = tmp_path / "genuine.py"
+    genuine.write_text('class Unit(StrEnum):\n    GRAM = "g"\n', encoding="utf-8")
+    assert _matches_excluding_class_headers(UNIT_DIRECT_CONSTRUCTION, [genuine]) == []

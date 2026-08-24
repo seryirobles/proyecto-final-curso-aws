@@ -109,7 +109,7 @@
         "Test proves editing or deleting the library recipe leaves an existing snapshot unchanged (G-05)"
       ],
       "sdd": true,
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": 5,
