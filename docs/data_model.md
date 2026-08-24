@@ -299,6 +299,15 @@ there is no window.
 The "unknown user" placeholder name is reserved by seeding its reservation item
 at deploy time, which makes it permanently uncreatable (`FR-AUTH-17`).
 
+**The seeded account's `idUsuario` is exactly `unknown-user`.** Decided at
+feature 5's spec gate on 2026-08-24 (`specs/week_plan_model/design.md` §9, gate
+question 1). `planner_core.domain.candidate.UNKNOWN_USER_ID` carries the same
+literal, and `resolve_author` compares against it: if the seeded account and the
+domain constant disagree, a removed author resolves to nothing instead of to the
+placeholder and `FR-SUM-03` silently breaks. **Feature 15 does not get to pick
+this value** — it is fixed here. Note the two are different things: the reserved
+*name* is the es-ES `usuario desconocido`; the *id* is the ASCII `unknown-user`.
+
 ### 5.2 A rename must release its old reservation — by lookup, never by re-folding
 
 ⚠ **The trap:** to rename a user you must delete the old `NOMBRE#…` item; to

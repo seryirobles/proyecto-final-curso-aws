@@ -1004,3 +1004,95 @@ cost feature 2 three review rounds:
   requirements in feature 2's spec), **F7** (`ruff` isort groups `support` as
   third-party), the **C4** `Clock` contract-suite deferral to feature 14, and
   the `npx` registry fallback.
+
+---
+
+## Session 2026-08-23/24 — Feature 4 `recipe_model` implemented, reviewed, APPROVED; `G-82` reopened and closed it
+
+### Outcome
+
+Feature 4 -> `done` in `feature_list.json`; committed by the human as
+`623b378 feat: categories and recipe data structure`. Working tree clean.
+`./init.sh` exit 0: `done: 4, pending: 10, blocked: 9`, 71 backend tests.
+**Next actionable feature: 5 - `week_plan_model`** (tier 1, `sdd: true`,
+`depends_on: [2, 4]` both satisfied).
+
+### First round (2026-08-23)
+
+- `spec_author` wrote `specs/recipe_model/{requirements,design,tasks}.md`
+  (15 R-blocks, 25 tasks, 3 gate questions). Human approved all three as
+  recommended -- vocabulary at the five terms `FR-RULE-04` names,
+  `Ingredient.unit` taking a pre-resolved `Unit`, and no servings/prep-time/
+  attribution fields.
+- `implementer` then `reviewer`: CHANGES_REQUESTED on two surviving mutants
+  (missing assertions, no source defect), then APPROVED. 70 tests.
+- **Finding left open for the human:** `tiempo` is persisted in
+  `docs/data_model.md` §1 and returned by AP14, but appears in no `FR-*`. Not a
+  spec defect -- a divergence between two docs. Still open.
+
+### `G-82` -- the vocabulary moved to one axis (2026-08-24)
+
+The human added `EGGS` by hand, then asked what else was worth adding. The
+answer that mattered was not an addition: **the set mixed two axes.** `MEAT`,
+`FISH`, `CARBOHYDRATE`, `LEGUME`, `EGGS` name an *ingredient*; `VEGETARIAN`
+names a *diet*. Since a recipe stores exactly one *predominant* category
+(`FR-LIB-03`, `G-69`), the diet label overlapped every plant-based member --
+a chickpea curry is validly both `legume` and `vegetarian` -- so `FR-AI-04`'s
+post-generation counts depended on which correct answer each author picked.
+
+- **Decision:** strike `vegetarian`, add `vegetable`. Closed set of six.
+- **The additive/substitutive distinction decided the procedure.** `FR-RULE-04`
+  says "at minimum" and ends in an ellipsis, so *adding* `eggs` needed no
+  requirement change; *removing* a term the frozen text names by hand did.
+  Recorded as **`G-82`, Part R** of `docs/gaps_and_resolutions.md`, authorised
+  by the human in-session.
+- `FR-LIB-03`, `FR-LIB-04` and `FR-AI-04` reach the set **by reference** and
+  inherited the edit with no text change. Only `FR-RULE-04`'s literal
+  enumeration was amended. `G-69` amended, not superseded.
+- **Accepted cost, stated at the gate:** a *"vegetarian meals per week"* rule is
+  no longer expressible. The throwaway prototype still shows exactly that rule
+  and was deliberately left alone.
+
+### The leader's own defect: a grep rule that became a design constraint
+
+The leader gave the implementer a verification step of
+`rg -i vegetarian backend/` -> zero hits. It was meant to prove the *member* did
+not survive. Applied to `backend/` whole it also banned the *word*, and the
+implementer followed it into keeping `"vegetarian"` out of
+`test_parse_category_rejects_a_value_outside_the_list`.
+
+The reviewer was told to judge it on the merits and overrule it, and did:
+
+- **`F1`** -- weakening `parse_category`'s comparison to `startswith`, or to a
+  3-character prefix, left the whole suite green at 71 passed. Under the second,
+  `parse_category("vegetarian")` returned `VEGETABLE`: the struck code silently
+  resolving to its replacement, exactly the stale-record failure `G-82` creates.
+  **R4/R5 prove membership; nothing proved comparison.** Closed by the reviewer
+  under grant -- `"vegetarian"` and `"vegetables"` added to the rejected tuple,
+  both mutants now die.
+- **`F2`** -- `design.md` §8 rejected alternative A still read *"FR-RULE-04
+  names exactly five terms; adding more invents scope"*, with no supersession
+  marker unlike §4 and §9. A live prohibition on what `G-82` decided, aimed at
+  the `spec_author`s of features 6, 11 and 12 who read §8 for what is already
+  ruled out. Fixed by the leader: the *sixth category* half struck, the
+  *open-ended set* half left standing.
+- 9 mutants run, 7 killed on submission, both survivors closed.
+
+### Lesson recorded
+
+**A mechanical zero-hits grep proves a symbol did not survive; it must never
+govern what tests and prose may say.** Scope such a check to `backend/core/src/`,
+never to `backend/` whole. Applied whole it fired on the two places the word was
+most useful: the assertion that the old code is refused, and the sentence
+explaining why. The rule as written is **obsolete** -- 
+`test_ingredient_category.py` now contains `"vegetarian"` on purpose.
+
+### Still open by the human's own decision
+
+- **`tiempo`** persisted but unrequired (carried from the first round).
+- **`O3`** -- the R8 self-test's `banned` tuple names only one member, so
+  dropping one from the guard's alternation could pass in silence.
+- **`O1`** (R12's denylist misses a differently-named `Recipe | None` field) and
+  **`O2`** (stale docstring at `test_shared_kernel_guards.py:76`), carried over.
+- From earlier features: **F5**, **F7**, the **C4** `Clock` contract-suite
+  deferral to feature 14, and the `npx` registry fallback.
