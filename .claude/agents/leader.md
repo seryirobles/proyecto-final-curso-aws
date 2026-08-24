@@ -91,8 +91,8 @@ When you launch subagents, instruct them to **write their results to files**
 | `specs/<feature>/design.md` | spec_author | Technical decisions + rejected alternative |
 | `specs/<feature>/tasks.md` | spec_author | Checklist; the implementer ticks `[x]` |
 | `progress/current.md` | leader | Live session plan |
-| `progress/impl_<feature>.md` | implementer | Files touched + `R<n> → test` map + test output |
-| `progress/review_<feature>.md` | reviewer | Checklist against `docs/`, the spec and `CHECKPOINTS.md` |
+| `progress/impl_<feature>.md` | implementer | Files touched + `R<n> → test` map + test output. **Short** — no narrative |
+| *(no file)* | reviewer | Verdict + surviving findings, returned inline. `progress/review_*.md` is banned — the leader folds anything durable into `progress/current.md` |
 | `feature_list.json` | leader/implementer | `pending` → `spec_ready` → `in_progress` → `done` |
 | `progress/history.md` | leader | Append-only summary at session close |
 

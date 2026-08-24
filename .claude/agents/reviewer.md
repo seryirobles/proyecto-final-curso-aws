@@ -126,7 +126,18 @@ For each mutation:
 
 ## Verdict format
 
-Your final output is **a single block** written to `progress/review_<name>.md`:
+**Never write a review file.** `progress/review_*.md` is banned (owner
+directive, 2026-08-24): reviews became archive data within hours while
+costing tokens to write and to reopen. Return the block below **in your
+result message**, and keep it to the verdict plus the findings that
+survived verification — no narrative, no restating what the spec says.
+The leader folds anything durable into `progress/current.md`.
+
+When you are asked to **confirm fixes** rather than review afresh, do not
+re-run a full review: re-apply only the named mutants, report kill/survive,
+and stop.
+
+Your final output block:
 
 ```markdown
 # Review — feature <id> (<name>)
@@ -173,16 +184,16 @@ Your final output is **a single block** written to `progress/review_<name>.md`:
 3. Complete T3 or document the justification in `progress/impl_<name>.md`.
 ```
 
-Your chat response is **a single line**:
+Your one-line summary, with the block above it:
 
 ```
-APPROVED -> progress/review_<name>.md
+APPROVED — <n> findings, <n> mutants survived
 ```
 
 or
 
 ```
-CHANGES_REQUESTED -> progress/review_<name>.md
+CHANGES_REQUESTED — <n> findings, <n> mutants survived
 ```
 
 ## Hard rules

@@ -163,3 +163,37 @@ Two acts remain and **both are the human's alone**:
   gate unaffected. All 41 tasks ticked in `tasks.md`.
 - Feature left `in_progress`, not marked `done` -- awaiting the mandatory
   `reviewer` run.
+
+---
+
+## Token-economy pass (2026-08-24, owner directive)
+
+Three instructions from the owner: cut duplication from the always-loaded
+files, stop writing review reports, keep every output concise.
+
+- **`AGENTS.md` + `CLAUDE.md`: 327 -> 280 lines.** Removed what another file
+  already owns -- the project description and startup protocol (duplicated
+  between the two), five hard rules duplicated in `AGENTS.md` §3, the seven SDD
+  steps (`docs/specs.md` owns them), §5's lifecycle (`current.md`'s own header
+  states it), §6, the subagent descriptions (the harness already lists every
+  agent type), the model note (`leader.md` owns it), the language rule
+  (`docs/conventions.md` owns it), and the source-tree rows
+  (`docs/architecture.md` §3 owns the tree; the stack is readable from
+  `pyproject.toml`/`package.json`). Net is only -47 because ~18 lines of new
+  policy were added; that policy is what pays.
+- **`AGENTS.md` §0.0 deliberately untouched.** `gga` receives *only* that file,
+  so its redundancy is load-bearing.
+- **The workbook ritual moved** from `AGENTS.md` §3.1 to `docs/data_model.md`
+  § *Working with the access-pattern workbook* -- needed rarely, was loaded
+  always.
+- **Review report files are banned.** Encoded in `AGENTS.md` §3.1,
+  `CLAUDE.md`, `.claude/agents/reviewer.md` (verdict + surviving findings
+  returned inline) and `leader.md`'s artefact table. Ten files deleted
+  (`progress/` 9,714 -> 4,638 lines); all were tracked, so `git log` still has
+  them.
+- **Confirming fixes now uses a cheap verification run** -- re-apply the named
+  mutants, report kill/survive -- not a second full review. Feature 5's rounds
+  2 and 3 cost ~240k tokens to surface one finding.
+- **Every subagent brief must name the files it opens.** Nine subagents burned
+  ~1.12M tokens on 2026-08-24; feature 5 alone took ~894k for one 5.7 KB
+  module, because each agent starts cold and re-reads `docs/` from scratch.

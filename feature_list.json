@@ -130,7 +130,7 @@
         "Attribution resolves to the reserved unknown-user placeholder when the author was removed (FR-SUM-03, G-29)"
       ],
       "sdd": true,
-      "status": "in_progress"
+      "status": "done"
     },
     {
       "id": 6,

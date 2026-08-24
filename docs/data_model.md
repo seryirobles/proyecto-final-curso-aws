@@ -482,3 +482,24 @@ authoritative record of *why* each requirement reads as it does.
 `docs/architecture.md` **§1.2.1** carries the P1 decision (DynamoDB, single
 table) and **§1.1** the P7 decision (React/Vite/Vitest, 2026-08-17). **P2–P6
 remain pending and human-owned** — hitting one means the feature is `blocked`.
+
+---
+
+## Working with the access-pattern workbook
+
+Moved here from `AGENTS.md` §3.1 on 2026-08-24: it is needed rarely and that
+file is loaded every session.
+
+- **Key formats belong in §2 of this document, never in the spreadsheet** (D28).
+  The workbook is the catalogue plus key *templates*; formats, folding rules and
+  id-generation constraints do not belong in it — no column, no note, no example.
+- **Re-read the workbook from disk at the start of any turn that touches it.**
+  The owner edits and saves mid-conversation. Unzip **inside the scratchpad with
+  an absolute path** — a `$TMPDIR` fallback once scattered `xl/` and
+  `[Content_Types].xml` across the repo root — then parse
+  `xl/worksheets/sheet1.xml` against `xl/sharedStrings.xml` with Node. Match
+  `<si\s*/>|<si>([\s\S]*?)</si>`, use a lazy attribute group, and print with
+  explicit column letters: a naive regex silently misaligns the table and
+  produces a plausible but wrong reading.
+- **Row numbers and `AP` numbers are positions, not identifiers.** Rows get
+  inserted. Refer to patterns by title and item types by name.

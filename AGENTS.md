@@ -76,16 +76,11 @@ pending decision, you **stop** — you do not choose for them.
 | `docs/verification.md` | How to prove your work functions (incl. FR traceability) | Before declaring anything `done` |
 | `CHECKPOINTS.md` | Objective criteria for "correct final state" | To self-evaluate |
 | `.claude/agents/` | Subagent definitions (`leader`, `spec_author`, `implementer`, `reviewer`) | If you orchestrate work |
-| `backend/core/` | `planner_core`: pure domain, application, ports. Zero runtime deps. Tier 1 lives here. | To implement domain logic |
-| `backend/lambda_api/`, `backend/lambda_ai/` | The two Lambda packages: handler + wiring + adapters | To implement a Lambda |
-| `backend/tests/contract/` | Port suites run against both the fake and the real adapter | To verify an adapter |
-| `frontend/` | The SPA (own toolchain root). **Contains source only** — reference material lives in `prototypes/` | To implement the UI |
 | `prototypes/wireframe/` | The **Claude design prototype**. **Read-only reference material, outside every toolchain root**: never edit it, never lint it, never port it, and never let a build reach it | Only through `docs/frontend_prototype.md` |
 | `docs/frontend_prototype.md` | Analysis of the prototype in `prototypes/wireframe/`. Executable wireframe: read it, mine it, **do not port it**. **§4 lists eleven places where it contradicts the frozen requirements** | Before writing any spec or code for a UI-facing feature |
 
-The full tree and its rules are in `docs/architecture.md` §3. Note the backend
-is a **uv workspace** (`backend/` is its root), and the frontend is a separate
-toolchain root.
+The source tree — `backend/core`, the two Lambda packages, `backend/tests/contract`,
+`frontend/` — and its rules are in `docs/architecture.md` §3. Read it there.
 
 ### Product source of truth (read-only — never edit these)
 
@@ -171,19 +166,27 @@ how the work actually goes. Each one is here because ignoring it cost real time.
 - **Row numbers and `AP` numbers are positions, not identifiers.** Rows get
   inserted. Refer to patterns by title and item types by name.
 
-**Persistence and the spreadsheet**
+**Token economy** (owner directive, 2026-08-24)
+
+- **No review report files.** Never create `progress/review_*.md` or per-round
+  variants. A reviewer returns its verdict and surviving findings in its result
+  message; anything durable goes into `progress/current.md`. They became archive
+  data within hours while costing tokens twice — to write, and to reopen.
+- **One deep review round, then a cheap verification.** Do not re-run a full
+  review to confirm fixes: the follow-up run only re-applies the named mutants
+  and reports kill/survive. Feature 5's rounds 2 and 3 cost ~240k tokens to
+  surface one finding.
+- **Scope every subagent brief to the files it must open.** Each agent starts
+  cold and re-reads `docs/` from scratch; naming the sections is the cheapest
+  lever there is.
+- **Keep reports short.** An implementation report is a traceability table, the
+  test result and anything the spec did not anticipate — not a narrative.
+
+**Persistence**
 
 - **Key formats go in `docs/data_model.md` §2, never in the spreadsheet** (D28).
-  The workbook is the catalogue plus key *templates*; formats, folding rules and
-  id-generation constraints do not belong in it — no column, no note, no example.
-- **If the spreadsheet is in play, re-read it from disk at the start of any turn
-  that touches it.** The owner edits and saves mid-conversation. Unzip **inside
-  the scratchpad with an absolute path** (a `$TMPDIR` fallback once scattered
-  `xl/` and `[Content_Types].xml` across the repo root), then parse
-  `xl/worksheets/sheet1.xml` against `xl/sharedStrings.xml` with Node. Match
-  `<si\s*/>|<si>([\s\S]*?)</si>`, use a lazy attribute group, and print with
-  explicit column letters — a naive regex silently misaligns the table and
-  produces a plausible but wrong reading.
+  The spreadsheet-handling ritual lives in `docs/data_model.md` § *Working with
+  the access-pattern workbook*; read it there if the workbook is in play.
 
 **Do not raise**
 
@@ -195,17 +198,8 @@ how the work actually goes. Each one is here because ignoring it cost real time.
 pending → [spec_author] → spec_ready → ⏸ HUMAN → in_progress → [implementer → reviewer] → done
 ```
 
-1. The leader picks the first `pending` feature with `"sdd": true` whose
-   `depends_on` are all `done`.
-2. The leader launches `spec_author`, which writes
-   `specs/<name>/{requirements,design,tasks}.md` and sets the status to `spec_ready`.
-3. **Pause.** The human reads the spec and approves (or requests changes).
-4. Once approved, the leader sets `in_progress` and launches `implementer`.
-5. The implementer executes `tasks.md` one by one, ticking each `[x]`.
-6. The reviewer verifies the traceability chain and task completeness,
-   then approves or rejects.
-7. On approval the implementer sets `done` and moves the summary to
-   `progress/history.md`.
+`docs/specs.md` owns the detail: the three files, EARS notation, and the human
+approval gate. The `done` mark and the commit are the human's alone.
 
 ### The traceability chain
 
@@ -222,21 +216,12 @@ Every `R<n>` you write **must** cite the `FR-*` ids it implements. Every `FR-*`
 claimed by a feature **must** end up covered by at least one test. The reviewer
 checks both directions and rejects if either fails.
 
-## 5. Session close (lifecycle)
+## 5. Session close
 
-Before finishing:
+`progress/current.md`'s own header states the lifecycle: it is summarised into
+`progress/history.md` and reset at session close. Run `./init.sh` green first,
+and leave no temp files or context-free TODOs. Marking a feature `done` is the
+human's, never an agent's.
 
-1. Run `./init.sh` — all green.
-2. If the feature is finished: set `"status": "done"` in `feature_list.json`.
-3. Move the summary from `progress/current.md` to the end of `progress/history.md`.
-4. Reset `progress/current.md` to the empty template.
-5. Leave no temp files, no debug `print()`, no context-free TODOs.
-
-## 6. If you get stuck
-
-- Re-read the relevant section of `docs/`.
-- Check the matching `G-xx` entry in `docs/gaps_and_resolutions.md` — the
-  question you are stuck on was probably already answered there.
-- If a tool does not behave as expected, **do not invent a workaround**:
-  record the blocker in `progress/current.md`, set the feature to `blocked`,
-  and stop the session.
+If a tool does not behave as expected, **do not invent a workaround**: record
+the blocker in `progress/current.md`, set the feature to `blocked`, and stop.
