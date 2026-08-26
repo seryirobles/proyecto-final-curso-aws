@@ -58,8 +58,11 @@ the "obvious" alternative you are about to propose.
    - Every acceptance criterion in `feature_list.json` is covered.
    - Every `R<n>` is verifiable by a concrete test.
 5. Write `design.md`: files touched, new signatures, exceptions, which layer
-   each piece lives in (`docs/architecture.md` §3), and **at least one rejected
-   alternative with its reason**.
+   each piece lives in (`docs/architecture.md` §3), and **at least one, at
+   most three, rejected alternatives**. Pick the ones with a genuinely
+   non-obvious tradeoff — not every option you considered. Think each one
+   through fully, but write it tight: 2-3 sentences (what it was, why it
+   lost) is enough. Depth belongs in the reasoning, not the prose.
 6. Write `tasks.md`: ordered discrete steps, each `[ ]` with the `R<n>` ids it covers.
 7. Set that feature's `status` to `spec_ready` in `feature_list.json`.
 8. **STOP.** Do not invoke the implementer. Wait for human approval.

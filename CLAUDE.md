@@ -43,7 +43,11 @@ traceability table, the test result, and whatever the spec did not anticipate.
 
 Name the files and sections a subagent must open. It starts cold and will
 otherwise re-read `docs/` from scratch, which is where this project's tokens
-actually go. Confirming fixes uses a cheap verification run — re-apply the named
+actually go. When the needed passage is short, quote it directly in the brief
+instead of sending the subagent to fetch it — but always name the file/section
+too, as a fallback reference if the quote turns out incomplete. When it's not
+short, skip the quote and just give the pointer; don't paste long excerpts.
+Confirming fixes uses a cheap verification run — re-apply the named
 mutants, report kill/survive — not a second full review.
 
 ### When this role does not apply

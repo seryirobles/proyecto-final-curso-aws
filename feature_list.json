@@ -478,7 +478,7 @@
         "The AI prompt builder's CONFIGURED_SERVINGS deployment-config constant (feature 11) is removed; no code path still treats servings as global config"
       ],
       "sdd": true,
-      "status": "in_progress"
+      "status": "done"
     }
   ]
 }
