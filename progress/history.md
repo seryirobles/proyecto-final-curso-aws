@@ -1096,3 +1096,94 @@ explaining why. The rule as written is **obsolete** --
   **`O2`** (stale docstring at `test_shared_kernel_guards.py:76`), carried over.
 - From earlier features: **F5**, **F7**, the **C4** `Clock` contract-suite
   deferral to feature 14, and the `npx` registry fallback.
+
+---
+
+## Session 2026-08-24 — `G-82`, feature 5 `week_plan_model` APPROVED, token-economy pass
+
+### State at close
+
+Features 4 and 5 -> `done`, committed as `623b378`, `90996e9`, `d708b3a`.
+Working tree clean. `./init.sh` exit 0, **100 backend tests**.
+**Next actionable: 6 — `rules_model`** (tier 1, `sdd: true`), which reuses
+`IngredientCategory` for rule definitions.
+
+### `G-82` — the ingredient-category set moved to one axis
+
+The owner added `EGGS` by hand and asked what else was worth adding. The answer
+was not an addition: the set **mixed two axes**. `MEAT`/`FISH`/`CARBOHYDRATE`/
+`LEGUME`/`EGGS` name an ingredient; `VEGETARIAN` named a diet, overlapping every
+plant-based member, so `FR-AI-04`'s counts depended on which correct answer each
+author picked. Struck it, added `VEGETABLE`. Closed set of six.
+
+- **The additive/substitutive distinction decided the procedure.** `FR-RULE-04`
+  says "at minimum" and ends in an ellipsis, so *adding* `eggs` needed no
+  requirement change; *removing* a term the frozen text names did. Recorded as
+  **`G-82`, Part R**.
+- `FR-LIB-03`/`-04`, `FR-AI-04` reach the set by reference and inherited it with
+  no text change. Only `FR-RULE-04`'s enumeration was amended.
+- **Accepted cost:** a "vegetarian meals per week" rule is no longer expressible.
+
+**Leader defect worth remembering:** the `rg -i vegetarian backend/` verification
+step handed to the implementer became a *design* constraint — it banned the word,
+not just the member, and suppressed the one assertion that catches a forgiving
+comparison in `parse_category`. The reviewer was told to overrule it and did.
+**A mechanical zero-hits grep proves a symbol did not survive; it must never
+govern what tests and prose may say.**
+
+### Feature 5 — spec, gate, three review rounds
+
+24 R-blocks, 41 tasks, 4 gate questions, all approved as recommended. Gate 1
+carried an extra ruling: feature 15's seeded placeholder account's `idUsuario`
+is **exactly** `unknown-user`, now pinned in `docs/data_model.md` §5.1 — if it
+and `UNKNOWN_USER_ID` drift, a removed author resolves to nothing and
+`FR-SUM-03` breaks with no crash and no red test.
+
+Design chose **definitive as a pointer on `SlotContents`, not a flag on each
+`Candidate`**, which made `G-67`'s propagation guarantee a consequence of
+`definitive()` being a lookup. R14 needed no code at all.
+
+**Seven findings across three rounds; not one was a defect in the source.**
+`candidate.py`'s blob `fa4fa324` never changed through ~40 mutations.
+
+- `F1` — replacing `remove_candidate`'s conditional with `definitive_id = None`
+  left 96 tests green: deleting *any* candidate would silently wipe the slot's
+  chosen meal. Two tests covered both branches of the `if`, but only ever the
+  branch returning `None`.
+- `F2` — `assert result.recipe is not None` on a field typed `Recipe`. **The
+  assertion could not fail.**
+- `F7` — the same defect deeper, and the reviewer recorded it as its own
+  round-1 under-specification: `F2` asked for "name and one collection field",
+  so `tools`/`procedure`/`category` stayed unasserted on the warning path.
+- `F6` — `design.md` §6's `from collections.abc import AbstractSet` does not
+  merely fail `mypy`; it raises `ImportError`. Corrected to the alias form.
+- `O6` — two pre-existing assertions removed as incapable of failing, each
+  restating the line above it.
+
+**The lesson:** an assertion that restates what the previous line already proved
+is not coverage. It reads as thoroughness and catches nothing, which is worse
+than an obviously thin test because nobody goes back to check.
+
+### Token-economy pass (owner directive)
+
+Nine subagents burned **~1.12M tokens** in one day; feature 5 alone ~894k for a
+5.7 KB module, because each agent starts cold and re-reads `docs/`. Rounds 2
+and 3 cost ~240k to surface one finding.
+
+- `AGENTS.md` + `CLAUDE.md`: **327 -> 280 lines**, removing only what another
+  file already owns. §0.0 left intact — `gga` receives only that file.
+- Workbook ritual moved to `docs/data_model.md`.
+- **Review report files banned** (`AGENTS.md` §3.1, `CLAUDE.md`, `reviewer.md`,
+  `leader.md`): verdict + surviving findings return inline. Ten files deleted,
+  `progress/` 9,714 -> 4,638 lines, all recoverable from `git log`.
+- **Confirming fixes uses a cheap verification run**, not a second full review.
+- **Every subagent brief must name the files it opens.**
+
+### Still open by the owner's own decision
+
+- `tiempo` persisted in `docs/data_model.md` §1 but named by no `FR-*`.
+- Feature 5's register for feature 6's reviewer: `O2` (`promote`'s guard is an
+  equivalent mutant — **keep it**, it is where a reader looks for R13's
+  precondition; do not "fix" it by weakening `__post_init__`), `O3`, `O4`, `O7`.
+- From earlier features: `F5`, `F7`(feature 2), the `C4` `Clock` contract-suite
+  deferral to feature 14, and the `npx` registry fallback.

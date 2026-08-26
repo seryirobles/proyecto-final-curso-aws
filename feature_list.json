@@ -149,7 +149,7 @@
         "Any user may edit the shared rules; a rule stores NO author - rule attribution was removed from the MVP (FR-RULE-06, G-76, completed by G-78 for FR-RT-02)"
       ],
       "sdd": true,
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": 7,
