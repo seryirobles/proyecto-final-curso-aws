@@ -108,6 +108,11 @@ Rules:
   the layering is wrong.
 - Every test maps to at least one `R<n>` of its spec, and through it to an
   `FR-*`. See `docs/verification.md`.
+- **Every new `@dataclass(frozen=True)` gets its own frozen-instance test**
+  (attempt an attribute set, expect `dataclasses.FrozenInstanceError`) — a
+  field-shape test alone does not exercise `frozen=True` and will not catch
+  its removal. Caught by review three features running (`ai_prompt_builder`,
+  `ai_output_validation`, `rollover_job_logic`) before landing here.
 - **No test hits AWS or the network by default.** The one exception is
   explicitly marked (`@pytest.mark.aws`), excluded from `init.sh`, and opt-in —
   see the test tiers in `docs/verification.md`.

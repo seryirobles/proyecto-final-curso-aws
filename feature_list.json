@@ -289,7 +289,7 @@
         "Test proves re-running after interruption at each of the five steps completes without data loss, double-archiving or double-cleanup (FR-MENU-08, G-61)"
       ],
       "sdd": true,
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": 14,

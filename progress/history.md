@@ -88,6 +88,50 @@
 
 ---
 
+## 2026-08-26 — Feature 12 `ai_output_validation` closed
+
+- **Feature:** 12 — `ai_output_validation` — `done`, committed (`78b4600`)
+- **Agent:** spec_author (2 gate questions) → human → implementer →
+  reviewer (CHANGES_REQUESTED, 2 findings) → implementer (fixed) → reviewer
+  (confirmation pass, APPROVED) → human sign-off review (1 more finding,
+  outside reviewer's mandate) → implementer (fixed) → human sign-off →
+  committed
+
+**Done:**
+
+- `domain/ai_output.py`: `RawIngredient`/`RawRecipeOutput` (already-parsed,
+  provider-agnostic AI response shape), `validate_ai_recipe_output` (reuses
+  `parse_unit`/`parse_category`, never redeclares either vocabulary), the
+  `RecipePreview`/`new_preview`/`accept_preview`/`discard_preview` lifecycle,
+  and the `GenerationFailureReason`/`GenerationFailure`/`GenerationSuccess`/
+  `SlotGenerationResult` per-slot outcome shape (`FR-AI-10`, `FR-AI-12`,
+  `FR-LIB-05`). Three new es-ES constants in `messages.py`.
+- Two gate questions, both resolved as spec_author recommended: kept
+  `GenerationFailureReason.GENERATION_UNAVAILABLE` (grounded in `G-70`'s
+  text amending `FR-AI-10`, not a `feature_list.json` acceptance bullet);
+  `numeroComensales` deferred again, this time to feature 17 (`ai_lambda`),
+  where the AI response first exists as a concrete value.
+- Reviewer mutation testing: 2 rounds. Round 1, 3 mutants survived (missing
+  frozen-ness tests on 3 dataclasses, one weak isinstance-only assertion),
+  fixed and reconfirmed via a narrow verification pass rather than a full
+  re-review.
+- **Notable gap in the automated pipeline:** after reviewer APPROVED, the
+  human's own sign-off review caught broken Spanish in the three new
+  `messages.py` constants — missing accents throughout, a missing `ñ`, and
+  one ungrammatical sentence. Neither structural review nor mutation testing
+  catches natural-language content correctness; the existing test only
+  asserted equality against the constant, not what the constant said. Fixed
+  as a content-only change, no design impact. Worth remembering: `FR-UX-03`
+  content (message wording) needs a human language check, not just
+  structural/behavioral review, every time new es-ES strings are added.
+  249 → 277 backend tests total across the feature.
+
+**Next steps:**
+
+- Feature 13 `rollover_job_logic` — next actionable per `./init.sh`.
+
+---
+
 ## 2026-08-26 — Feature 10 `generation_request` closed
 
 - **Feature:** 10 — `generation_request` — `done`
