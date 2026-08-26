@@ -225,12 +225,12 @@
         "Ingredient-category counts describe the week's final state: meals already present count toward each total and generation supplies only the remainder (FR-AI-11, G-71)",
         "For the current week, target slots start at today (Europe/Madrid) — never days already past (FR-AI-11, G-45)",
         "Generation adds candidates and never removes existing candidates or definitives (FR-AI-11, G-18)",
-        "An idempotency key is derived from week + slots + effective rules (FR-AI-08)",
+        "An idempotency key is derived from week + slots + effective rules + mode (FR-AI-08; mode added by explicit human decision 2026-08-26, overturning the spec's initial recommendation)",
         "Test proves the same request submitted twice yields one candidate set and one logical invocation",
         "The three modes (library-only / AI-only / mix) are modelled (FR-AI-03)"
       ],
       "sdd": true,
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": 11,

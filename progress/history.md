@@ -5,6 +5,39 @@
 
 ---
 
+## 2026-08-26 — Feature 9 `password_policy` closed
+
+- **Feature:** 9 — `password_policy` — `done`
+- **Agent:** spec_author → human scope decision → spec_author (revised) →
+  implementer → reviewer (CHANGES_REQUESTED, 1 finding) → implementer
+  (fixed) → human review (1 more finding) → implementer (fixed) →
+  human sign-off → committed (`e7ef8f3`)
+
+**Done:**
+
+- `planner_core/messages.py` — first backend es-ES messages module.
+- `domain/password_policy.py` (length floor, no composition/rotation rules)
+  and `domain/username_policy.py` (uniqueness + reserved-placeholder check),
+  both pure, zero-dependency, zero-IO.
+- **Scope change mid-flight:** the owner decided to drop the
+  breached-password blocklist from the MVP entirely rather than ship a thin
+  hand-curated list. This required amending frozen `FR-AUTH-15`
+  (`docs/requirements.md`) and adding `docs/gaps_and_resolutions.md` Part S
+  / `G-83` — the project's established "fresh, explicit lift" pattern,
+  owner-directed. Spec revised from R1-R9 down to R1-R7 to match.
+- Reviewer's mutation testing: 8/8 planted mutants killed (length boundary,
+  composition, signature, reservation-order, both `normalize()` calls,
+  uniqueness guard). One real finding (an over-long comment duplicating a
+  doc). Human's own review caught a second, separate finding after that
+  (a two-sentence module docstring, one-sentence convention) that the
+  reviewer had missed — both fixed. 193 backend tests total (182 → 193).
+
+**Next steps:**
+
+- Feature 10 `generation_request` — next actionable per `./init.sh`.
+
+---
+
 ## 2026-08-26 — Feature 8 `shopping_list_state` closed
 
 - **Feature:** 8 — `shopping_list_state` — `done`
