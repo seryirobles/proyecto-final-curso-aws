@@ -38,6 +38,56 @@
 
 ---
 
+## 2026-08-26 — Features 11 `ai_prompt_builder` and 24 `ai_prompt_versioning` closed
+
+- **Feature:** 11 — `ai_prompt_builder` — `done`, committed (`5fbd2d3`)
+- **Feature:** 24 — `ai_prompt_versioning` — `done`, committed (`37bc211`)
+- **Agent (11):** spec_author (1 gate question) → human → implementer →
+  reviewer (CHANGES_REQUESTED, 4 findings) → implementer (fixed) → human
+  sign-off → committed
+- **Agent (24):** spec_author (1 gate question) → human → spec_author
+  (revised) → implementer → reviewer (CHANGES_REQUESTED, 1 finding) →
+  implementer (fixed) → reviewer (confirmation pass, APPROVED) → human
+  sign-off → committed
+
+**Done:**
+
+- `domain/ai_prompt.py` (feature 11): provider-agnostic prompt assembly —
+  `PromptInstructions`, `SpecificationPrompt`, `ReferencePrompt`,
+  `CategoryPrompt` — Castilian Spanish output, configured servings, category
+  counts as explicit instructions, the fixed unit vocabulary, and the
+  healthy/varied-protein instruction (FR-AI-01, -02, -04, -06, -07, -13).
+- **Mid-flight scope addition:** the human asked for prompt versioning before
+  signing off 11. No FR covered it, so it became a new feature (24) instead
+  of reopening 11's already-reviewed spec. Required lifting the freeze:
+  `docs/gaps_and_resolutions.md` Part T / `G-84` and new `FR-AI-14` in
+  `docs/requirements.md` (plus `US12`/`US17` crosswalk), both human-pasted.
+- Feature 24's design went through two gate questions: first, constant vs.
+  port for version selection (spec_author's Option A/B); the human rejected
+  both in favor of a **general, reusable `ConfigPort`** (env-var-backed),
+  explicitly modeled on the existing `Clock` port (`docs/architecture.md`
+  §1.2.2/§3.1 rule 6) rather than a singleton — scaffolding intended for
+  future deployment-config needs beyond prompt versioning.
+- `ports/config.py` (`ConfigPort` Protocol, `EnvConfig` default reading
+  `os.environ`), `application/prompt_version.py::resolve_active_prompt_version`,
+  a versioned-instruction registry in `domain/ai_prompt.py`
+  (`PromptInstructionsVersion`, `PROMPT_INSTRUCTION_VERSIONS`,
+  `UnknownPromptVersion`), and a breaking-but-approved signature change to
+  feature 11's `build_instructions()` (+3 builders) adding `version_id: str`.
+  `specs/ai_prompt_builder/requirements.md` amended in place for it.
+- Reviewer mutation testing: feature 11, 19 mutants, 4 survived (missing
+  frozen-instance tests, one under-specified string assertion), all fixed.
+  Feature 24, one finding (`EnvConfig.get` completely untested — no
+  `tests/ports/test_config.py`), fixed and reconfirmed via a narrow
+  verification pass rather than a full re-review. 237 → 249 backend tests
+  total.
+
+**Next steps:**
+
+- Feature 12 `ai_output_validation` — next actionable per `./init.sh`.
+
+---
+
 ## 2026-08-26 — Feature 10 `generation_request` closed
 
 - **Feature:** 10 — `generation_request` — `done`
