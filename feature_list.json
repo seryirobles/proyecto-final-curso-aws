@@ -197,19 +197,18 @@
       "name": "password_policy",
       "tier": 1,
       "title": "NIST 800-63B password policy",
-      "description": "Password validation for the mandatory set-password step: length bounds, no composition rules, no rotation, and a blocklist including common Spanish passwords.",
+      "description": "Password validation for the mandatory set-password step: length bounds, no composition rules, no rotation. Breached-password blocklist deferred from MVP (G-83).",
       "covers": ["FR-AUTH-15", "FR-AUTH-17"],
       "depends_on": [1],
       "acceptance": [
         "Minimum length 10, accepted up to at least 64 characters without truncation (FR-AUTH-15)",
         "No mandatory character-composition rules and no forced periodic rotation are enforced (FR-AUTH-15)",
-        "A common/breached-password blocklist rejects matches",
-        "The blocklist includes common Spanish-language passwords, not only English ones (G-60)",
         "Username validation enforces uniqueness among active accounts and reserves the unknown-user placeholder name (FR-AUTH-17, G-42, G-58)",
         "Rejection messages come from the es-ES messages module (FR-UX-03)"
       ],
       "sdd": true,
-      "status": "pending"
+      "status": "done",
+      "note": "Breached-password blocklist deferred from MVP by G-83 (docs/gaps_and_resolutions.md Part S, 2026-08-26) — owner decision, requirements.md FR-AUTH-15 amended. specs/password_policy/ revised to match (R1-R7) and approved 2026-08-26."
     },
     {
       "id": 10,

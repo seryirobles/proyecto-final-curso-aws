@@ -3,77 +3,117 @@
 > This file is emptied when each session closes and moved to `history.md`.
 > While you work, **keep it updated in real time**, not at the end.
 
-- **Feature in progress:** 8 — `shopping_list_state`
+- **Feature in progress:** 9 — `password_policy`
 - **Started:** 2026-08-26
-- **Agent:** spec_author → implementer → reviewer (CHANGES_REQUESTED) → implementer (fixed) → awaiting human sign-off
+- **Agent:** spec_author (launched)
 
 ## Plan
 
-Feature 7 — `shopping_aggregation` — is `done` and committed (`ae402b9`),
-tree clean. Feature 8 — `shopping_list_state` (tier 1, `sdd: true`) — the
-shared, persistable shopping list: one flat item shape (name, quantity,
-unit, check state), additive re-sync against feature 7's required-item set,
-and check-off. Depends on 7 (done).
+Feature 8 — `shopping_list_state` — is `done` and committed (`48df9af`), tree
+clean. `./init.sh` reports feature 9 — `password_policy` (tier 1, `sdd: true`,
+depends_on [1] done) as the next actionable feature.
 
-Load-bearing invariant: re-sync must **never** touch a checked item's state
-or quantity (FR-SHOP-08, G-77, supersedes G-44) — a raised requirement
-above what a checked item covers produces a **new unchecked item** carrying
-the remainder, not a rewrite of the checked one. `docs/verification.md`
-Level 4's "never undo the user's reality" row names this exact scenario.
+Covers FR-AUTH-15 (NIST 800-63B password policy: min length 10, up to at
+least 64 chars, no composition rules, no forced rotation, blocklist including
+common Spanish-language passwords) and FR-AUTH-17 (username uniqueness among
+active accounts, reserved unknown-user placeholder name).
 
-`spec_author` produced `specs/shopping_list_state/requirements.md` (R1–R19),
-`design.md` and `tasks.md` (36 tasks); `feature_list.json` status is now
-`spec_ready`. Extends feature 7's `domain/shopping.py` (per that feature's
-own gate-question-3 recommendation) with `ShoppingItem`,
-`ShoppingItemNotFound`, `InsufficientNewIds`, manual CRUD + check-off, and
-an `outstanding_amounts` + `resync` split where `resync`'s write loop only
-ever indexes unchecked items — G-77 enforced structurally, not by a
-conditional check.
+Per SDD flow: spec_author writes `specs/password_policy/{requirements,design,tasks}.md`,
+sets status to `spec_ready`, then STOP for human approval gate.
 
 ## Log
 
-- spec_author: `spec_ready -> specs/shopping_list_state/`.
-- Human approved all 3 gate questions in `design.md` §9, all recommended
-  options (first-occurrence tie-break; raise `InsufficientNewIds` rather
-  than a partial-result signature; quantity-only writes on resync) —
-  2026-08-26. `design.md` already implements these verbatim, no rewrite
-  needed.
-- `feature_list.json` set to `in_progress` BEFORE launching implementer
-  (feature 7's implementer correctly refused a premature launch last
-  round — status gate now checked first every time).
-- implementer launched against `specs/shopping_list_state/`.
-- implementer: `shopping.py` extended (`ShoppingItem`, `ShoppingItemNotFound`,
-  `InsufficientNewIds`, CRUD + check-off, `outstanding_amounts` + `resync`),
-  42 new tests, all 36 tasks ticked, `progress/impl_shopping_list_state.md`
-  written. `./init.sh` green — 179 backend tests (156 → +42). G-77 explicitly
-  asserted (checked item untouched; remainder becomes a new unchecked item).
-  Two mechanical fixes noted (100-char docstring line, mypy strict reassign
-  type in `resync`'s loop) — no design deviation.
-- reviewer: CHANGES_REQUESTED. Mutation testing (structural focus on G-77
-  requested) planted mutants across the whole module; 3 survived. Real gaps:
-  a matched write could overwrite an existing item's name/unit instead of
-  quantity-only (M3 — exactly what gate-question-3 exists to prevent, no
-  test used differing spellings between `items` and `required`); the
-  first-occurrence tie-break is unverified (M5 — no test has two unchecked
-  items sharing a key); the exact-zero outstanding boundary is unverified
-  (M6 — existing test only covers the negative case despite its name
-  claiming both). Also: `impl_shopping_list_state.md` overstated the
-  checked-row guard as "structural" when it's a conditional (`if
-  item.checked: continue`), well-tested but not construction-proof.
-- Fixes sent back to the same implementer (full context retained): 3
-  tests added for M3/M5/M6, requirements R20 (tie-break) and R21
-  (quantity-only write) added and wired through `tasks.md` and the
-  traceability doc, `impl_shopping_list_state.md`'s overstated
-  "structural" claim reworded to "guarded, mutation-tested invariant".
-- Cheap verification (not a full second review): the 3 named mutants
-  re-planted one at a time and confirmed killed, then reverted.
-  179 -> 182 tests. `./init.sh` green.
-- `feature_list.json` left at `in_progress` — leader does not mark `done`.
+- Leader: confirmed feature 8 done/committed, archived stale `current.md`
+  entry to `history.md`, ran `./init.sh` (green, 182 tests) — next actionable
+  feature confirmed as 9.
+- spec_author: launched against FR-AUTH-15, FR-AUTH-17.
+- spec_author: `spec_ready -> specs/password_policy/`. R1-R9 (FR-AUTH-15:
+  R1-R6, FR-AUTH-17: R7-R9), FR-UX-03 cited via the assignment
+  `specs/text_and_units/design.md` §6/§10 pre-flagged. Design creates
+  `planner_core/messages.py` (first backend es-ES messages module) plus
+  `domain/password_policy.py` and `domain/username_policy.py`. 3 gate
+  questions raised in `design.md` §8. `feature_list.json` set to
+  `spec_ready`.
+
+- Human reviewed the 3 gate questions: Q1 (messages.py) and Q3 (no max
+  length) approved. Q2 (blocklist content) escalated into a scope
+  discussion — human decided to drop the breached-password blocklist from
+  the MVP entirely rather than ship a thin hand-curated list (reasoning: a
+  domain-pure, zero-IO, zero-dependency module can't hold a real corpus; a
+  small literal would be barely better than the English-only list G-60
+  already rejected; the right shape is an injectable check fed by a real
+  corpus later, once an adapter layer exists).
+- Leader: this required amending frozen `FR-AUTH-15` (blocklist clause is
+  load-bearing text, not a design choice). Owner gave explicit, scoped
+  authorization ("strip this from the MVP"). Edited `docs/requirements.md`
+  (FR-AUTH-15, struck inline, not deleted) and `docs/gaps_and_resolutions.md`
+  (new Part S, `G-83`, amends G-30/G-60) per the project's established
+  "fresh, explicit lift" pattern (same shape as Parts I-R). `feature_list.json`
+  feature 9 acceptance list and description updated to match; blocklist
+  acceptance bullets removed, `note` field records the deferral.
+- `specs/password_policy/` (R1-R9, design.md, tasks.md) now predates this
+  amendment — R5/R6 and the design's blocklist section (§5 password_policy.py
+  content, gate question 2) cite a clause that no longer exists. Sent back to
+  spec_author to revise in place.
+
+- spec_author: revised `specs/password_policy/` in place. R1-R7 (down from
+  R1-R9), blocklist requirements and design content removed, G-83 cited in
+  all 3 files. Gate question 2 (blocklist content) dropped; only 2 gate
+  questions remain (messages.py assignment, no-max-length).
+- Leader: verified the revision. Found and fixed a renumbering slip — `R5`
+  (username equality rule, no message) was left listed as an `FR-UX-03`
+  citer in 3 spots (requirements.md scope note + coverage map, tasks.md T1)
+  when it should have read `R7` (old `R9`, `UsernameReserved`). Fixed
+  directly (mechanical, single-file, no logic change). Rest of the revision
+  is consistent.
+
+- Human approved `specs/password_policy/` (R1-R7, both gate questions
+  confirmed) — 2026-08-26. `feature_list.json` set to `in_progress` before
+  launching the implementer.
+- implementer: launched against `specs/password_policy/`.
+
+- implementer: **Feature in progress: 9 — password_policy**. Plan: tasks
+  T1-T21 from `specs/password_policy/tasks.md`.
+- implementer: T1-T21 done. Created `planner_core/messages.py` (first
+  backend es-ES messages module), `domain/password_policy.py`,
+  `domain/username_policy.py`, and their two test modules. No files
+  modified, no blocklist logic built (`G-83`). `./init.sh` green: 193
+  tests (182 -> 193, +11). `uv export` confirms no dependency added.
+  Report: `progress/impl_password_policy.md`.
+
+- reviewer: CHANGES_REQUESTED. 8 mutants planted (length boundary, ceiling,
+  composition, signature, reservation-order, both normalize() calls,
+  uniqueness guard) — all 8 killed, tree restored. 1 finding: the
+  `UNKNOWN_USER_NAME` comment in `username_policy.py` is 6 lines (quotes
+  `docs/data_model.md` §5.1 instead of pointing at it), double the 3-line
+  ceiling in `docs/conventions.md`. Everything else (traceability, layering,
+  dependency-zero, G-83 deferral verified independently, exception shape)
+  passed clean.
+- Leader: fixed the same over-long comment in `specs/password_policy/design.md`
+  §5 (not code — leader may edit specs/) to a 2-line pointer. Sent the actual
+  source fix (`backend/core/src/planner_core/domain/username_policy.py`) back
+  to the implementer — single-file, single-comment, no logic change.
+
+- implementer: comment in `username_policy.py` replaced with the 2-line
+  pointer, exact match to `design.md` §5. `./init.sh` green, 193 tests
+  unchanged (comment-only change, no logic touched — no mutation re-check
+  needed beyond confirming the suite is still green).
+
+- Human ran their own code review before sign-off, verified all doc citations
+  independently (G-30/G-83, FR-AUTH-15/-17, data_model.md §5.1, design.md
+  byte-for-byte match). One real finding: `password_policy.py`'s module
+  docstring is two sentences (length rule + a G-83 blocklist-deferral note
+  that duplicates design.md §0), violating `docs/conventions.md`'s
+  one-sentence rule — every other `planner_core/` module stays to one.
+  Leader verified the finding directly, sent the trim to the implementer.
+
+- implementer: docstring trimmed to one sentence. `./init.sh` green, 193
+  tests unchanged (comment-only change).
 
 ## Next step
 
-Ready for human sign-off: review `specs/shopping_list_state/`,
-`backend/core/src/planner_core/domain/shopping.py`,
-`backend/core/tests/domain/test_shopping.py` and
-`progress/impl_shopping_list_state.md`. Marking `done` and committing are
+Ready for human sign-off: review `specs/password_policy/`,
+`backend/core/src/planner_core/{messages.py,domain/password_policy.py,domain/username_policy.py}`,
+`backend/core/tests/domain/{test_password_policy.py,test_username_policy.py}`
+and `progress/impl_password_policy.md`. Marking `done` and committing are
 human-only.

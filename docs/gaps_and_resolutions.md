@@ -862,3 +862,51 @@ the single enumeration named below.
   minimum" and ends in an ellipsis, so an addition needs no amendment, while
   removing a term the frozen text names by hand does. The literal, final list
   stays where `docs/architecture.md` §2.1 puts it — decided in a spec.
+
+---
+
+## Part S — Breached-password blocklist dropped from the MVP (2026-08-26)
+
+Directed by the requirements owner, overriding the freeze in `CLAUDE.md` in the
+same manner as Parts I through R. Granted for `requirements.md` only, and for
+the single clause named below.
+
+### G-83 · The breached-password blocklist is deferred, not shipped in the MVP (amends G-30, G-60)
+- **Gap:** Feature 9 `password_policy`'s spec (`specs/password_policy/`) reached
+  the point of implementing FR-AUTH-15's blocklist clause and surfaced a real
+  constraint the requirement never accounted for: `docs/architecture.md` §3.1
+  rule 1 and §3.1's "No IO" statement for `domain/` forbid both a network call
+  (e.g. Have I Been Pwned's k-anonymity API) and a bundled data file read at
+  import time, and `backend/core`'s `pyproject.toml` fixes `dependencies = []`
+  (feature 1, done) — so no third-party corpus library is available either.
+  The only form left for a pure-domain, zero-dependency module is a hand-typed
+  Python literal, and a hand-typed list is necessarily small and arbitrary —
+  not a real breach corpus, and not markedly better than the English-only list
+  G-60 already rejected as missing the point for a Spanish user base.
+- **Decision:** The blocklist-rejection clause of FR-AUTH-15 is **struck** from
+  the MVP. The length floor, the absence of composition rules, and the absence
+  of forced rotation — the rest of FR-AUTH-15 — are unaffected and still ship
+  in feature 9. G-60's Spanish-inclusivity requirement is now moot for the MVP
+  since it amended the clause being struck; it is not itself struck, since it
+  would re-apply in full the moment the blocklist ships for real.
+- **Reasoning:** A thin, hand-curated literal would satisfy FR-AUTH-15's letter
+  while being honestly no better than the English-only list G-60 already
+  judged insufficient — shipping it would be checking a box, not adding a real
+  control. The right shape for a genuine blocklist is an **injectable**
+  dependency (the same pattern already used for `Clock`, `docs/architecture.md`
+  §1.2.2/§3.1 rule 6: a port plus a sanctioned default, chosen by `wiring.py`
+  not by `domain/`), fed by a real corpus (a maintained wordlist, or HIBP's
+  k-anonymity API) through an adapter — infrastructure that does not exist
+  yet and is out of scope for a tier-1, architecture-independent feature. The
+  owner chose to defer the whole control rather than ship a token version of
+  it now and revisit later.
+- **Requirements:** `FR-AUTH-15` (amended — blocklist clause struck).
+  **Amends G-30** (which specified the blocklist as part of the NIST alignment)
+  and **G-60** (whose Spanish-inclusivity fix to that clause is now dormant,
+  not deleted, pending the deferred future work). Supersedes neither — both
+  remain the correct record of what a real implementation must do when this
+  ships.
+- **Future work (not scheduled, no feature id assigned):** re-introduce the
+  blocklist as an injectable check with a real corpus once an adapter layer
+  exists (post feature 14 `persistence_ports` / feature 15 `auth_flow`, once
+  **P2** is decided). Revert this strike when that lands.

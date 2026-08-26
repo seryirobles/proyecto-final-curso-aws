@@ -5,6 +5,23 @@
 
 ---
 
+## 2026-08-26 — Feature 8 `shopping_list_state` closed
+
+- **Feature:** 8 — `shopping_list_state` — `done`
+- **Agent:** spec_author → implementer → reviewer (CHANGES_REQUESTED) →
+  implementer (fixed) → human sign-off → committed (`48df9af`)
+
+**Done:**
+
+- Shared shopping list domain: `ShoppingItem`, manual CRUD, check-off,
+  additive `resync` split from feature 7's `outstanding_amounts`.
+- Reviewer found 3 real gaps via mutation testing (M3/M5/M6 — quantity-only
+  write, first-occurrence tie-break, exact-zero boundary), all fixed with
+  new tests (R20, R21 added). 182 backend tests total, `./init.sh` green.
+- Human approved and committed. Tree clean at session start.
+
+---
+
 ## 2026-07-22 — Harness bootstrap
 
 - **Feature:** none (harness setup, not a `feature_list.json` entry)
