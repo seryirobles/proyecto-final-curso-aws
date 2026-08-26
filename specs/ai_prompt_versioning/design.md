@@ -125,6 +125,15 @@ enough that a later feature needing a different deployment-configured value
 
 ## 4. The versioned registry (domain layer, unchanged in shape from the earlier draft)
 
+> **Amended by feature 25 (`recipe_metadata_fields`), human-approved
+> 2026-08-26 (`G-85`, corrected by `G-86`).** The block below is retained as
+> the historical, as-approved-at-this-gate shape (`servings: int`,
+> `servings=4`). As of feature 25, `servings` is removed from
+> `PromptInstructionsVersion` and from the `v1` entry;
+> `recipe_metadata_instruction` (an instruction, not a target value) takes
+> its place — see `specs/recipe_metadata_fields/design.md` §6 for the
+> as-shipped shape.
+
 ```python
 @dataclass(frozen=True)
 class PromptInstructionsVersion:
@@ -187,6 +196,12 @@ change it. `UnknownPromptVersion` follows this module's own naming precedent
 `domain/ai_prompt.py`'s `build_instructions()` cannot read `ConfigPort`
 itself (§2). Its signature changes to accept the plain value the
 application layer resolves:
+
+> **Amended by feature 25 (`recipe_metadata_fields`), human-approved
+> 2026-08-26 (`G-85`, corrected by `G-86`).** The block below is retained as
+> the historical, as-approved-at-this-gate shape. As of feature 25,
+> `PromptInstructions` carries `recipe_metadata_instruction` instead of
+> `servings` — see `specs/recipe_metadata_fields/design.md` §6.
 
 ```python
 def build_instructions(version_id: str) -> PromptInstructions:

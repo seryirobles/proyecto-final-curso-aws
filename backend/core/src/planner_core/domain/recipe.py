@@ -26,7 +26,8 @@ class Ingredient:
 class Recipe:
     """A library recipe's immutable content (FR-LIB-03).
 
-    No cuisine, difficulty or kcal field (G-68, G-36).
+    No cuisine, difficulty or kcal field (G-68, G-36). servings/estimated_time
+    are purely informational (G-85) - see test_no_recipe_metadata_logic.py.
     """
 
     name: str
@@ -34,6 +35,8 @@ class Recipe:
     tools: tuple[str, ...]
     procedure: tuple[str, ...]
     category: IngredientCategory
+    servings: int | None = None
+    estimated_time: str | None = None
 
 
 @dataclass(frozen=True)
@@ -42,6 +45,7 @@ class MealSnapshot:
 
     A distinct type from Recipe, holding no reference back to it, so a later
     library edit or delete can never retroactively mutate a week (G-05).
+    Mirrors Recipe's shape field-for-field (G-85) - see snapshot() below.
     """
 
     name: str
@@ -49,6 +53,8 @@ class MealSnapshot:
     tools: tuple[str, ...]
     procedure: tuple[str, ...]
     category: IngredientCategory
+    servings: int | None = None
+    estimated_time: str | None = None
 
 
 def snapshot(recipe: Recipe) -> MealSnapshot:
@@ -59,4 +65,6 @@ def snapshot(recipe: Recipe) -> MealSnapshot:
         tools=recipe.tools,
         procedure=recipe.procedure,
         category=recipe.category,
+        servings=recipe.servings,
+        estimated_time=recipe.estimated_time,
     )

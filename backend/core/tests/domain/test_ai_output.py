@@ -1,4 +1,9 @@
-"""Tests for AI output validation and the preview lifecycle (R1-R21)."""
+"""Tests for AI output validation and the preview lifecycle.
+
+R1-R21 below are specs/ai_output_validation/requirements.md (feature 12).
+Tests naming R10-R15 explicitly are specs/recipe_metadata_fields/requirements.md
+(feature 25) instead - the two specs' numbering collides, disambiguated by name.
+"""
 
 from __future__ import annotations
 
@@ -66,7 +71,15 @@ def test_raw_ingredient_is_frozen() -> None:
 def test_raw_recipe_output_fields_are_exactly_the_fixed_shape() -> None:
     """R2."""
     field_names = {field.name for field in dataclasses.fields(RawRecipeOutput)}
-    assert field_names == {"name", "ingredients", "tools", "procedure", "category"}
+    assert field_names == {
+        "name",
+        "ingredients",
+        "tools",
+        "procedure",
+        "category",
+        "servings",
+        "estimated_time",
+    }
 
 
 def test_raw_recipe_output_is_frozen() -> None:
@@ -124,6 +137,45 @@ def test_validate_ai_recipe_output_carries_name_tools_procedure_unchanged() -> N
     assert recipe.name == raw.name
     assert recipe.tools == raw.tools
     assert recipe.procedure == raw.procedure
+
+
+# --- recipe_metadata_fields R10-R15: servings and estimated_time -----------
+
+
+def test_raw_recipe_output_servings_and_estimated_time_default_to_none() -> None:
+    """recipe_metadata_fields R10, R11."""
+    raw = _make_raw()
+
+    assert raw.servings is None
+    assert raw.estimated_time is None
+
+
+def test_validate_ai_recipe_output_does_not_raise_when_both_fields_are_absent() -> None:
+    """recipe_metadata_fields R12, R13: absence is not a failure."""
+    recipe = validate_ai_recipe_output(_make_raw())
+
+    assert recipe.servings is None
+    assert recipe.estimated_time is None
+
+
+def test_validate_ai_recipe_output_copies_servings_and_estimated_time_when_present() -> None:
+    """recipe_metadata_fields R14, R15."""
+    raw = dataclasses.replace(_make_raw(), servings=4, estimated_time="30 min")
+
+    recipe = validate_ai_recipe_output(raw)
+
+    assert recipe.servings == raw.servings
+    assert recipe.estimated_time == raw.estimated_time
+
+
+def test_validate_ai_recipe_output_copies_one_field_present_one_absent() -> None:
+    """recipe_metadata_fields R12-R15: each field's presence is independent of the other's."""
+    raw = dataclasses.replace(_make_raw(), servings=2, estimated_time=None)
+
+    recipe = validate_ai_recipe_output(raw)
+
+    assert recipe.servings == 2
+    assert recipe.estimated_time is None
 
 
 # --- R10-R13: preview lifecycle ---------------------------------------------

@@ -1,4 +1,9 @@
-"""Tests for AI prompt assembly: shared instructions and the three mode-specific shapes (R1-R20)."""
+"""Tests for AI prompt assembly: shared instructions and the three mode-specific shapes.
+
+R1-R20 below are specs/ai_prompt_builder/requirements.md (feature 11).
+Tests naming R18-R25 explicitly are specs/recipe_metadata_fields/requirements.md
+(feature 25) instead - the two specs' numbering collides, disambiguated by name.
+"""
 
 from __future__ import annotations
 
@@ -8,10 +13,10 @@ import pytest
 
 from planner_core.domain.ai_prompt import (
     ALLOWED_UNITS,
-    CONFIGURED_SERVINGS,
     HEALTHY_BALANCED_INSTRUCTION,
     OUTPUT_LANGUAGE,
     PROMPT_INSTRUCTION_VERSIONS,
+    RECIPE_METADATA_INSTRUCTION,
     CategoryPrompt,
     PromptInstructions,
     PromptInstructionsVersion,
@@ -40,12 +45,6 @@ def _make_recipe() -> Recipe:
     )
 
 
-def test_configured_servings_is_four() -> None:
-    """R1: FR-AI-13, the approved value (design.md section 4)."""
-    assert CONFIGURED_SERVINGS == 4
-    assert isinstance(CONFIGURED_SERVINGS, int)
-
-
 def test_output_language_is_es_es() -> None:
     """R2: FR-AI-07."""
     assert OUTPUT_LANGUAGE == "es-ES"
@@ -60,6 +59,16 @@ def test_healthy_balanced_instruction_is_non_empty() -> None:
     )
 
 
+def test_recipe_metadata_instruction_is_the_approved_wording() -> None:
+    """recipe_metadata_fields R23, R24 (G-86): the approved wording (design.md section 6)."""
+    assert RECIPE_METADATA_INSTRUCTION == (
+        "Indica tambien el numero de comensales y una estimacion del tiempo de "
+        "preparacion y coccion para cada receta generada. Son datos meramente "
+        "informativos: no ajustes las cantidades de los ingredientes en funcion "
+        "de ellos."
+    )
+
+
 def test_allowed_units_contains_every_unit_member() -> None:
     """R4: FR-LIB-05 (consumed)."""
     assert ALLOWED_UNITS == tuple(Unit)
@@ -67,12 +76,13 @@ def test_allowed_units_contains_every_unit_member() -> None:
 
 
 def test_prompt_instructions_fields_are_exactly_the_fixed_shape() -> None:
-    """R5."""
+    """R5, amended by recipe_metadata_fields R19: no servings field,
+    recipe_metadata_instruction added."""
     field_names = {field.name for field in dataclasses.fields(PromptInstructions)}
     assert field_names == {
-        "servings",
         "output_language",
         "healthy_balanced_instruction",
+        "recipe_metadata_instruction",
         "allowed_units",
     }
 
@@ -82,28 +92,28 @@ def test_prompt_instructions_is_frozen() -> None:
     instructions = build_instructions("v1")
 
     with pytest.raises(dataclasses.FrozenInstanceError):
-        instructions.__setattr__("servings", 6)
+        instructions.__setattr__("output_language", "en-US")
 
 
 def test_build_instructions_matches_the_module_constants() -> None:
-    """R6, R7, R8, R9 (specs/ai_prompt_builder/requirements.md, amended by feature 24)."""
+    """R6, R7, R8, R9 (specs/ai_prompt_builder/requirements.md, amended by features 24, 25)."""
     instructions = build_instructions("v1")
 
-    assert instructions.servings == CONFIGURED_SERVINGS
     assert instructions.output_language == OUTPUT_LANGUAGE
     assert instructions.healthy_balanced_instruction == HEALTHY_BALANCED_INSTRUCTION
+    assert instructions.recipe_metadata_instruction == RECIPE_METADATA_INSTRUCTION
     assert instructions.allowed_units == ALLOWED_UNITS
 
 
 def test_build_instructions_sources_content_from_the_named_version() -> None:
-    """FR-AI-14, R5: build_instructions(version_id) reads servings, output_language
-    and healthy_balanced_instruction from that version's own content, not the
-    module constants directly."""
+    """FR-AI-14, R5: build_instructions(version_id) reads output_language,
+    healthy_balanced_instruction and recipe_metadata_instruction from that
+    version's own content, not the module constants directly."""
     other_version = PromptInstructionsVersion(
         version_id="v-test-only",
-        servings=2,
         output_language="fr-FR",
         healthy_balanced_instruction="Otra instruccion.",
+        recipe_metadata_instruction="Otra instruccion de metadatos.",
     )
     PROMPT_INSTRUCTION_VERSIONS[other_version.version_id] = other_version
     try:
@@ -111,9 +121,9 @@ def test_build_instructions_sources_content_from_the_named_version() -> None:
     finally:
         del PROMPT_INSTRUCTION_VERSIONS[other_version.version_id]
 
-    assert instructions.servings == 2
     assert instructions.output_language == "fr-FR"
     assert instructions.healthy_balanced_instruction == "Otra instruccion."
+    assert instructions.recipe_metadata_instruction == "Otra instruccion de metadatos."
     assert instructions.allowed_units == ALLOWED_UNITS
 
 
@@ -124,15 +134,15 @@ def test_build_instructions_raises_unknown_prompt_version_for_unregistered_id() 
 
 
 def test_resolve_prompt_version_registry_carries_every_expected_version() -> None:
-    """FR-AI-14, R1, R2, R6: v1 carries feature 11's already-approved constants."""
+    """FR-AI-14, R1, R2, R6: v1 carries feature 11's/feature 25's already-approved constants."""
     assert set(PROMPT_INSTRUCTION_VERSIONS) == {"v1"}
 
     version = resolve_prompt_version("v1")
 
     assert version.version_id == "v1"
-    assert version.servings == CONFIGURED_SERVINGS
     assert version.output_language == OUTPUT_LANGUAGE
     assert version.healthy_balanced_instruction == HEALTHY_BALANCED_INSTRUCTION
+    assert version.recipe_metadata_instruction == RECIPE_METADATA_INSTRUCTION
 
 
 def test_resolve_prompt_version_raises_unknown_prompt_version_for_unregistered_id() -> None:
@@ -146,7 +156,18 @@ def test_prompt_instructions_version_is_frozen() -> None:
     version = resolve_prompt_version("v1")
 
     with pytest.raises(dataclasses.FrozenInstanceError):
-        version.__setattr__("servings", 6)
+        version.__setattr__("output_language", "en-US")
+
+
+def test_prompt_instructions_version_fields_are_exactly_the_fixed_shape() -> None:
+    """recipe_metadata_fields R20: no servings field, recipe_metadata_instruction added."""
+    field_names = {field.name for field in dataclasses.fields(PromptInstructionsVersion)}
+    assert field_names == {
+        "version_id",
+        "output_language",
+        "healthy_balanced_instruction",
+        "recipe_metadata_instruction",
+    }
 
 
 def test_specification_prompt_fields_are_exactly_the_fixed_shape() -> None:
@@ -205,6 +226,13 @@ def test_build_specification_prompt_carries_its_inputs() -> None:
     assert result.tools == tools
 
 
+def test_build_specification_prompt_carries_the_recipe_metadata_instruction() -> None:
+    """recipe_metadata_fields R25: reaches build_specification_prompt's result too."""
+    result = build_specification_prompt(("tomate",), ("sarten",), "v1")
+
+    assert result.instructions.recipe_metadata_instruction == RECIPE_METADATA_INSTRUCTION
+
+
 def test_build_reference_prompt_carries_its_inputs() -> None:
     """R16, R17, R18 (specs/ai_prompt_builder/requirements.md, amended by feature 24)."""
     recipe = _make_recipe()
@@ -215,6 +243,13 @@ def test_build_reference_prompt_carries_its_inputs() -> None:
     assert result.instructions == build_instructions("v1")
     assert result.reference_recipe == recipe
     assert result.extra_specifications == extra_specifications
+
+
+def test_build_reference_prompt_carries_the_recipe_metadata_instruction() -> None:
+    """recipe_metadata_fields R25: reaches build_reference_prompt's result too."""
+    result = build_reference_prompt(_make_recipe(), (), "v1")
+
+    assert result.instructions.recipe_metadata_instruction == RECIPE_METADATA_INSTRUCTION
 
 
 def test_build_category_prompt_carries_its_input() -> None:
@@ -228,3 +263,12 @@ def test_build_category_prompt_carries_its_input() -> None:
 
     assert result.instructions == build_instructions("v1")
     assert result.category_counts == category_counts
+
+
+def test_build_category_prompt_carries_the_recipe_metadata_instruction() -> None:
+    """recipe_metadata_fields R25: reaches build_category_prompt's result too."""
+    result = build_category_prompt(
+        (CategoryCountRule(category=IngredientCategory.MEAT, count=1),), "v1"
+    )
+
+    assert result.instructions.recipe_metadata_instruction == RECIPE_METADATA_INSTRUCTION

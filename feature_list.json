@@ -306,7 +306,7 @@
         "No AWS SDK import anywhere in this feature"
       ],
       "sdd": true,
-      "status": "pending"
+      "status": "spec_ready"
     },
     {
       "id": 15,
@@ -459,6 +459,26 @@
       ],
       "sdd": true,
       "status": "done"
+    },
+    {
+      "id": 25,
+      "name": "recipe_metadata_fields",
+      "tier": 1,
+      "title": "Recipe metadata: servings and prep/cook time",
+      "description": "Adds per-recipe servings (numeroComensales) and estimated prep/cook time (tiempo) to Recipe/MealSnapshot as informational-only fields, settable manually or by AI generation, with no validation and no shopping-aggregation logic. Reverses G-64's deployment-config framing for servings (G-85).",
+      "covers": ["FR-LIB-03", "FR-MENU-04", "FR-AI-13"],
+      "depends_on": [4, 11, 12],
+      "acceptance": [
+        "Recipe and MealSnapshot carry an optional servings count and an optional estimated prep/cook time (FR-LIB-03)",
+        "Both fields are freeform — no validation, no dropdown constraint, no format enforcement",
+        "Both fields can be set in every recipe-authoring flow, manually or by AI generation, with no cross-recipe consistency requirement (FR-AI-13, G-85)",
+        "Neither field is read by shopping-list aggregation or any other domain logic — proven by a mechanical scan, mirroring test_no_ambient_time.py's technique (G-85)",
+        "The detail-view content model includes both fields alongside ingredients, tools and procedure (FR-MENU-04)",
+        "AI output validation accepts the fields as optional and freeform, with no new failure mode when either is absent",
+        "The AI prompt builder's CONFIGURED_SERVINGS deployment-config constant (feature 11) is removed; no code path still treats servings as global config"
+      ],
+      "sdd": true,
+      "status": "in_progress"
     }
   ]
 }

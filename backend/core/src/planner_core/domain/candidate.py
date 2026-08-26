@@ -139,6 +139,8 @@ def to_library_entry(meal: MealSnapshot, existing_names: Iterable[str]) -> Libra
         tools=meal.tools,
         procedure=meal.procedure,
         category=meal.category,
+        servings=meal.servings,
+        estimated_time=meal.estimated_time,
     )
     duplicate_warning = any(
         normalize(recipe.name) == normalize(existing) for existing in existing_names

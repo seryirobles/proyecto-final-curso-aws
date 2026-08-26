@@ -16,6 +16,10 @@ must state (servings, output language, the healthy/varied-protein notice,
 the fixed unit vocabulary), without generating, validating or invoking
 anything itself.
 
+> **Amended by feature 25 (`recipe_metadata_fields`), human-approved
+> 2026-08-26 (`G-85`, corrected by `G-86`).** "Servings" is no longer a
+> prompt instruction of its own — see the R1, R5, R6 amendments below.
+
 ## One `SHALL` per requirement
 
 Every `R<n>` below carries exactly one `SHALL`, counted mechanically rather
@@ -38,7 +42,7 @@ instruction, the same way `generation_request` (feature 10) consumed
 | `FR-AI-04` | The `CategoryPrompt` shape and `build_category_prompt`, carrying the week's remaining category counts (`generation_request`'s `GenerationTargets.remaining_category_counts`) as an explicit instruction for one open slot's AI-generated meal. | Deciding *which* open slots get an AI call vs. a library pick (library-only/mix mode selection), calling the model once per slot (`FR-AI-09`), and the post-generation verification against each recipe's stored `tipoAlimento` this requirement's own text promises — **feature 12**, **feature 17**. |
 | `FR-AI-06` | The `HEALTHY_BALANCED_INSTRUCTION` constant (healthy, balanced, protein-varied, labelled non-medical) attached to every prompt via `PromptInstructions`. | Displaying the non-medical label to the user in the UI — **feature 20**. |
 | `FR-AI-07` | The `OUTPUT_LANGUAGE` constant (`"es-ES"`) attached to every prompt via `PromptInstructions`. | Validating that the AI actually complied — **feature 12**. |
-| `FR-AI-13` | The `CONFIGURED_SERVINGS` constant attached to every prompt via `PromptInstructions` (the concrete value is proposed in `design.md` §4, a `docs/architecture.md` §2.1 item). | Persisting a `numeroComensales` value on the resulting `Recipe`/`MealSnapshot` — flagged as an open scope question, `design.md` §9 gate question 1; not decided here. |
+| `FR-AI-13` | ~~The `CONFIGURED_SERVINGS` constant attached to every prompt via `PromptInstructions` (the concrete value is proposed in `design.md` §4, a `docs/architecture.md` §2.1 item).~~ **Superseded by feature 25 (`G-85`, corrected by `G-86`):** `CONFIGURED_SERVINGS` is removed; `RECIPE_METADATA_INSTRUCTION`/`recipe_metadata_instruction` (an instruction, not a target value) is owned by `recipe_metadata_fields`, feature 25. | Persisting a `numeroComensales`/`estimated_time` value on the resulting `Recipe`/`MealSnapshot` — resolved by feature 25 (`recipe_metadata_fields`), no longer open. |
 
 ---
 
@@ -49,6 +53,14 @@ The system SHALL declare `CONFIGURED_SERVINGS` as a module-level `int`
 constant in `planner_core.domain.ai_prompt` (the concrete value is proposed
 in `design.md` §4 and approved at this spec's human gate, per
 `docs/architecture.md` §2.1).
+
+> **Superseded by feature 25 (`recipe_metadata_fields`,
+> `specs/recipe_metadata_fields/requirements.md` R18), human-approved
+> 2026-08-26 (`G-85`, corrected by `G-86`).** `CONFIGURED_SERVINGS` is
+> removed outright: servings became a per-recipe field on `Recipe`, not
+> deployment configuration. `RECIPE_METADATA_INSTRUCTION` (feature 25's R23,
+> R24) replaces it in kind — an instruction asking the model to state a
+> value, never a target the app supplies.
 
 ## R2
 Implements: FR-AI-07
@@ -90,11 +102,28 @@ in `planner_core.domain.ai_prompt` with fields exactly `servings: int`,
 > `version_id: str` parameter, forwarded to `build_instructions()` unchanged
 > otherwise (R13, R16, R19, amended below).
 
+> **Further amended by feature 25 (`recipe_metadata_fields`,
+> `specs/recipe_metadata_fields/requirements.md` R19, R24), human-approved
+> 2026-08-26 (`G-85`, corrected by `G-86`).** `PromptInstructions` no longer
+> declares `servings: int`. It declares `recipe_metadata_instruction: str`
+> in its place — an instruction telling the model to state a servings count
+> and an estimated prep/cook time itself, never a value the app supplies.
+> The fixed field set as of feature 25 is `output_language: str`,
+> `healthy_balanced_instruction: str`, `recipe_metadata_instruction: str`
+> and `allowed_units: tuple[Unit, ...]`.
+
 ## R6
 Implements: FR-AI-13
 
 `build_instructions(version_id)`'s result's `servings` field SHALL equal
 `resolve_prompt_version(version_id).servings`.
+
+> **Superseded by feature 25 (`recipe_metadata_fields`,
+> `specs/recipe_metadata_fields/requirements.md` R25), human-approved
+> 2026-08-26 (`G-85`, corrected by `G-86`).** `PromptInstructions` and
+> `PromptInstructionsVersion` no longer carry a `servings` field, so this
+> claim no longer applies; feature 25's R25 makes the equivalent claim for
+> `recipe_metadata_instruction`.
 
 ## R7
 Implements: FR-AI-07
@@ -196,13 +225,13 @@ SHALL equal `category_counts`.
 | `FR-AI-04` | R12, R19, R20 |
 | `FR-AI-06` | R3, R5, R8 |
 | `FR-AI-07` | R2, R5, R7 |
-| `FR-AI-13` | R1, R5, R6 |
+| `FR-AI-13` | ~~R1, R5, R6~~ **superseded by feature 25 (`recipe_metadata_fields`) R18, R19, R20, R23, R24, R25 — `G-85`, corrected by `G-86`** |
 | `FR-LIB-05` (consumed, not in `covers`) | R4, R5, R9 |
 
 | `feature_list.json` acceptance criterion | Covered by |
 |---|---|
 | Prompts assembled as plain data structures with no provider SDK imported | Satisfied structurally, not by a single `R<n>`: `planner_core.domain.ai_prompt` imports only `dataclasses`, `typing` and sibling `planner_core.domain` modules (see `design.md` §3, §9); `core` keeps `dependencies = []`, so no provider SDK could be imported without a `pyproject.toml` change this spec does not make. |
-| Every prompt states the configured number of servings (`FR-AI-13`, `G-64`) | R1, R5, R6 |
+| ~~Every prompt states the configured number of servings (`FR-AI-13`, `G-64`)~~ **superseded by feature 25: no target servings value is stated by the app; the model is instructed to state its own (`G-85`, corrected by `G-86`)** | R1, R5, R6 (historical) |
 | Every prompt instructs Castilian Spanish output (`FR-AI-07`) | R2, R5, R7 |
 | Every prompt instructs healthy, balanced menus that vary protein sources, labelled non-medical (`FR-AI-06`) | R3, R5, R8 |
 | Ingredient-category counts are passed as explicit prompt instructions, verifiable after generation against each recipe's stored `tipoAlimento` (`FR-AI-04`, `G-69`, supersedes `G-63`) | R12, R19, R20 (the verifiability half is `ai_output_validation`'s, feature 12 — see the scope table) |

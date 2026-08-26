@@ -1,4 +1,9 @@
-"""Tests for the Recipe content shape and the snapshot value object (R1-R3, R9-R14)."""
+"""Tests for the Recipe content shape and the snapshot value object.
+
+R1-R3, R9-R14 below are specs/recipe_model/requirements.md (feature 4).
+Tests naming R1-R9 explicitly are specs/recipe_metadata_fields/requirements.md
+(feature 25) instead - the two specs' numbering collides, disambiguated by name.
+"""
 
 from __future__ import annotations
 
@@ -36,7 +41,33 @@ def test_recipe_is_frozen() -> None:
 def test_recipe_fields_are_exactly_the_fixed_shape() -> None:
     """R2: no cuisine, difficulty or kcal field (G-68, G-36)."""
     field_names = {field.name for field in dataclasses.fields(Recipe)}
-    assert field_names == {"name", "ingredients", "tools", "procedure", "category"}
+    assert field_names == {
+        "name",
+        "ingredients",
+        "tools",
+        "procedure",
+        "category",
+        "servings",
+        "estimated_time",
+    }
+
+
+def test_recipe_servings_and_estimated_time_default_to_none() -> None:
+    """R1, R2: both fields are optional."""
+    recipe = _make_recipe()
+
+    assert recipe.servings is None
+    assert recipe.estimated_time is None
+
+
+def test_recipe_accepts_any_servings_and_estimated_time_value() -> None:
+    """R7, R8: zero, a negative servings count and an arbitrary time string, no exception."""
+    recipe = dataclasses.replace(_make_recipe(), servings=-3, estimated_time="45 minutos")
+    assert recipe.servings == -3
+    assert recipe.estimated_time == "45 minutos"
+
+    zero = dataclasses.replace(_make_recipe(), servings=0)
+    assert zero.servings == 0
 
 
 def test_ingredient_fields_are_exactly_the_fixed_shape() -> None:
@@ -90,6 +121,32 @@ def test_snapshot_copies_the_recipes_content() -> None:
     assert taken.tools == recipe.tools
     assert taken.procedure == recipe.procedure
     assert taken.category == recipe.category
+
+
+def test_meal_snapshot_servings_and_estimated_time_default_to_none() -> None:
+    """R3, R4: both fields are optional on MealSnapshot too."""
+    taken = snapshot(_make_recipe())
+
+    assert taken.servings is None
+    assert taken.estimated_time is None
+
+
+def test_snapshot_copies_servings_and_estimated_time_when_set() -> None:
+    """R5, R6, R9: snapshot() carries both fields through unchanged."""
+    recipe = dataclasses.replace(_make_recipe(), servings=4, estimated_time="30 min")
+
+    taken = snapshot(recipe)
+
+    assert taken.servings == recipe.servings
+    assert taken.estimated_time == recipe.estimated_time
+
+
+def test_snapshot_copies_servings_and_estimated_time_when_absent() -> None:
+    """R5, R6: absence carries through too, not silently defaulted to a fixed value."""
+    taken = snapshot(_make_recipe())
+
+    assert taken.servings is None
+    assert taken.estimated_time is None
 
 
 def test_meal_snapshot_holds_no_reference_to_the_recipe() -> None:

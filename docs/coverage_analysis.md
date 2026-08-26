@@ -121,7 +121,7 @@ story added in the same-day stakeholder round and covered from the start.
 | US6 | Usable on computer and mobile via website | FR-UX-02 | Full (fixed) | Browser/device support matrix was undefined; now explicit (Chrome, Firefox, Edge, Safari, Brave) per stakeholder answer (G-33). |
 | US7 | Current week's menu, Mon–Sun, lunch & dinner | FR-MENU-01, -02, -06 | Full (fixed) | What happens at week rollover was undefined; now the former next week becomes current (G-15, G-28). |
 | US8 | See and plan next week's menu in advance | FR-MENU-01, -06, -07 | Full (new) | Added to close PEND-07 — shopping needs to happen before the week starts. Given identical functionality to the current week (G-28). |
-| US9 | Click a meal → detailed recipe (ingredients, tools, procedure) | FR-MENU-04, -05, FR-LIB-03 | Full (fixed) | The story is written from the week-menu view, but the same detail must open wherever a meal appears (summary, library, archive); this was unspecified (G-14). |
+| US9 | Click a meal → detailed recipe (ingredients, tools, procedure, time, servings) | FR-MENU-04, -05, FR-LIB-03 | Full (fixed) | The story is written from the week-menu view, but the same detail must open wherever a meal appears (summary, library, archive); this was unspecified (G-14). Time and servings added as informational-only fields (G-85). |
 | US10 | Add/edit/remove day candidates: from library, from scratch, or AI | FR-MENU-03, FR-CAND-01, -02, -03, -07, FR-RT-02 | Full | Snapshot semantics already resolved (G-05). |
 | US11 | Add a meal from the week's menu to the library | FR-CAND-06 | Full (fixed) | Duplicate behaviour was undefined (meal may itself come from the library): now always a new entry + same-name warning (G-26). |
 | US12 | AI generates the whole week (library-only / AI-only / mix) as candidates | FR-AI-03, -04, -08, -09, -11, -12, -13, NFR-AI-01 | Full (fixed) | Target slots and interaction with existing candidates/definitives were undefined (G-18). Progress and per-slot failure UX were undefined (G-19). Now generalized to either live week (G-28). Category-count enforcement semantics defined (G-63, **superseded by G-69** — counts are now verifiable against each recipe's stored `tipoAlimento`, not best-effort); servings assumption fixed (G-64); insufficient-library failure surfaced clearly (G-66). **Amended by G-71:** slots holding a definitive are skipped and counts describe the week's final state. |
@@ -129,7 +129,7 @@ story added in the same-day stakeholder round and covered from the start.
 | US14 | Generated meals balanced and healthy | FR-AI-06 | Full | Qualitative prompt instruction + rules-based quantitative balance confirmed as final, no medical/nutritional model in scope (G-36). |
 | US15 | See anyone's candidates; select one as definitive | FR-MENU-03, FR-CAND-04, -05, -08, FR-RT-02 | Full (fixed) | No way to *undo* a definitive selection existed — only replacing it with another candidate; now FR-CAND-08 (G-16). Concurrent selection already resolved via last-write-wins (G-07). Definitive meals clarified as editable until archival (G-67). |
 | US16 | Read-only weekly summary of definitive meals | FR-SUM-01, -03 | Full (fixed) | Attribution falls back to "unknown user" if the account was removed (G-29). **Amended 2026-08-14:** FR-SUM-02 removed — no record of *who promoted* a meal is stored; the summary shows the meal's own author (FR-CAND-04) (G-79). |
-| US17 | AI single recipe from specs, or from a library reference + specs | FR-CAND-02, -03, FR-LIB-03, -05, FR-AI-01, -02, -08, -09, -10, -12, -13, NFR-AI-01 | Full (fixed) | No accept/discard/regenerate step existed — a bad generation would land directly in the plan (G-17). Loading/failure UX undefined (G-19). Units constrained (G-48), servings assumption fixed (G-64). Cuisine and difficulty removed as generation inputs, retiring G-49 (G-68). |
+| US17 | AI single recipe from specs, or from a library reference + specs | FR-CAND-02, -03, FR-LIB-03, -05, FR-AI-01, -02, -08, -09, -10, -12, -13, NFR-AI-01 | Full (fixed) | No accept/discard/regenerate step existed — a bad generation would land directly in the plan (G-17). Loading/failure UX undefined (G-19). Units constrained (G-48). Cuisine and difficulty removed as generation inputs, retiring G-49 (G-68). Servings assumption fixed by G-64, later reversed — servings and time are per-recipe, informational metadata (G-85); the model is instructed to state both, informationally (G-86). |
 | US18 | See all library recipes; add/edit/remove them | FR-CAND-03, -07, FR-LIB-01, -02, -04, FR-RULE-07, FR-RT-02 | Full (fixed) | Deleting a recipe pinned by a general rule left the rule dangling (G-20). Search at scale, previously flagged as a scope question, is now in scope (G-34); it is **name search only**, since the filter attributes were removed (G-68). |
 | US19 | See other users' week-menu changes in real time | FR-AI-09, FR-RT-01, -02, -03 | Full (fixed) | Connection-loss / reconnection behaviour was unspecified — without it "real time" silently degrades to "stale" (G-22). Now applies to both live weeks (G-28). |
 | US20 | App in Castilian Spanish | FR-AI-07, FR-UX-01, -03 | Full (fixed) | Only the UI and AI output were covered; validation/error/system messages and date & number formats were not (G-23). |
@@ -202,7 +202,7 @@ Full reasoning per gap in `gaps_and_resolutions.md`.
 | G-61 | Menu/Reliability | Rollover as an atomic, idempotent, re-runnable job | FR-MENU-08 |
 | G-62 | UX/Scope | Accessibility: browser defaults only (stakeholder decision, PEND-15) | FR-UX-07 |
 | G-63 | Rules/AI | Ingredient-category semantics: deterministic pins/disabled days; AI best-effort category counts; fixed category list | FR-AI-04, FR-RULE-04 (amended) — **superseded by G-69** (recipes now store `tipoAlimento`) |
-| G-64 | AI/Shopping | Configured servings count in every AI prompt | FR-AI-13 |
+| G-64 | AI/Shopping | Configured servings count in every AI prompt | FR-AI-13 — **superseded by G-85** (servings is per-recipe, informational) |
 | G-65 | Auth | Re-seeded bootstrap credential is temporary | FR-AUTH-08 (amended) |
 | G-66 | AI/UX | Library-only/mix generation with insufficient library fails with a clear message | FR-AI-12 (amended) |
 | G-67 | Candidates | Definitive meals stay editable; content freezes only at archival | FR-CAND-05 (amended) |
@@ -220,13 +220,18 @@ Full reasoning per gap in `gaps_and_resolutions.md`.
 | G-79 | Summary/Attribution | Who promoted a meal is not recorded; the summary shows the meal's own author | FR-SUM-02 (removed), FR-SUM-03, FR-AUTH-13 (amended) — narrows G-29 |
 | G-80 | Docs/Traceability | Derived-artifact resync: US4 and US16 still asserted removed attribution behaviour; the §13 matrix still cited `FR-SUM-02` and `FR-SHOP-11` | **No requirement amended.** `app_user_stories.md` US4, US16; `requirements.md` §13 matrix rows US16, US22, US23 — propagates G-74, G-75, G-76, G-79 |
 | G-81 | Docs/AI-Cost | The open `NFR-AI-01` kill-switch question deferred to a review document that has since been deleted | **No requirement amended.** `coverage_analysis.md` §4 made self-contained; the question now tracked against `feature_list.json` #17 `ai_lambda` |
+| G-82 | Rules/Library | `vegetarian` replaced by `vegetable` in the ingredient-category set | FR-RULE-04 (amended) — amends G-69 |
+| G-83 | Auth/Security | Breached-password blocklist deferred, not shipped in the MVP | FR-AUTH-15 (amended) — amends G-30, G-60 |
+| G-84 | AI/Prompt | Prompt instructions versioned; prompt version is deployment configuration | FR-AI-14 (new) |
+| G-85 | Library/AI | Servings and prep/cook time become per-recipe, informational metadata | FR-LIB-03, FR-MENU-04, FR-AI-13 (amended) — supersedes G-64 |
+| G-86 | AI | AI is instructed to state a servings count and estimated time per recipe (informational only) | FR-AI-13 (amended) — corrects G-85 |
 
 ## 4. Open questions remaining
 
 None. Every question raised across all review passes is resolved or confirmed
 (PEND-01 to PEND-13 on 2026-07-03; PEND-14 and PEND-15 on 2026-07-04). See
 `gaps_pending_stakeholders.md` for the historical record and
-`gaps_and_resolutions.md` (G-01 to G-81, Parts A–Q, including the
+`gaps_and_resolutions.md` (G-01 to G-86, Parts A–V, including the
 examined-and-rejected list in Part H) for the reasoning.
 
 **One question is open and belongs to the human.** `NFR-AI-01` requires an

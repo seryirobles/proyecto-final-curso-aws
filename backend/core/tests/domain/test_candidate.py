@@ -291,6 +291,26 @@ def test_to_library_entry_does_not_warn_without_a_collision() -> None:
     assert result.duplicate_warning is False
 
 
+def test_to_library_entry_copies_servings_and_estimated_time_when_set() -> None:
+    """specs/recipe_metadata_fields/requirements.md R16, R17."""
+    meal = dataclasses.replace(_meal("Pisto"), servings=4, estimated_time="45 min")
+
+    result = to_library_entry(meal, existing_names=())
+
+    assert result.recipe.servings == meal.servings
+    assert result.recipe.estimated_time == meal.estimated_time
+
+
+def test_to_library_entry_copies_servings_and_estimated_time_when_absent() -> None:
+    """specs/recipe_metadata_fields/requirements.md R16, R17: absence carries through too."""
+    meal = _meal("Pisto")
+
+    result = to_library_entry(meal, existing_names=())
+
+    assert result.recipe.servings is None
+    assert result.recipe.estimated_time is None
+
+
 def test_summary_contains_exactly_the_definitive_holding_slots() -> None:
     """R21: only the slot with a definitive appears, paired with it."""
     with_definitive = SlotContents(candidates=(_candidate("c1"),), definitive_id="c1")

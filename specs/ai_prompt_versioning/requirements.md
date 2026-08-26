@@ -16,6 +16,13 @@ version used for a given generation is an explicit, traceable choice rather
 than "whatever the code currently contains," and so retired wording is never
 lost.
 
+> **Amended by feature 25 (`recipe_metadata_fields`), human-approved
+> 2026-08-26 (`G-85`, corrected by `G-86`).** `servings` is no longer part
+> of the versioned wording — see the R1, R5 amendments below.
+> `recipe_metadata_instruction` (feature 25's R23) is versioned in its
+> place, through the same `PromptInstructionsVersion` shape this feature
+> defined.
+
 ## The single frozen requirement this feature translates
 
 `docs/requirements.md` line 113, `FR-AI-14`:
@@ -81,6 +88,13 @@ The system SHALL represent each version of the AI prompt instruction content
 — `servings`, `output_language` and `healthy_balanced_instruction` — as a
 distinct, immutable value carrying its own version identifier.
 
+> **Amended by feature 25 (`recipe_metadata_fields`,
+> `specs/recipe_metadata_fields/requirements.md` R23), human-approved
+> 2026-08-26 (`G-85`, corrected by `G-86`).** The versioned content is now
+> `recipe_metadata_instruction`, `output_language` and
+> `healthy_balanced_instruction` — `servings` is removed, replaced in kind
+> by an instruction telling the model to state a value itself.
+
 ## R2
 Implements: FR-AI-14
 
@@ -110,6 +124,13 @@ WHEN the shared instruction block used by every AI prompt is composed, the
 system SHALL source its `servings`, `output_language` and
 `healthy_balanced_instruction` values from the active prompt-instruction
 version's content.
+
+> **Amended by feature 25 (`recipe_metadata_fields`,
+> `specs/recipe_metadata_fields/requirements.md` R25), human-approved
+> 2026-08-26 (`G-85`, corrected by `G-86`).** The composed instruction block
+> now sources `recipe_metadata_instruction`, `output_language` and
+> `healthy_balanced_instruction` — `servings` is no longer one of its
+> fields.
 
 ## R6
 Implements: FR-AI-14

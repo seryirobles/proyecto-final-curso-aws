@@ -34,13 +34,16 @@ class RawRecipeOutput:
     tools: tuple[str, ...]
     procedure: tuple[str, ...]
     category: str
+    servings: int | None = None
+    estimated_time: str | None = None
 
 
 def validate_ai_recipe_output(raw: RawRecipeOutput) -> Recipe:
     """Resolve raw's unit and category strings against the fixed vocabularies (G-48).
 
     Raises UnknownUnit or UnknownIngredientCategory rather than building a
-    Recipe from unresolved data.
+    Recipe from unresolved data. servings and estimated_time carry through
+    unchanged and unvalidated (G-85) - their absence is not a failure.
     """
     ingredients = tuple(
         Ingredient(name=item.name, quantity=item.quantity, unit=parse_unit(item.unit))
@@ -52,6 +55,8 @@ def validate_ai_recipe_output(raw: RawRecipeOutput) -> Recipe:
         tools=raw.tools,
         procedure=raw.procedure,
         category=parse_category(raw.category),
+        servings=raw.servings,
+        estimated_time=raw.estimated_time,
     )
 
 

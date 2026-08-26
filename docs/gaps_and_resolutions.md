@@ -947,3 +947,102 @@ the single addition named below.
 - **Requirements:** New `FR-AI-14`. Does not amend `FR-AI-06`, `FR-AI-07` or
   `FR-AI-13` — their content requirements are unchanged; this adds a
   versioning/config requirement on top of them.
+- **Note (2026-08-26, later same day):** the parenthetical above — "same class
+  of config as `FR-AI-13`'s servings count" — describes what `FR-AI-13` was
+  *when this gap was written*. `G-85` (Part U, below) reverses that: servings
+  is no longer deployment configuration. `FR-AI-14`'s own decision (prompt
+  wording stays deployment config) is unaffected — the two attributes just no
+  longer belong to the same class.
+
+---
+
+## Part U — Recipe servings and prep/cook time become per-recipe, informational metadata (2026-08-26)
+
+Directed by the requirements owner, overriding the freeze in `CLAUDE.md` in the
+same manner as Parts I through T. Raised while spec-scoping feature 14
+`persistence_ports`, whose `LibraryRecipe` design pointed out that `Recipe`
+carries neither `tiempo` nor `numeroComensales` though `docs/data_model.md`
+§1 has listed both on `DatosPlatoBiblioteca`/`DatosPlatoSemana` since the
+original spreadsheet import.
+
+### G-85 · Servings and prep/cook time are per-recipe, informational metadata (supersedes G-64)
+- **Gap:** `G-64` made servings count a single **deployment-config** constant
+  (`FR-AI-13`) to keep ingredient quantities mutually consistent across
+  recipes for shopping-list aggregation. `docs/data_model.md` §1, independently,
+  has always modeled `numeroComensales` **and** `tiempo` as attributes stored
+  **per recipe** (`DatosPlatoBiblioteca`, `DatosPlatoSemana`) — a shape `G-64`
+  never reconciled itself with. `tiempo` additionally has **no `FR-*` or gap
+  backing anywhere**: not `requirements.md`, not `app_user_stories.md`, not
+  any prior gap. `specs/recipe_model/design.md` §10 flagged both as excluded
+  from `Recipe`/`MealSnapshot` at feature 4 and left them unassigned pending
+  this decision.
+- **Decision:** Both `numeroComensales` (servings) and `tiempo` (estimated
+  prep/cook time) become **per-recipe attributes**, stored on `Recipe`/
+  `MealSnapshot` like any other content field, set either **manually** by the
+  author or **by AI** when the recipe is AI-generated — the same authoring
+  flows as every other stored attribute (`FR-LIB-02`/`FR-CAND-03`). Both are
+  **purely informational**: displayed alongside a recipe's other content, with
+  **no validation, no dropdown constraint, and no shopping-aggregation logic**
+  attached. `FR-AI-13`'s deployment-config framing for servings is dropped;
+  ingredient-quantity consistency across recipes with different serving
+  counts is explicitly **not** guaranteed or enforced.
+- **Reasoning:** `docs/data_model.md` is the source of truth for shape here
+  (owner's explicit direction) — both attributes were always modeled
+  per-recipe there, and it was `requirements.md`/`gaps_and_resolutions.md`
+  that drifted (inventing a different shape for `numeroComensales`, and never
+  grounding `tiempo` at all). Making both purely informational sidesteps the
+  exact risk `G-64` raised — mismatched serving-size baselines silently
+  corrupting shopping-list totals — because neither field feeds any
+  aggregation or generation-consistency logic; there is nothing left for a
+  mismatch to corrupt.
+- **Requirements:** `FR-LIB-03` (amended — stores servings and time),
+  `FR-MENU-04` (amended — detail view displays them), `FR-AI-13` (amended —
+  informational only, deployment-config framing struck). Supersedes `G-64`.
+- **Not this feature's job:** `Recipe`/`MealSnapshot` (feature 4, done),
+  the AI prompt builder's `CONFIGURED_SERVINGS` deployment-config value
+  (feature 11, done) and AI output validation (feature 12, done) all need
+  code changes to actually carry these fields — this Part settles the
+  requirement text only. `persistence_ports` (feature 14, in progress) needs
+  no design change: its `LibraryRecipe` wraps `Recipe` by composition, so it
+  picks up the new fields automatically once `Recipe` gains them.
+
+---
+
+## Part V — FR-AI-13's prompt instruction restored (corrects G-85) (2026-08-26)
+
+Directed by the requirements owner, overriding the freeze in `CLAUDE.md` in the
+same manner as Parts I through U. Raised at feature 25
+`recipe_metadata_fields`'s design-gate review.
+
+### G-86 · FR-AI-13's amendment struck the prompt-instruction clause without replacing it (corrects G-85)
+- **Gap:** `G-85` amended `FR-AI-13` by striking the deployment-config
+  sentence ("...stated explicitly in every prompt, so ingredient quantities
+  are mutually consistent...") and replacing the whole clause with passive
+  wording — "AI-generated recipes **may** set a servings count... the same
+  way any other attribute is AI-generated." `specs/recipe_metadata_fields/design.md`
+  §8 alternative E then read that literally and rejected adding any prompt
+  instruction as invention beyond what `FR-AI-13` asks for. The owner caught
+  this at the design gate: dropping the *instruction to the model* was never
+  intended — only the *fixed deployment-config target number* (`CONFIGURED_SERVINGS
+  = 4`) was meant to go. Left as "may," nothing prompts the AI to ever
+  produce either field, which would leave them populated only by manual
+  authoring — defeating half of `G-85`'s own stated intent ("settable
+  manually **or by AI**").
+- **Decision:** `FR-AI-13` is amended again: AI recipe generation **shall
+  instruct the model** to state a servings count and an estimated prep/cook
+  time for each recipe it generates. Both remain exactly as `G-85` decided
+  in every other respect — **purely informational**, no fixed target, no
+  cross-recipe consistency requirement, no validation, no downstream logic.
+  Only the presence of an instruction changes; the fields' shape and
+  treatment do not.
+- **Reasoning:** An instruction to *state* a value costs nothing `G-85`
+  disclaimed — it does not validate the value, constrain its format, or
+  require consistency across recipes; it only asks the model to include
+  *some* answer, the same posture `FR-AI-06`'s healthy-balanced instruction
+  already takes for a different informational property of the output. This
+  is a **correction** of `G-85`'s text, not a reversal of its substance:
+  `G-85`'s decision paragraph (per-recipe, informational, no aggregation
+  logic) is unchanged and still governs.
+- **Requirements:** `FR-AI-13` (amended again). Corrects `G-85`'s
+  replacement text; does not touch `G-85`'s decision or reasoning, both of
+  which stand. Supersedes nothing.

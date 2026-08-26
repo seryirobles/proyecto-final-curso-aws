@@ -10,9 +10,6 @@ from planner_core.domain.recipe import Recipe
 from planner_core.domain.rules import CategoryCountRule
 from planner_core.domain.units import Unit
 
-CONFIGURED_SERVINGS: Final[int] = 4
-"""Deployment configuration (G-64); approved at this spec's human gate (design.md section 4)."""
-
 OUTPUT_LANGUAGE: Final[str] = "es-ES"
 """FR-AI-07: AI output is produced in Castilian Spanish."""
 
@@ -23,26 +20,40 @@ HEALTHY_BALANCED_INSTRUCTION: Final[str] = (
 )
 """FR-AI-06: healthy/balanced/protein-varied, labelled non-medical (design.md section 4)."""
 
+RECIPE_METADATA_INSTRUCTION: Final[str] = (
+    "Indica tambien el numero de comensales y una estimacion del tiempo de "
+    "preparacion y coccion para cada receta generada. Son datos meramente "
+    "informativos: no ajustes las cantidades de los ingredientes en funcion "
+    "de ellos."
+)
+"""FR-AI-13 (G-86): instructs the model to state both fields itself, never
+a target value the app supplies. Second sentence heads off ingredient-
+quantity scaling off the stated count - specs/recipe_metadata_fields/design.md section 6."""
+
 ALLOWED_UNITS: Final[tuple[Unit, ...]] = tuple(Unit)
 """FR-LIB-05 (consumed): the fixed unit vocabulary, reused from units.py, never redeclared."""
 
 
 @dataclass(frozen=True)
 class PromptInstructionsVersion:
-    """One version of the wording FR-AI-06, FR-AI-07 and FR-AI-13 require (FR-AI-14, R1)."""
+    """One version of the wording FR-AI-06, FR-AI-07 and FR-AI-13 require (FR-AI-14, R1).
+
+    No per-recipe target field here (R20, G-85/G-86) - recipe_metadata_instruction
+    replaces it with an instruction, not a value. See design.md section 6.
+    """
 
     version_id: str
-    servings: int
     output_language: str
     healthy_balanced_instruction: str
+    recipe_metadata_instruction: str
 
 
 PROMPT_INSTRUCTION_VERSIONS: Final[dict[str, PromptInstructionsVersion]] = {
     "v1": PromptInstructionsVersion(
         version_id="v1",
-        servings=CONFIGURED_SERVINGS,
         output_language=OUTPUT_LANGUAGE,
         healthy_balanced_instruction=HEALTHY_BALANCED_INSTRUCTION,
+        recipe_metadata_instruction=RECIPE_METADATA_INSTRUCTION,
     ),
 }
 """Append-only (R2, G-84): a version is added here when wording changes; an
@@ -67,11 +78,14 @@ def resolve_prompt_version(version_id: str) -> PromptInstructionsVersion:
 
 @dataclass(frozen=True)
 class PromptInstructions:
-    """The instructions every AI recipe-generation prompt carries, regardless of mode."""
+    """The instructions every AI recipe-generation prompt carries, regardless of mode.
 
-    servings: int
+    No per-recipe target field here (R19) - see PromptInstructionsVersion above.
+    """
+
     output_language: str
     healthy_balanced_instruction: str
+    recipe_metadata_instruction: str
     allowed_units: tuple[Unit, ...]
 
 
@@ -102,17 +116,18 @@ class CategoryPrompt:
 
 
 def build_instructions(version_id: str) -> PromptInstructions:
-    """The shared instruction block every prompt carries (R6-R9).
+    """The shared instruction block every prompt carries.
 
-    servings, output_language and healthy_balanced_instruction come from the
-    prompt-instruction version named by version_id (FR-AI-14, R5); raises
-    UnknownPromptVersion if it does not resolve (R4).
+    output_language, healthy_balanced_instruction and
+    recipe_metadata_instruction come from the prompt-instruction version
+    named by version_id (FR-AI-14, R25); raises UnknownPromptVersion if it
+    does not resolve.
     """
     version = resolve_prompt_version(version_id)
     return PromptInstructions(
-        servings=version.servings,
         output_language=version.output_language,
         healthy_balanced_instruction=version.healthy_balanced_instruction,
+        recipe_metadata_instruction=version.recipe_metadata_instruction,
         allowed_units=ALLOWED_UNITS,
     )
 

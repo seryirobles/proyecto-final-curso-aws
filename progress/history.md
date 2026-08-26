@@ -1417,3 +1417,45 @@ killed, reverted. 133 → 137 tests.
 - Next actionable: **feature 7 `shopping_aggregation`** (tier 1,
   `"sdd": true`, `depends_on: [3, 5]`, both done) — full `spec_author`
   pass and the approval gate before any code.
+
+---
+
+## 2026-08-26 — Feature 13 `rollover_job_logic` implemented, reviewed, APPROVED, committed
+
+- **Agent chain:** leader → spec_author → implementer → reviewer →
+  implementer (fixes) → reviewer (re-verify) → human sign-off (2 rounds).
+- Spec: `specs/rollover_job_logic/`. `domain/rollover.py` — `ArchivedWeek`,
+  `RolloverResult`, `archive_week`, `promote_next_to_current`,
+  `init_empty_next_week`, `roll_over`: the five-step rollover as one pure,
+  total, deterministic function, reusing `shopping.unchecked_items` for
+  cleanup. Two gate questions approved as recommended: `FR-MENU-08`'s
+  retry-safety read as pure-recompute (no IO in `domain/` to interrupt);
+  `RolloverResult` does not carry `IsoWeek` identities.
+- `backend/core/tests/domain/test_rollover.py` — 17 tests, R1-R13 traced.
+  `./init.sh` green throughout, ending at **295 tests** (was 277).
+- **Review round 1:** CHANGES_REQUESTED — `RolloverResult`'s `frozen=True`
+  had no frozen-instance test (survived mutant). **Third feature in a row**
+  with this exact gap (`ai_prompt_builder`, `ai_output_validation`, now
+  this) — codified as a standing rule in `docs/conventions.md`'s Tests
+  section: every new `@dataclass(frozen=True)` needs its own
+  frozen-instance test, stated explicitly rather than left implicit.
+  Fixed, re-verified (named mutant re-applied and killed), APPROVED.
+- **Human sign-off, two rounds:** both caught doc-quality defects that
+  originated in `design.md`'s own §4 code block (implementer copied
+  verbatim, correctly per SDD discipline) — an `archive_week` docstring
+  pointing at the wrong design section (§5 idempotency vs. §6 rejected
+  alternative D, the actual reasoning), and `roll_over`'s docstring running
+  5 lines and bundling two justifications against `docs/conventions.md`'s
+  3-line comment ceiling. Leader fixed `design.md` directly both times;
+  implementer matched the shipped source. Content-only, no behavior change,
+  no third review round needed after leader verified both fixes
+  byte-for-byte and swept the whole file against the 3-line rule.
+
+### State at close
+
+- **Feature 13 `done`, committed as `f94f13c`** (*"feat: rollover"*) by
+  the human, tree clean. `./init.sh` green: 295 tests.
+- Next actionable: **feature 14 `persistence_ports`** (tier 2,
+  `"sdd": true`, `depends_on: [5, 6, 8]`, all done) — closes P1
+  (`docs/architecture.md` §1.2.1); full `spec_author` pass and the
+  approval gate before any code.
