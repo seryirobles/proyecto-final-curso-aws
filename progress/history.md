@@ -1187,3 +1187,60 @@ and 3 cost ~240k to surface one finding.
   precondition; do not "fix" it by weakening `__post_init__`), `O3`, `O4`, `O7`.
 - From earlier features: `F5`, `F7`(feature 2), the `C4` `Clock` contract-suite
   deferral to feature 14, and the `npx` registry fallback.
+
+---
+
+## 2026-08-26 — Feature 6 `rules_model` implemented, reviewed, APPROVED, committed
+
+- **Agent chain:** leader → implementer → reviewer → implementer (fixes,
+  same agent resumed with full context).
+- **Human approved all 4 gate questions** in `specs/rules_model/design.md`
+  §9, all as recommended: idempotent no-op on removing an absent rule;
+  per-axis `None`-means-inherit override for `apply_override`; `WEEKDAYS`/
+  `DAYS_PER_WEEK` local to `rules.py` (not moved into `calendar.py`); three
+  independent dropdown-option functions (not one bundled result type).
+  `design.md` already implemented all four verbatim — no rewrite needed.
+
+### Implementation
+
+- `backend/core/src/planner_core/domain/rules.py` — `RuleSet`,
+  `CategoryCountRule`, `PinRule`, satisfiability enforced once in
+  `RuleSet.__post_init__` (`InvalidWeekday`, `UnsatisfiableRuleSet`).
+  Reuses `IngredientCategory` and `MealSlot` from feature 4, redeclares
+  neither. Not added to `SHARED_KERNEL_MODULES` — it consumes a fixed
+  vocabulary, doesn't declare one (design.md §7).
+- `backend/core/tests/domain/test_rules.py` — 22 `R<n>` traced, all 7
+  `FR-RULE-*` covered. `progress/impl_rules_model.md` holds the map.
+- `./init.sh` exit 0 — **137 backend tests** (100 → 133 → 137).
+
+### Review — CHANGES_REQUESTED then APPROVED
+
+First pass planted 21 mutants, **5 survived**. Real gaps, not noise:
+
+- `apply_override`'s `pins` and `disabled_days` axes were untested — only
+  `category_counts` had a result-side assertion (R19).
+- `CategoryCountRule` and `PinRule`'s `frozen=True` was asserted by neither
+  test, despite both requirements stating it explicitly (R3, R4).
+- `progress/impl_rules_model.md` did not exist — `docs/verification.md`
+  Level 3 requires it for every `"sdd": true` feature; T49 was ticked
+  without it.
+- One `max(0, available - other)` mutant (R14) judged **near-equivalent,
+  no action**: `__post_init__` already enforces `total <= available`, so
+  the floor only matters for a negative `count`, which nothing validates
+  and no requirement contemplates.
+
+Fixes sent back to the same implementer (no re-briefing needed — it still
+had the design and the mutant list in context): 4 new tests, one doc file,
+two minor wording fixes (`tasks.md` T37's arithmetic, a misleading
+docstring). **Confirming fix used a cheap re-verification, not a second
+full review** — the 4 named mutants re-planted one at a time, confirmed
+killed, reverted. 133 → 137 tests.
+
+### State at close
+
+- **Feature 6 `done`, committed as `040a7d0`** (*"feat: rules core"*) by
+  the human, tree clean.
+- `done: 6`, `spec_ready: 0`, `in_progress: 0`.
+- Next actionable: **feature 7 `shopping_aggregation`** (tier 1,
+  `"sdd": true`, `depends_on: [3, 5]`, both done) — full `spec_author`
+  pass and the approval gate before any code.
