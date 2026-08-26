@@ -1,0 +1,95 @@
+"""Contract suite for ShoppingListRepository: one suite, run against every
+registered implementation (R9)."""
+
+from __future__ import annotations
+
+from datetime import UTC, datetime, timedelta
+
+import pytest
+from planner_core.domain.shopping import ShoppingItem, ShoppingItemNotFound
+from planner_core.domain.units import Unit
+from planner_core.ports.shopping_list import ShoppingListLockHeld
+from support.fakes import FakeShoppingListRepository
+
+IMPLEMENTATIONS = [FakeShoppingListRepository]
+
+NOW = datetime(2026, 7, 20, 10, 0, tzinfo=UTC)
+
+
+def _item(item_id: str = "i1", checked: bool = False) -> ShoppingItem:
+    return ShoppingItem(id=item_id, name="Tomate", quantity=1, unit=Unit.UNIT, checked=checked)
+
+
+@pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
+def test_save_then_list_and_delete_round_trip(
+    repository_factory: type[FakeShoppingListRepository],
+) -> None:
+    repo = repository_factory()
+    item = _item()
+
+    repo.save_item(item)
+    assert repo.list_items() == (item,)
+
+    repo.delete_item("i1")
+    assert repo.list_items() == ()
+
+
+@pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
+def test_delete_item_raises_shopping_item_not_found_for_a_missing_id(
+    repository_factory: type[FakeShoppingListRepository],
+) -> None:
+    with pytest.raises(ShoppingItemNotFound):
+        repository_factory().delete_item("missing")
+
+
+@pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
+def test_delete_checked_items_is_a_no_op_when_nothing_is_checked(
+    repository_factory: type[FakeShoppingListRepository],
+) -> None:
+    repo = repository_factory()
+    repo.save_item(_item("i1", checked=False))
+
+    repo.delete_checked_items()
+
+    assert repo.list_items() == (_item("i1", checked=False),)
+
+
+@pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
+def test_acquire_lock_raises_when_held_and_unexpired_then_succeeds_once_expired(
+    repository_factory: type[FakeShoppingListRepository],
+) -> None:
+    repo = repository_factory()
+    repo.acquire_lock("owner-a", NOW, NOW + timedelta(minutes=5))
+
+    with pytest.raises(ShoppingListLockHeld):
+        repo.acquire_lock("owner-b", NOW, NOW + timedelta(minutes=5))
+
+    later = NOW + timedelta(minutes=10)
+    repo.acquire_lock("owner-b", later, later + timedelta(minutes=5))
+    with pytest.raises(ShoppingListLockHeld):
+        repo.acquire_lock("owner-a", later, later + timedelta(minutes=5))
+
+
+@pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
+def test_acquire_lock_raises_at_the_exact_expiry_instant(
+    repository_factory: type[FakeShoppingListRepository],
+) -> None:
+    """Boundary: expires_at == now is still held, per the port's `< now` contract."""
+    repo = repository_factory()
+    repo.acquire_lock("owner-a", NOW, NOW)
+
+    with pytest.raises(ShoppingListLockHeld):
+        repo.acquire_lock("owner-b", NOW, NOW + timedelta(minutes=5))
+
+
+@pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
+def test_release_lock_is_a_no_op_for_a_non_owner(
+    repository_factory: type[FakeShoppingListRepository],
+) -> None:
+    repo = repository_factory()
+    repo.acquire_lock("owner-a", NOW, NOW + timedelta(minutes=5))
+
+    repo.release_lock("owner-b")
+
+    with pytest.raises(ShoppingListLockHeld):
+        repo.acquire_lock("owner-c", NOW, NOW + timedelta(minutes=5))

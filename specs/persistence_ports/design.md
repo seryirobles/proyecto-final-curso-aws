@@ -213,7 +213,7 @@ from planner_core.domain.candidate import SlotContents
 class WeekRepository(Protocol):
     """Persistence for a live week's slot contents. Operates at SlotContents
     granularity, not DynamoDB's per-item split (candidates vs. the DEFINITIVO
-    pointer) — design.md section 6, rejected alternative A."""
+    pointer) — design.md section 9, rejected alternative A."""
 
     def get_week(self, week: IsoWeek) -> Mapping[SlotRef, SlotContents]:
         """Returns an empty mapping for a week with no data yet — weeks are
@@ -330,7 +330,8 @@ class ArchiveRepository(Protocol):
     """Persistence for ArchivedWeek — the menu and the shopping-list snapshot
     together, exactly as feature 13 produces it. No listing or browsing
     operation: FR-ARCH-04's reverse-chronological browse is out of this
-    feature's scope and blocked on feature 19 (design.md section 7)."""
+    feature's scope and blocked on feature 19 (design.md section 11, gate
+    question 4)."""
 
     def get(self, week: IsoWeek) -> ArchivedWeek | None: ...
 

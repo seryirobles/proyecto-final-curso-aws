@@ -3,12 +3,84 @@
 > This file is emptied when each session closes and moved to `history.md`.
 > While you work, **keep it updated in real time**, not at the end.
 
-- **Feature in progress:** 25 — `recipe_metadata_fields`
+- **Feature in progress:** 14 — `persistence_ports`
 - **Started:** 2026-08-26
-- **Agent:** spec_author (launching)
-- **Paused:** 14 — `persistence_ports` sits at `spec_ready`, all 4 gate
-  questions resolved, awaiting feature 25's `Recipe` rework before
-  `in_progress` (human's explicit sequencing call).
+- **Agent:** implementer (working)
+
+## Implementer plan (this run)
+
+Plan: tasks T1..T30 from `specs/persistence_ports/tasks.md`. All 4 gate
+questions resolved as designed (design.md §11); recipe_metadata_fields
+(feature 25) done and committed, no change needed to this feature's design
+per leader's brief — `LibraryRecipe` wraps `Recipe` by composition.
+
+- implementer: T1–T30 complete, all ticked. Six ports
+  (`accounts`/`recipes`/`weeks`/`rules`/`shopping_list`/`archive.py`) added
+  verbatim per design.md §3; six fakes appended to
+  `core/tests/support/fakes.py` (atomicity traps for
+  `FakeAccountRepository.create/rename` and
+  `FakeShoppingListRepository.acquire_lock` implemented as designed). Port
+  conformance tests + 2 frozen-instance tests under `core/tests/ports/`;
+  mechanical storage-agnosticism scan
+  `core/tests/test_ports_are_storage_agnostic.py` (R7 import-allowlist scan,
+  R10 AWS-SDK-name scan); application composition test
+  `core/tests/application/test_persistence_fakes_compose.py`; contract suite
+  (`backend/tests/contract/conftest.py` + 6 `*_contract.py` files).
+  `./init.sh` green: 383 tests (up from 295).
+  Two mechanical snags, not design deviations: (1) task's planned
+  `test_rules.py` collided on basename with the existing
+  `domain/test_rules.py` under pytest's import mode — ticked as
+  `test_rule_repository.py` instead; (2) a second `conftest.py` tripped
+  mypy's duplicate-module check against `core/tests/conftest.py` — fixed
+  with two empty package markers (`backend/tests/__init__.py`,
+  `backend/tests/contract/__init__.py`), no `pyproject.toml` change.
+  Traceability map in `progress/impl_persistence_ports.md`. Awaiting
+  reviewer.
+- reviewer: CHANGES_REQUESTED, 2 findings, 2 mutants survived (lock-expiry
+  `>=`/`>` boundary in `fakes.py:206` untested; storage-agnostic scan's
+  allowlist admitted `sqlite3`/`dbm`/`shelve` as "stdlib" and the bare
+  `planner_core` package as wider than intended).
+- implementer (fix pass): added the `now == expires_at` boundary test to
+  both `core/tests/ports/test_shopping_list.py` and
+  `backend/tests/contract/test_shopping_list_repository_contract.py`; added
+  a `DENYLIST_STORAGE_MODULES` check plus a narrowed
+  `planner_core.domain`/`planner_core.ports`-only allowance to
+  `test_ports_are_storage_agnostic.py` (full dotted import paths now
+  tracked, not just top-level segments). All three named mutants
+  (`>=`→`>`, `import sqlite3` in `ports/rules.py`, `import
+  planner_core.application` in `ports/rules.py`) verified caught and
+  reverted; regression mutant (`import pytest` in `ports/weeks.py`) still
+  caught. `./init.sh` green: 385 tests. Report updated in
+  `progress/impl_persistence_ports.md`. Awaiting reviewer.
+- reviewer (cheap verification, same agent resumed): re-applied both named
+  mutants (`>=`→`>` in `fakes.py`, `import sqlite3` in `ports/rules.py`) —
+  both killed. Spot-checked the narrowed allowlist with a planted
+  `planner_core.application` import — caught. Regression check on the
+  original `import pytest` mutant — still caught. `./init.sh` green (385
+  tests), tree restored (`git status --porcelain` unchanged at 29 entries).
+
+```
+APPROVED — 0 findings, 0 mutants survived
+```
+
+## Next step
+
+Ready for human sign-off: `specs/persistence_ports/`,
+`backend/core/src/planner_core/ports/{accounts,recipes,weeks,rules,shopping_list,archive}.py`,
+`backend/core/tests/support/fakes.py`,
+`backend/core/tests/ports/{test_accounts,test_recipes,test_weeks,test_rule_repository,test_shopping_list,test_archive}.py`,
+`backend/core/tests/test_ports_are_storage_agnostic.py`,
+`backend/core/tests/application/test_persistence_fakes_compose.py`,
+`backend/tests/contract/` (six suites + `conftest.py` + `__init__.py`),
+`backend/tests/__init__.py`, and `progress/impl_persistence_ports.md`.
+Marking `done` and committing are human-only.
+
+## Prior session (feature 25) — closed
+
+Feature 25 `recipe_metadata_fields` is `done` and committed (`4e89d02`).
+Reviewer's second round returned `APPROVED — 0 findings, 0 mutants survived`.
+Full log moved below for reference; will be archived to `history.md` at
+session close.
 
 ## Plan
 

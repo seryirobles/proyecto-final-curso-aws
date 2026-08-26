@@ -306,7 +306,7 @@
         "No AWS SDK import anywhere in this feature"
       ],
       "sdd": true,
-      "status": "spec_ready"
+      "status": "done"
     },
     {
       "id": 15,
