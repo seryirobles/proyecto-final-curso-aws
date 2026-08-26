@@ -190,7 +190,7 @@
         "No duplicate-grouping behaviour is implemented - FR-SHOP-11 was removed (G-74)"
       ],
       "sdd": true,
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": 9,

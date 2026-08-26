@@ -3,57 +3,77 @@
 > This file is emptied when each session closes and moved to `history.md`.
 > While you work, **keep it updated in real time**, not at the end.
 
-- **Feature in progress:** 7 — `shopping_aggregation`
+- **Feature in progress:** 8 — `shopping_list_state`
 - **Started:** 2026-08-26
-- **Agent:** spec_author → implementer → reviewer (APPROVED) → awaiting human sign-off
+- **Agent:** spec_author → implementer → reviewer (CHANGES_REQUESTED) → implementer (fixed) → awaiting human sign-off
 
 ## Plan
 
-Feature 6 — `rules_model` — is `done` and committed (`040a7d0`), tree clean.
-Feature 7 — `shopping_aggregation` (tier 1, `sdd: true`) — pure deterministic
-aggregation from the in-scope definitive meals to the auto-item set. Matches
-on normalized name + unit (feature 3), no cross-unit conversion, idempotent
-by construction. Depends on 3 (`text_and_units`, done) and 5
-(`week_plan_model`, done).
+Feature 7 — `shopping_aggregation` — is `done` and committed (`ae402b9`),
+tree clean. Feature 8 — `shopping_list_state` (tier 1, `sdd: true`) — the
+shared, persistable shopping list: one flat item shape (name, quantity,
+unit, check state), additive re-sync against feature 7's required-item set,
+and check-off. Depends on 7 (done).
 
-`spec_author` produced `specs/shopping_aggregation/requirements.md` (R1–R8),
-`design.md` and `tasks.md` (26 tasks); `feature_list.json` status is now
-`spec_ready`. New module planned: `backend/core/src/planner_core/domain/
-shopping.py` (`in_scope_slots`, `definitive_ingredients`,
-`aggregate_ingredients`, `required_shopping_items`), reusing feature 2's
-scoping, feature 5's `SlotContents`/`definitive`, feature 3's `normalize`/
-`Unit`, and feature 4's `Ingredient` as the result type — no new type.
+Load-bearing invariant: re-sync must **never** touch a checked item's state
+or quantity (FR-SHOP-08, G-77, supersedes G-44) — a raised requirement
+above what a checked item covers produces a **new unchecked item** carrying
+the remainder, not a rewrite of the checked one. `docs/verification.md`
+Level 4's "never undo the user's reality" row names this exact scenario.
 
-Scope note: this feature is the "recompute deterministically" half only —
-the persisted/checkable list, additive merge and concurrency serialization
-are feature 8 (`shopping_list_state`).
+`spec_author` produced `specs/shopping_list_state/requirements.md` (R1–R19),
+`design.md` and `tasks.md` (36 tasks); `feature_list.json` status is now
+`spec_ready`. Extends feature 7's `domain/shopping.py` (per that feature's
+own gate-question-3 recommendation) with `ShoppingItem`,
+`ShoppingItemNotFound`, `InsufficientNewIds`, manual CRUD + check-off, and
+an `outstanding_amounts` + `resync` split where `resync`'s write loop only
+ever indexes unchecked items — G-77 enforced structurally, not by a
+conditional check.
 
 ## Log
 
-- spec_author: `spec_ready -> specs/shopping_aggregation/`.
+- spec_author: `spec_ready -> specs/shopping_list_state/`.
 - Human approved all 3 gate questions in `design.md` §9, all recommended
-  options (reuse `Ingredient`; first-occurrence-wins spelling; module name
-  `domain/shopping.py`) — 2026-08-26. `design.md` already implements these
-  verbatim, no rewrite needed.
-- implementer launched, correctly refused: `feature_list.json` still read
-  `spec_ready`, not `in_progress` — leader's omission, not fixed before
-  launch. No files touched.
-- Leader set feature 7 to `in_progress`. implementer relaunched.
-- implementer: `shopping.py` + `test_shopping.py` written, all 26 tasks in
-  `tasks.md` ticked, `progress/impl_shopping_aggregation.md` written.
-  `./init.sh` green — 156 backend tests (137 → +19). All 8 R<n> traced.
-- reviewer: APPROVED, first pass, 0 findings. 10 mutants planted (definitive-
-  only filter, merge key both halves, accent fold via the shared-kernel
-  guard, first-occurrence-wins, both scope boundaries, sum-not-overwrite,
-  full-ingredient-list-not-just-first) — all killed, reverted. All 3
-  approved design decisions verified implemented verbatim. Tree restored,
-  156 tests green after.
+  options (first-occurrence tie-break; raise `InsufficientNewIds` rather
+  than a partial-result signature; quantity-only writes on resync) —
+  2026-08-26. `design.md` already implements these verbatim, no rewrite
+  needed.
+- `feature_list.json` set to `in_progress` BEFORE launching implementer
+  (feature 7's implementer correctly refused a premature launch last
+  round — status gate now checked first every time).
+- implementer launched against `specs/shopping_list_state/`.
+- implementer: `shopping.py` extended (`ShoppingItem`, `ShoppingItemNotFound`,
+  `InsufficientNewIds`, CRUD + check-off, `outstanding_amounts` + `resync`),
+  42 new tests, all 36 tasks ticked, `progress/impl_shopping_list_state.md`
+  written. `./init.sh` green — 179 backend tests (156 → +42). G-77 explicitly
+  asserted (checked item untouched; remainder becomes a new unchecked item).
+  Two mechanical fixes noted (100-char docstring line, mypy strict reassign
+  type in `resync`'s loop) — no design deviation.
+- reviewer: CHANGES_REQUESTED. Mutation testing (structural focus on G-77
+  requested) planted mutants across the whole module; 3 survived. Real gaps:
+  a matched write could overwrite an existing item's name/unit instead of
+  quantity-only (M3 — exactly what gate-question-3 exists to prevent, no
+  test used differing spellings between `items` and `required`); the
+  first-occurrence tie-break is unverified (M5 — no test has two unchecked
+  items sharing a key); the exact-zero outstanding boundary is unverified
+  (M6 — existing test only covers the negative case despite its name
+  claiming both). Also: `impl_shopping_list_state.md` overstated the
+  checked-row guard as "structural" when it's a conditional (`if
+  item.checked: continue`), well-tested but not construction-proof.
+- Fixes sent back to the same implementer (full context retained): 3
+  tests added for M3/M5/M6, requirements R20 (tie-break) and R21
+  (quantity-only write) added and wired through `tasks.md` and the
+  traceability doc, `impl_shopping_list_state.md`'s overstated
+  "structural" claim reworded to "guarded, mutation-tested invariant".
+- Cheap verification (not a full second review): the 3 named mutants
+  re-planted one at a time and confirmed killed, then reverted.
+  179 -> 182 tests. `./init.sh` green.
 - `feature_list.json` left at `in_progress` — leader does not mark `done`.
 
 ## Next step
 
-Ready for human sign-off: review `specs/shopping_aggregation/`,
+Ready for human sign-off: review `specs/shopping_list_state/`,
 `backend/core/src/planner_core/domain/shopping.py`,
 `backend/core/tests/domain/test_shopping.py` and
-`progress/impl_shopping_aggregation.md`. Marking `done` and committing are
+`progress/impl_shopping_list_state.md`. Marking `done` and committing are
 human-only.
