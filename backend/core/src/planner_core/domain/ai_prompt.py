@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Final
 
+from planner_core.domain.errors import PlannerError
 from planner_core.domain.recipe import Recipe
 from planner_core.domain.rules import CategoryCountRule
 from planner_core.domain.units import Unit
@@ -24,6 +25,44 @@ HEALTHY_BALANCED_INSTRUCTION: Final[str] = (
 
 ALLOWED_UNITS: Final[tuple[Unit, ...]] = tuple(Unit)
 """FR-LIB-05 (consumed): the fixed unit vocabulary, reused from units.py, never redeclared."""
+
+
+@dataclass(frozen=True)
+class PromptInstructionsVersion:
+    """One version of the wording FR-AI-06, FR-AI-07 and FR-AI-13 require (FR-AI-14, R1)."""
+
+    version_id: str
+    servings: int
+    output_language: str
+    healthy_balanced_instruction: str
+
+
+PROMPT_INSTRUCTION_VERSIONS: Final[dict[str, PromptInstructionsVersion]] = {
+    "v1": PromptInstructionsVersion(
+        version_id="v1",
+        servings=CONFIGURED_SERVINGS,
+        output_language=OUTPUT_LANGUAGE,
+        healthy_balanced_instruction=HEALTHY_BALANCED_INSTRUCTION,
+    ),
+}
+"""Append-only (R2, G-84): a version is added here when wording changes; an
+existing key is never removed or overwritten (specs/ai_prompt_versioning/design.md
+section 4)."""
+
+PROMPT_VERSION_CONFIG_KEY: Final[str] = "AI_PROMPT_VERSION_ID"
+"""The ConfigPort key naming which PROMPT_INSTRUCTION_VERSIONS entry is active (R3)."""
+
+
+class UnknownPromptVersion(PlannerError):
+    """Raised when a prompt version identifier does not resolve, or none is configured (R4)."""
+
+
+def resolve_prompt_version(version_id: str) -> PromptInstructionsVersion:
+    """Every retained version is retrievable by its identifier (R6)."""
+    try:
+        return PROMPT_INSTRUCTION_VERSIONS[version_id]
+    except KeyError:
+        raise UnknownPromptVersion(version_id) from None
 
 
 @dataclass(frozen=True)
@@ -62,38 +101,48 @@ class CategoryPrompt:
     category_counts: tuple[CategoryCountRule, ...]
 
 
-def build_instructions() -> PromptInstructions:
-    """The shared instruction block every prompt carries (R6-R9)."""
+def build_instructions(version_id: str) -> PromptInstructions:
+    """The shared instruction block every prompt carries (R6-R9).
+
+    servings, output_language and healthy_balanced_instruction come from the
+    prompt-instruction version named by version_id (FR-AI-14, R5); raises
+    UnknownPromptVersion if it does not resolve (R4).
+    """
+    version = resolve_prompt_version(version_id)
     return PromptInstructions(
-        servings=CONFIGURED_SERVINGS,
-        output_language=OUTPUT_LANGUAGE,
-        healthy_balanced_instruction=HEALTHY_BALANCED_INSTRUCTION,
+        servings=version.servings,
+        output_language=version.output_language,
+        healthy_balanced_instruction=version.healthy_balanced_instruction,
         allowed_units=ALLOWED_UNITS,
     )
 
 
 def build_specification_prompt(
-    ingredients: tuple[str, ...], tools: tuple[str, ...]
+    ingredients: tuple[str, ...], tools: tuple[str, ...], version_id: str
 ) -> SpecificationPrompt:
     """FR-AI-01 (R13-R15)."""
     return SpecificationPrompt(
-        instructions=build_instructions(), ingredients=ingredients, tools=tools
+        instructions=build_instructions(version_id), ingredients=ingredients, tools=tools
     )
 
 
 def build_reference_prompt(
-    reference_recipe: Recipe, extra_specifications: tuple[str, ...]
+    reference_recipe: Recipe, extra_specifications: tuple[str, ...], version_id: str
 ) -> ReferencePrompt:
     """FR-AI-02 (R16-R18)."""
     return ReferencePrompt(
-        instructions=build_instructions(),
+        instructions=build_instructions(version_id),
         reference_recipe=reference_recipe,
         extra_specifications=extra_specifications,
     )
 
 
-def build_category_prompt(category_counts: tuple[CategoryCountRule, ...]) -> CategoryPrompt:
+def build_category_prompt(
+    category_counts: tuple[CategoryCountRule, ...], version_id: str
+) -> CategoryPrompt:
     """FR-AI-04 (R19-R20). category_counts is the caller's snapshot (design.md section 1) —
     typically generation_request's GenerationTargets.remaining_category_counts, passed
     unchanged for one open slot; this function neither reads nor recomputes it."""
-    return CategoryPrompt(instructions=build_instructions(), category_counts=category_counts)
+    return CategoryPrompt(
+        instructions=build_instructions(version_id), category_counts=category_counts
+    )

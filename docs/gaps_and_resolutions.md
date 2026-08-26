@@ -910,3 +910,40 @@ the single clause named below.
   blocklist as an injectable check with a real corpus once an adapter layer
   exists (post feature 14 `persistence_ports` / feature 15 `auth_flow`, once
   **P2** is decided). Revert this strike when that lands.
+
+---
+
+## Part T — Prompt wording gets a version identity (2026-08-26)
+
+Directed by the requirements owner, overriding the freeze in `CLAUDE.md` in the
+same manner as Parts I through S. Granted for `requirements.md` only, and for
+the single addition named below.
+
+### G-84 · Prompt wording has no version identity or config-selected activation
+- **Gap:** `ai_prompt.py`'s `build_instructions()` (feature 11, implemented,
+  pending sign-off) compiles `HEALTHY_BALANCED_INSTRUCTION`, `OUTPUT_LANGUAGE`
+  and `CONFIGURED_SERVINGS` as plain module constants with no version identity
+  — every generation uses whatever the current source tree happens to contain.
+  `FR-AI-06`, `FR-AI-07` and `FR-AI-13` specify what the instructions must say,
+  but nothing says how that wording is allowed to change over time, or how a
+  past AI-generated recipe (`G-05`'s recipe snapshot) could be traced back to
+  the exact wording that produced it. `G-64` solved this shape of problem for
+  the servings count alone, marking it deployment configuration; the
+  instruction text itself was left as ordinary source code on the ordinary
+  code-review lifecycle.
+- **Decision:** New requirement `FR-AI-14`: prompt instructions are
+  **versioned**; the prompt version used for a given generation is
+  **deployment configuration** (same class of config as `FR-AI-13`'s servings
+  count), selected explicitly rather than implied by "whatever HEAD currently
+  says"; retired versions are retained, not deleted.
+- **Reasoning:** Generalizes `G-64`'s reasoning: deployment config lets prompt
+  wording change without a full spec/design/implementer/reviewer cycle per
+  tweak, while keeping the change explicit and auditable instead of silent
+  code drift. Retaining retired versions gives traceability symmetric to
+  `G-05`'s snapshot decision — a recipe's snapshot is stable, but nothing
+  today records which prompt wording generated it, which matters if a bad
+  wording change needs rolling back without touching code, or someone asks
+  later why the AI suggested what it did.
+- **Requirements:** New `FR-AI-14`. Does not amend `FR-AI-06`, `FR-AI-07` or
+  `FR-AI-13` — their content requirements are unchanged; this adds a
+  versioning/config requirement on top of them.

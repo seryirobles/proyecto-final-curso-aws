@@ -110,6 +110,7 @@ users.
 | FR-AI-11 | Whole-week generation shall target **every slot not disabled by the rules within the selected live week (current or next)**, **adding** candidates without removing existing candidates or definitive selections. A slot that **already holds a definitive meal shall be skipped entirely** — including when a rule pins a meal to it: an existing definitive **takes precedence over a pin**, and the skipped pin shall be reported to the user (FR-AI-12), never applied silently. Slots pinned by a rule and **not** holding a definitive receive the pinned library meal as their candidate. For the **current** week, only slots from the **current day onward** (Europe/Madrid) are targeted — no AI generation for days already past; past days remain manually editable. Weekly ingredient-category counts describe the **week's final state**, not the generated output: meals already present in the week count toward each category total, and generation supplies only the **remainder**, as far as the remaining targetable slots allow. | US12, US26 (see G-71, G-18, G-45) |
 | FR-AI-12 | AI operations shall show a **progress/loading state** (per slot, for whole-week runs). Failures shall be surfaced **per slot** with a retry option and a friendly message in Castilian Spanish; partial results are kept (FR-AI-09). This includes the case where **library-only or mix generation cannot proceed for lack of suitable library recipes**: a clear message, never a silent partial result. | US12, US17 (see G-19, G-66) |
 | FR-AI-13 | AI recipe generation (single and whole-week) shall target a **configured number of servings** (deployment configuration, e.g. 4 diners), stated explicitly in every prompt, so ingredient quantities are mutually consistent and usable by the shopping list. | US12, US17, US23 (see G-64) |
+| FR-AI-14 | AI prompt instructions (FR-AI-06, FR-AI-07, FR-AI-13, and any future wording changes) shall be **versioned**. The prompt version used for a given generation shall be **deployment configuration**, explicitly selected rather than defaulting silently to whatever the code currently contains; retired versions shall be retained, not deleted, so a past AI-generated recipe can be traced back to the wording that produced it. | US12, US17, US23 (see G-84) |
 
 ---
 
@@ -227,12 +228,12 @@ users.
 | US9 | FR-MENU-04, -05, FR-LIB-03 |
 | US10 | FR-MENU-03, FR-CAND-01, -02, -03, -07, FR-LIB-05, FR-RT-02 |
 | US11 | FR-CAND-06 |
-| US12 | FR-AI-03, -04, -08, -09, -11, -12, -13, NFR-AI-01 |
+| US12 | FR-AI-03, -04, -08, -09, -11, -12, -13, -14, NFR-AI-01 |
 | US13 | FR-AI-04, -05, FR-RULE-05 |
 | US14 | FR-AI-06 |
 | US15 | FR-MENU-03, FR-CAND-04, -05, -08, FR-RT-02 |
 | US16 | FR-SUM-01, -03 |
-| US17 | FR-CAND-02, -03, FR-LIB-03, -05, FR-AI-01, -02, -08, -09, -10, -12, -13, NFR-AI-01 |
+| US17 | FR-CAND-02, -03, FR-LIB-03, -05, FR-AI-01, -02, -08, -09, -10, -12, -13, -14, NFR-AI-01 |
 | US18 | FR-CAND-03, -07, FR-LIB-01, -02, -04, -05, FR-RULE-07, FR-RT-02 |
 | US19 | FR-AI-09, FR-RT-01, -02, -03 |
 | US20 | FR-AI-07, FR-UX-01, -03 |

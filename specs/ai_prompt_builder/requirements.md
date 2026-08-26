@@ -79,28 +79,39 @@ in `planner_core.domain.ai_prompt` with fields exactly `servings: int`,
 `output_language: str`, `healthy_balanced_instruction: str` and
 `allowed_units: tuple[Unit, ...]`.
 
+> **Amended by feature 24 (`ai_prompt_versioning`, `specs/ai_prompt_versioning/design.md`
+> section 5), human-approved 2026-08-26.** `build_instructions()` gained a
+> `version_id: str` parameter: `servings`, `output_language` and
+> `healthy_balanced_instruction` are no longer read from the module constants
+> directly but from `resolve_prompt_version(version_id)`'s result — feature
+> 24's `v1` entry carries these same constants' values unchanged, so R6-R9's
+> claims still hold for `version_id="v1"`. `build_specification_prompt`,
+> `build_reference_prompt` and `build_category_prompt` each gained the same
+> `version_id: str` parameter, forwarded to `build_instructions()` unchanged
+> otherwise (R13, R16, R19, amended below).
+
 ## R6
 Implements: FR-AI-13
 
-`build_instructions()`'s result's `servings` field SHALL equal
-`CONFIGURED_SERVINGS`.
+`build_instructions(version_id)`'s result's `servings` field SHALL equal
+`resolve_prompt_version(version_id).servings`.
 
 ## R7
 Implements: FR-AI-07
 
-`build_instructions()`'s result's `output_language` field SHALL equal
-`OUTPUT_LANGUAGE`.
+`build_instructions(version_id)`'s result's `output_language` field SHALL
+equal `resolve_prompt_version(version_id).output_language`.
 
 ## R8
 Implements: FR-AI-06
 
-`build_instructions()`'s result's `healthy_balanced_instruction` field SHALL
-equal `HEALTHY_BALANCED_INSTRUCTION`.
+`build_instructions(version_id)`'s result's `healthy_balanced_instruction`
+field SHALL equal `resolve_prompt_version(version_id).healthy_balanced_instruction`.
 
 ## R9
 Implements: FR-LIB-05
 
-`build_instructions()`'s result's `allowed_units` field SHALL equal
+`build_instructions(version_id)`'s result's `allowed_units` field SHALL equal
 `ALLOWED_UNITS`.
 
 ## R10
@@ -129,8 +140,8 @@ PromptInstructions` and `category_counts: tuple[CategoryCountRule, ...]`.
 ## R13
 Implements: FR-AI-01
 
-`build_specification_prompt(ingredients, tools)`'s result's `instructions`
-field SHALL equal `build_instructions()`.
+`build_specification_prompt(ingredients, tools, version_id)`'s result's
+`instructions` field SHALL equal `build_instructions(version_id)`.
 
 ## R14
 Implements: FR-AI-01
@@ -147,8 +158,8 @@ SHALL equal `tools`.
 ## R16
 Implements: FR-AI-02
 
-`build_reference_prompt(reference_recipe, extra_specifications)`'s result's
-`instructions` field SHALL equal `build_instructions()`.
+`build_reference_prompt(reference_recipe, extra_specifications, version_id)`'s
+result's `instructions` field SHALL equal `build_instructions(version_id)`.
 
 ## R17
 Implements: FR-AI-02
@@ -165,8 +176,8 @@ Implements: FR-AI-02
 ## R19
 Implements: FR-AI-04
 
-`build_category_prompt(category_counts)`'s result's `instructions` field
-SHALL equal `build_instructions()`.
+`build_category_prompt(category_counts, version_id)`'s result's
+`instructions` field SHALL equal `build_instructions(version_id)`.
 
 ## R20
 Implements: FR-AI-04

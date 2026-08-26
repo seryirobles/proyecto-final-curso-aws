@@ -443,6 +443,22 @@
       "sdd": false,
       "status": "blocked",
       "blocked_reason": "Depends on the architecture being decided and the infrastructure existing."
+    },
+    {
+      "id": 24,
+      "name": "ai_prompt_versioning",
+      "tier": 1,
+      "title": "AI prompt versioning",
+      "description": "Versions the AI prompt instructions built in feature 11 and selects the active version via deployment configuration, retaining retired versions for traceability.",
+      "covers": ["FR-AI-14"],
+      "depends_on": [11],
+      "acceptance": [
+        "Prompt instructions carry a version identifier (G-84)",
+        "The prompt version used for a given generation is deployment configuration, explicitly selected rather than implied by the current source tree (FR-AI-14)",
+        "Retired prompt versions are retained, not deleted, so a past AI-generated recipe can be traced back to the wording that produced it (FR-AI-14, G-84)"
+      ],
+      "sdd": true,
+      "status": "done"
     }
   ]
 }

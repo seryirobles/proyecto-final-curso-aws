@@ -27,3 +27,19 @@ class FakeClock:
     def now(self) -> datetime:
         self.readings += 1
         return self.instant
+
+
+@dataclass
+class FakeConfig:
+    """A `ConfigPort` backed by a plain dict, never the host's real environment.
+
+    ``readings`` counts every ``get`` call, mirroring ``FakeClock.readings``'
+    role in asserting the single-read rule (docs/specs.md's own worked example).
+    """
+
+    values: dict[str, str] = field(default_factory=dict)
+    readings: int = field(default=0)
+
+    def get(self, key: str) -> str | None:
+        self.readings += 1
+        return self.values.get(key)
