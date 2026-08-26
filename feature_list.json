@@ -250,7 +250,7 @@
         "Both single-recipe modes are supported: from specifications, and from a library reference plus specifications (FR-AI-01, FR-AI-02)"
       ],
       "sdd": true,
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": 12,

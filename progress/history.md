@@ -38,6 +38,35 @@
 
 ---
 
+## 2026-08-26 — Feature 10 `generation_request` closed
+
+- **Feature:** 10 — `generation_request` — `done`
+- **Agent:** spec_author → human gate questions (Q3 overturned recommendation:
+  `mode` joins the idempotency key) → spec_author (revised) → human approval
+  → implementer → reviewer (CHANGES_REQUESTED, 2 real findings + 2 minor) →
+  implementer (fixed) → human sign-off → committed (`44501cd`)
+
+**Done:**
+
+- `domain/generation.py` — effective-rule resolution, target-slot resolution
+  (disabled days excluded, pins resolved, existing definitives outrank pins
+  and are reported via `SkippedPin`, today-onward scoping, category counts
+  net of meals already present), idempotency key (week + slots + effective
+  rules + `mode`, SHA-256 over canonical JSON), the three generation modes.
+- Reviewer's mutation testing: 12/14 planted mutants killed. Two real gaps
+  fixed: no test varied pin *order* (untested `pins` sort in the hash
+  payload) and no test varied `targets.pinned_slots` alone (a pinned-slot-
+  free-vs-occupied pair could collide on one idempotency key since
+  `skipped_pins` isn't hashed — the exact collision FR-AI-08 exists to
+  prevent). Both re-applied and confirmed caught after the fix, then
+  reverted. 221 backend tests total (218 → 221).
+
+**Next steps:**
+
+- Feature 11 `ai_prompt_builder` — next actionable per `./init.sh`.
+
+---
+
 ## 2026-08-26 — Feature 8 `shopping_list_state` closed
 
 - **Feature:** 8 — `shopping_list_state` — `done`

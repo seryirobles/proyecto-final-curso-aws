@@ -3,91 +3,100 @@
 > This file is emptied when each session closes and moved to `history.md`.
 > While you work, **keep it updated in real time**, not at the end.
 
-- **Feature in progress:** 10 — `generation_request`
+- **Feature in progress:** 11 — `ai_prompt_builder`
 - **Started:** 2026-08-26
-- **Agent:** spec_author (launched)
+- **Agent:** spec_author (launching)
 
 ## Plan
 
-Feature 9 — `password_policy` — is `done` and committed (`e7ef8f3`), tree
-clean. `./init.sh` reports feature 10 — `generation_request` (tier 1,
-`sdd: true`, depends_on [6] `rules_model`, done) as the next actionable
-feature.
+Feature 10 — `generation_request` — is `done` and committed (`44501cd`), tree
+clean. `./init.sh` reports feature 11 — `ai_prompt_builder` (tier 1,
+`sdd: true`, depends_on [10] `generation_request`, done) as the next
+actionable feature.
 
-Covers FR-AI-03 (three generation modes: library-only / AI-only / mix),
-FR-AI-05 (effective rules = shared rules + optional per-run override, shared
-rules untouched), FR-AI-08 (idempotency key from week + slots + effective
-rules), FR-AI-11 (target-slot resolution: exclude disabled days, resolve
-pinned slots, skip slots already holding a definitive — an existing
-definitive outranks a pin and the skipped pin is reported, today-onward
-scoping for the current week, category counts describe the week's final
-state so existing meals count toward the total).
+Covers FR-AI-01, FR-AI-02, FR-AI-04, FR-AI-06, FR-AI-07, FR-AI-13:
+provider-agnostic prompt assembly (plain data structures, no provider SDK —
+P4 still pending), Castilian Spanish output instruction, configured servings
+stated explicitly, category counts as explicit prompt instructions
+(verifiable post-generation against each recipe's `tipoAlimento`), the fixed
+unit vocabulary as a prompt constraint, the healthy/varied-protein
+instruction labelled non-medical, and both single-recipe modes (from
+specifications; from a library reference plus specifications).
 
-Per SDD flow: spec_author writes `specs/generation_request/{requirements,design,tasks}.md`,
-sets status to `spec_ready`, then STOP for human approval gate.
+Per SDD flow: spec_author writes
+`specs/ai_prompt_builder/{requirements,design,tasks}.md`, sets status to
+`spec_ready`, then STOP for human approval gate.
 
 ## Log
 
-- Leader: confirmed feature 9 done/committed, archived session to
-  `history.md`, ran `./init.sh` (green, 193 tests) — next actionable
-  feature confirmed as 10.
-- spec_author: launched against FR-AI-03, FR-AI-05, FR-AI-08, FR-AI-11.
+- Leader: confirmed feature 10 done/committed, archived session to
+  `history.md`, ran `./init.sh` (green, 221 tests) — next actionable
+  feature confirmed as 11.
+- spec_author: launched against FR-AI-01, FR-AI-02, FR-AI-04, FR-AI-06,
+  FR-AI-07, FR-AI-13.
 
-- spec_author: `spec_ready -> specs/generation_request/`. R1-R24, 3 gate
-  questions in `design.md` §9. Leader verified `resolve_targets`/
-  `idempotency_key`/`build_plan`'s dependencies (`definitive`,
-  `SlotContents`, `slots_from`, `apply_override`, `RuleSet`, etc.) against
-  the actual code in `domain/{candidate,calendar,rules}.py` — signatures
-  match, not guessed.
-- Human answered the 3 gate questions: Q1 (SHA-256/canonical JSON) and Q2
-  (definitive-only category counts) approved as designed. Q3 overturned the
-  recommendation — `mode` SHOULD be part of the idempotency key (switching
-  modes over an otherwise-identical request must count as a new request,
-  not a duplicate).
-- Leader: Q3 requires revising `idempotency_key`'s signature (add `mode`
-  as a 4th component), R16 (same-key test must now hold `mode` constant
-  too), a new requirement for "different mode -> different key", R24's
-  `build_plan` composition (pass `request.mode` through), the coverage map,
-  and design.md §6's payload description + gate question 3's resolution
-  note. Sent back to spec_author.
+- spec_author: `spec_ready -> specs/ai_prompt_builder/`. R1-R20, one gate
+  question in `design.md` §9.
+- Leader: verified the spec against actual code (not guessed) —
+  `GenerationTargets.remaining_category_counts`, `CategoryCountRule`,
+  `Recipe`, `Unit` in `domain/{generation,rules,recipe,units}.py`; the
+  `SHARED_KERNEL_MODULES` tuple in `test_shared_kernel_guards.py`;
+  `docs/architecture.md` §2.1's pending servings-count item and §6's
+  "single documented constants module" line; `docs/data_model.md`'s
+  `numeroComensales` attribute; `specs/recipe_model/design.md`'s own
+  cross-reference naming feature 11 as where it'd be addressed. All
+  citations accurate. Status set to `spec_ready`.
 
-- spec_author: revised. R1-R25 (R16 reworded, R24 updated, R25 new — "same
-  week/targets/rules, different mode -> different key"). Leader verified
-  the revision (coverage map, §9 gate question 3's decision history kept
-  visible, not silently rewritten).
-- Human approved. `feature_list.json` set to `in_progress` before launching
-  the implementer.
-- implementer: launched against `specs/generation_request/`.
+## Gate question for the human (design.md §9)
 
-- implementer: T1-T11 done. `domain/generation.py` and
-  `tests/domain/test_generation.py` created. `./init.sh` green: 218 tests
-  (193 -> 218, +25). Report: `progress/impl_generation_request.md`.
+`specs/ai_prompt_builder/design.md` does **not** add `numeroComensales` to
+`Recipe`/`MealSnapshot` — `FR-LIB-03`/`FR-CAND-07` (the requirements that
+define those types' shape) are in neither this feature's nor feature 12's
+`covers` array, so adding the field here would be inventing an uncovered
+requirement. `FR-AI-13`'s literal text ("stated explicitly in every prompt")
+is satisfied via `CONFIGURED_SERVINGS` traveling through every prompt;
+*persisting* the number on the resulting recipe is left open.
 
-- reviewer: CHANGES_REQUESTED. 14 mutants planted, 12 killed, 2 survived —
-  both real gaps in `idempotency_key` test coverage, not cosmetic: (1) no
-  test varies pin *order* between two rule sets, so the `pins` sort in the
-  hash payload is untested despite the test's own name claiming it; (2) no
-  test varies `targets.pinned_slots` alone, so two genuinely different
-  requests (a pinned slot free vs. that same slot already holding a
-  definitive, same `open_slots` either way since `skipped_pins` isn't
-  hashed) could collide on one idempotency key — undetected key collision,
-  the exact failure mode FR-AI-08 exists to prevent. Also: T12 in
-  `tasks.md` left unticked despite `./init.sh` having actually passed
-  (reported in `progress/impl_generation_request.md`); minor — R6/R7
-  (`PinnedTarget`/`SkippedPin`) lack the frozen-instance assertion R2/R8/R20
-  have.
-- Leader: sent all 4 findings back to the implementer — the 2 real ones are
-  a straightforward "add the missing test scenario", not a design change.
+Recommendation: amend feature 12's or feature 17's `covers` array (whichever
+first parses AI output into a `Recipe`) to add `FR-LIB-03` when that happens
+— that is the natural point to set `numeroComensales`.
 
-- implementer: all 4 findings fixed. Both mutants re-applied and confirmed
-  caught by the new tests, then reverted (tree clean). T12 ticked. Finding
-  4 (optional frozen-instance tests) also done. `./init.sh` green: 221
-  tests (218 -> 221, +3).
+- Human: gate question resolved — deferred to feature 12/17 (recommendation
+  approved as designed). `CONFIGURED_SERVINGS = 4` approved together with
+  the spec. `design.md` §9 updated with the resolution note. Status set to
+  `in_progress`.
+- implementer: launching against `specs/ai_prompt_builder/`.
+
+- implementer: T1-T10 complete. New module
+  `backend/core/src/planner_core/domain/ai_prompt.py` and its test
+  `backend/core/tests/domain/test_ai_prompt.py` (R1-R20). Fixed two
+  design.md §6 docstrings exceeding the 100-char ruff limit when
+  transcribed verbatim (wording shortened, no meaning change). `./init.sh`
+  green: 234 tests (221 -> 234, +13). Report: `progress/impl_ai_prompt_builder.md`.
+
+- reviewer: launched against `progress/impl_ai_prompt_builder.md`,
+  `ai_prompt.py`, `test_ai_prompt.py`, mutation testing included.
+
+- reviewer: CHANGES_REQUESTED. 19 mutants planted, 15 killed, 4 survived —
+  all real test-coverage gaps, not design issues: (1) R3's test only checks
+  `HEALTHY_BALANCED_INSTRUCTION` is non-empty, so replacing the whole
+  approved string with `"x"` still passes; (2)-(4) `SpecificationPrompt`,
+  `ReferencePrompt`, `CategoryPrompt` (R10-R12) have no frozen-instance test
+  — only `PromptInstructions` (R5) does — so removing `frozen=True` from any
+  of the three leaves the suite green. Tree restored, byte-identical to
+  pre-review state.
+- Leader: sent all 4 findings back to the implementer — straightforward
+  "add the missing test assertion", no design change.
+
+- implementer: all 4 findings fixed. All 4 mutants re-applied and confirmed
+  caught by the strengthened/new tests, then reverted (`ai_prompt.py`
+  byte-identical to pre-review, tree clean otherwise). `./init.sh` green:
+  237 tests (234 -> 237).
 
 ## Next step
 
-Ready for human sign-off: review `specs/generation_request/`,
-`backend/core/src/planner_core/domain/generation.py`,
-`backend/core/tests/domain/test_generation.py` and
-`progress/impl_generation_request.md`. Marking `done` and committing are
+Ready for human sign-off: review `specs/ai_prompt_builder/`,
+`backend/core/src/planner_core/domain/ai_prompt.py`,
+`backend/core/tests/domain/test_ai_prompt.py` and
+`progress/impl_ai_prompt_builder.md`. Marking `done` and committing are
 human-only.
