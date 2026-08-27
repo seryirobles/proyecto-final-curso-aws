@@ -81,8 +81,8 @@ Exactly **two Lambdas**, no more:
 
 **Decided by the human 2026-08-16.** Formerly P1.
 
-**Amazon DynamoDB**, in a **single-table design**. One table named `data`, nine
-item types, serving all 28 access patterns.
+**Amazon DynamoDB**, in a **single-table design**. One table named `data`, ten
+item types, serving all 29 access patterns.
 
 > **Where to read the model and the catalogue.** Both are in
 > **`docs/data_model.md`** — the persistence source of truth. The owner authors
@@ -186,6 +186,52 @@ decide P5 or P6 — how the session token travels over the REST contract
 (cookie vs. bearer header) and how API Gateway/Lambda authorizers are
 wired remain those pending items.
 
+### 1.2.4 Real-time transport — adaptive polling with conditional GET (was P3)
+
+**Decided by the human 2026-08-27.** Formerly P3. See
+`docs/gaps_and_resolutions.md` Part X / `G-88` for the full analysis and
+rejected alternatives.
+
+**Adaptive client-side polling, short-circuited by a conditional GET.**
+No WebSocket API, no AppSync, no long polling.
+
+- The frontend re-fetches each pollable resource on an interval that backs
+  off when the tab is hidden/blurred and resumes immediately on
+  `visibilitychange` back to visible, and backs off further (capped,
+  jittered) on repeated failures.
+- Every poll carries the last version marker the client holds for that
+  resource. The `api` Lambda does a **cheap, strongly-consistent read of
+  just the marker** before deciding whether to compute and return the full
+  payload — unchanged returns `304 Not Modified` with no body.
+- The marker itself, its storage shape (a new `MarcaCambio` item per
+  pollable partition), and the amended access patterns are
+  `docs/data_model.md` §1/§3/§4 — read those before touching persistence
+  for weeks, the library, the shopping list, or the rules.
+
+**Why not WebSocket API Gateway, AppSync, or long polling.** All three were
+considered; discussed at length before this decision and recorded in full
+in `G-88`. Long polling in particular is a poor fit for this architecture
+specifically: API Gateway's integration timeout caps any held-open request
+at 29 seconds, and Lambda bills by compute-time, so a connection held open
+"waiting" for a change pays for idle compute the whole time it waits — a
+worse cost profile than either short polling or a real WebSocket, which
+bills by idle connection-*time*, not compute-*time*.
+
+**`FR-RT-03`'s reconnect/resync language maps onto polling almost for
+free**, because polling has no connection state to restore in the first
+place: "indicate loss" is N consecutive failed polls, "reconnect
+automatically" is the timer never stopping, and "re-synchronize state" is
+simply the next successful poll — `docs/data_model.md` §9 already noted
+this before P3 was decided ("reconnect resynchronisation is re-calling
+existing reads").
+
+This closes P3 and unblocks the persistence half of `realtime_channel`
+(feature 18) immediately — the marker item, the port signature changes and
+their contract tests need no other pending decision. It does **not**
+decide P5 or P6: how the marker travels over HTTP (a header? a field in the
+payload?) is P5's; API Gateway throttling/caching of poll traffic, and any
+cost monitoring on request volume, is P6's.
+
 ### 1.3 Toolchain
 
 | Concern | Tool |
@@ -225,7 +271,7 @@ Hitting any of these means: mark the feature `blocked`, write the reason in
 |---|---|---|
 | ~~P1~~ | ~~**Datastore**~~ — **DECIDED 2026-08-16: DynamoDB, single table. See §1.2.1.** | — |
 | ~~P2~~ | ~~**Auth mechanism**~~ — **DECIDED 2026-08-27: application-managed. See §1.2.3.** | — |
-| P3 | **Real-time transport** (WebSocket API? AppSync? polling?) | `FR-RT-01`–`-03` |
+| ~~P3~~ | ~~**Real-time transport**~~ — **DECIDED 2026-08-27: adaptive polling with conditional GET. See §1.2.4.** | — |
 | P4 | **AI provider and model** (Bedrock? external API?) | `ai` Lambda, and the enforcing path for the €50/month **global** cap (`G-70`, supersedes `G-38`) |
 | P5 | **REST API contract** (resources, verbs, payload shapes, error format) | `api` Lambda handlers |
 | P6 | **Deployment topology** (API Gateway config, VPC, cold-storage wiring) | anything touching AWS |

@@ -1540,3 +1540,189 @@ killed, reverted. 133 → 137 tests.
   - Features 21-23 (tier 5) are human-owned by design, not decision-blocked
 - Next actionable feature requires the human to resolve at least one of
   P2/P3/P4/P5/P6 in `docs/architecture.md` §2.
+
+---
+
+## 2026-08-27 — P2 decided, feature 15 `auth_flow` closed
+
+- **Feature:** 15 — `auth_flow` — `done`, committed `62d6e1d`
+  (*"feat: users and auth logic"*)
+- **Architecture:** P2 (auth mechanism) decided — **application-managed**,
+  no external IdP. `docs/architecture.md` §1.2.3.
+
+**Decision path (two rounds):**
+
+- Human chose application-managed over Cognito (keeps feature 9's
+  `password_policy.py`/`username_policy.py` as the live validation path).
+  spec_author's first pass proposed a `DatosSesion` item type (session
+  tracking) and an app-level login-lockout counter (`NFR-SEC-04`). Human
+  rejected both at the gate, initially framing it as "sessions were
+  already stripped from the MVP" — leader verified against
+  `data_model.md` §9 (sessions were *parked* pending P2, not stripped)
+  and asked for clarification. Human then made the real call: **strip
+  session tracking from the MVP entirely**, move brute-force protection
+  to infrastructure (feature 21, API Gateway/WAF), and accept a
+  lightweight revocation-marker design instead.
+- Leader lifted the freeze: new **Part W / `G-87`** in
+  `gaps_and_resolutions.md`, amended `FR-AUTH-16` (flat 30-day expiry,
+  dropped the 12h-inactivity clause — a sliding window needs a DB write
+  per request), backfilled `coverage_analysis.md`, resolved
+  `data_model.md` §9's Sessions row. `NFR-SEC-04` moved from feature 15's
+  `covers` to feature 21's.
+- spec_author revised in place: no `SessionRepository`/`DatosSesion`, a
+  self-contained HMAC-signed `(user_id, issued_at)` token
+  (`TokenSigner`/`HmacTokenSigner`), and `credentials_valid_since`/
+  `validoDesde` — one revocation-marker attribute on `AccountRecord`/
+  `DatosUsuario`, advanced by admin reset (rides the existing write) and
+  a new minimal logout write; removal needs no write at all. R1-R34 became
+  R1-R31. Human accepted all 4 revised gate questions after an explanation
+  of the one real behavioral fork (logout revokes every device, not just
+  one — the only lever available with no per-token state).
+- Leader merged the approved data-model proposal:
+  `validoDesde` on `DatosUsuario`, `AP28` (Cerrar sesión), `AP4`/`AP7`
+  annotated for which one touches the marker. Access-pattern count swept
+  27 → 28 across `data_model.md`, `architecture.md`, `AGENTS.md`.
+
+**Implementation:**
+
+- implementer: 60/60 tasks, R1-R31 traced, `./init.sh` green (435 tests).
+- reviewer: CHANGES_REQUESTED — 1 mutant survived (`session_policy.py`'s
+  `is_expired` boundary, exact-30-day edge untested), R22's test vacuous
+  (empty fake, true by construction), R6/R10/R13 claimed "structural"
+  with no test, two new frozen dataclasses missing their mandatory test,
+  three over-length docstrings. `PasswordHasher`/`TokenSigner` contract-
+  suite question flagged as the leader's call, not the implementer's —
+  leader ruled no contract suite needed (both are `architecture.md`
+  §1.2.2 "default implementation" ports, `Clock`'s category, not a
+  swappable-backend persistence port).
+- implementer (fix pass): all 5 findings fixed, 441 tests. reviewer (cheap
+  verification, same agent resumed): named mutant killed, fixes confirmed
+  real. `APPROVED — 0 findings, 0 mutants survived`.
+
+**Post-approval external review** (after human sign-off, before commit)
+returned `STATUS: FAILED`, 2 items — leader verified both before acting
+(house rule: automated reviewers have been wrong before, but not this
+time):
+1. `Role(StrEnum)` vs. `design.md`'s approved `Role(str, Enum)` — verified
+   by direct test: `ruff check` (`UP042`, `target-version = "py313"`)
+   genuinely rejects `(str, Enum)`, and `str()`/f-string output genuinely
+   differs between the two forms (confirmed), though nothing in the
+   shipped code relied on it. `design.md` §4, `tasks.md` T2, and the impl
+   report's overstated "behaviourally identical" claim all corrected to
+   match reality, human-approved.
+2. `architecture.md` §1.2.3 doc drift — still described the pre-`G-87`
+   12h-inactivity session model. Leader's own oversight from the `G-87`
+   sweep; fixed directly.
+- **Learned:** an "unchanged from the first pass, human-approved" note in
+  a design doc needs re-verifying against the shipped code, not just
+  trusted — a lint rule can force a mechanical deviation the design text
+  never anticipated.
+
+**Unrelated recovery, same session:** commit `d708b3a` ("chore: improve
+agent files, remove stale review files", 2026-08-24) had deleted 13
+`impl_*.md` reports (features 1-5 era) by mistake, alongside the
+`review_*.md` files it correctly removed. Restored the 13 `impl_*.md`
+files via `git checkout d708b3a~1 --`, left the `review_*.md` deletions
+alone (those match the current "no review report files" convention).
+
+### State at close
+
+- **Feature 15 `done`, committed `62d6e1d`**, tree clean. `./init.sh`
+  green: 441 tests, 17 features `done`, 8 `blocked`.
+- **No actionable pending feature.** P2 is closed; P3 (real-time), P4 (AI
+  provider), P5 (REST contract), P6 (deployment topology) remain, blocking
+  features 16-20. Features 21-23 (tier 5) are human-owned by design.
+
+---
+
+## 2026-08-27 — P3 decided (adaptive polling), feature 18 split into a buildable persistence half
+
+- **Architecture:** P3 (real-time transport) decided — **adaptive polling
+  with a conditional-GET version marker**. `docs/architecture.md` §1.2.4,
+  `docs/gaps_and_resolutions.md` Part X / `G-88`.
+
+**Decision path:**
+
+- Human asked to tackle P3 next. Leader laid out the WebSocket API
+  Gateway / AppSync / polling tradeoffs; human proposed polling with
+  adaptive backoff, conditional-GET caching (`304`), and optimistic
+  self-updates, and asked about cost at scale. Leader endorsed the design
+  but pushed back on one piece within it — long polling — specifically
+  because API Gateway's 29s integration timeout and Lambda's
+  compute-time billing make a held-open wait pay for idle compute, a
+  worse cost profile than either short polling or a real WebSocket.
+- Human asked for an Opus-model agent to analyze implementation. Leader
+  launched a `Plan`-type agent (model `opus`), narrowly scoped: pure
+  analysis, no code, no spec files, every claim verified against the
+  actual docs. It returned a `MarcaCambio` item (one per pollable
+  partition — weeks, library, shopping list, rules) holding an
+  atomically-incremented counter bumped inside the same
+  `TransactWriteItems` as the write it marks; two correctness traps
+  (atomicity, marker-before-payload read ordering); confirmation that
+  `FR-RT-03`'s reconnect/resync language maps onto polling almost for
+  free; confirmation that `FR-RT-02`'s last-write-wins is unaffected
+  *provided* the marker never becomes a write condition; and a structural
+  finding that feature 18 splits cleanly into a buildable-now persistence
+  half and a P5-blocked transport half. 6 gate questions.
+- Human asked to fold the analysis into architecture and data-model docs
+  before working the gate questions individually. Leader wrote it up as
+  the decision (the agent's primary recommendation; the hash-ETag
+  fallback was not chosen), renaming the marker attribute from the
+  agent's suggested `version` to `marcaCambio` — deliberately not
+  `version`, so it can never be mistaken for a write precondition.
+- Human resolved the remaining 5 gate questions (marker naming kept as
+  `marcaCambio`; split feature 18; accept the port-signature change now
+  rather than defer; workbook out-of-workbook like `AP28`; record the
+  `lambda_ai`-routes-through-`WeekRepository` constraint now for feature
+  17's eventual spec) — all recommendations accepted.
+
+**Documentation (all of it, before any code):**
+
+- `docs/architecture.md`: §2 P3 row struck, new §1.2.4 recording the
+  decision and explicitly not deciding P5/P6.
+- `docs/gaps_and_resolutions.md`: new Part X / `G-88` — no requirements
+  amended, this decision picks *how*, not *what*.
+- `docs/data_model.md` (the bulk of the work): §1 adds `MarcaCambio` (10th
+  item type, 4 instances — one per pollable partition) and its attribute
+  note (counter semantics, atomic same-transaction bump, never a write
+  condition); §3 amends the shared-partition table (2 newly-shared
+  partitions, 3 amended key-condition scopes so `AP8`/`AP9`/`AP14`/`AP22`
+  exclude the marker); §4 amends those four reads, adds a bump pointer to
+  the 10 affected write APs, changes `AP21` from `BatchWriteItem` to
+  `TransactWriteItems` (a batch write can't join the marker bump), adds
+  new §4.7 with `AP29` (the marker read); §5 adds §5.5 for the two
+  ordering traps; §7 adds two entries preempting reviewer confusion
+  (distinguishing `MarcaCambio` from an already-rejected "thin index
+  item" idea; confirming the existing hot-partition analysis still holds
+  against `AP29`'s read frequency); §8 adds 2 verification rows; §9
+  resolves the stale "Real-time... blocked on P3" row. Access-pattern
+  count: 27 → 28 (`G-87`, prior session) → 29 (`G-88`), swept across
+  `data_model.md`, `architecture.md`, `AGENTS.md`.
+- **Feature 18 split**: id 18 renamed `realtime_channel_persistence`
+  (tier 2, `covers: []`, `depends_on: [4,5,6,8,14]`, `pending`) — the
+  `MarcaCambio`/port-signature/contract-test work, no HTTP layer. New
+  **feature 26** `realtime_channel_transport` (tier 3, `covers: FR-RT-01
+  to -03`, `depends_on: [16,18]`, `blocked` on P5) carries the
+  conditional-GET handler, the frontend polling hook, and the actual
+  `FR-RT-*` coverage — not verifiably true until the transport exists.
+  Feature 20's `depends_on` gained `26`; feature 17's `acceptance` gained
+  the recorded `WeekRepository`-routing constraint for its own future
+  spec.
+- **Learned:** an agent-produced design that says "safe, not optimal"
+  about a specific case (bulk writes bumping the marker once per item
+  instead of once per operation) should be written into the docs as
+  exactly that — a known, accepted tradeoff — rather than smoothed over
+  into a claim of "once per logical operation" the actual per-item write
+  path doesn't yet deliver.
+
+### State at close
+
+- No code touched this session — architecture, data model, gaps, and
+  `feature_list.json` only. `./init.sh` green throughout: 441 tests
+  unaffected, 26 features (17 done, 8 blocked, **1 pending**), coverage
+  104/104 intact.
+- **Next actionable: feature 18 `realtime_channel_persistence`.**
+  `spec_author` has not been launched against it yet.
+- Remaining architecture items: P4 (AI provider), P5 (REST contract), P6
+  (deployment topology) — blocking features 16, 17, 19, 26 and
+  transitively 20. Features 21-23 (tier 5) remain human-owned.

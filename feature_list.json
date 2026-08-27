@@ -361,7 +361,8 @@
       "covers": ["FR-AI-09", "NFR-AI-01"],
       "depends_on": [12, 14],
       "acceptance": [
-        "Deferred until the AI provider is chosen"
+        "Deferred until the AI provider is chosen",
+        "CONSTRAINT (recorded 2026-08-27, G-88): whole-week AI generation must write candidates through the same WeekRepository port every other write path uses (save_slot/save_week per feature 14/18), never a separate write path - MarcaCambio's marker bump lives inside that port's methods (docs/data_model.md section 4.7), so any write that bypasses the port silently produces candidates other clients' polling never detects. Not verifiable until this feature has code; recorded here for whoever specs it."
       ],
       "sdd": true,
       "status": "blocked",
@@ -369,18 +370,24 @@
     },
     {
       "id": 18,
-      "name": "realtime_channel",
-      "tier": 3,
-      "title": "Real-time collaboration channel",
-      "description": "Broadcasting changes to both live weeks, the shopping list, the rules and the library; connection-loss indication, automatic reconnect and state re-synchronization.",
-      "covers": ["FR-RT-01", "FR-RT-02", "FR-RT-03"],
-      "depends_on": [14],
+      "name": "realtime_channel_persistence",
+      "tier": 2,
+      "title": "Real-time change markers — persistence and ports",
+      "description": "The data-layer half of real-time support (G-88, architecture P3, split from the original realtime_channel 2026-08-27): the MarcaCambio item type (one per pollable partition - weeks, library, shopping list, rules), the current_version read and version-returning writes on WeekRepository/RuleRepository/ShoppingListRepository/RecipeRepository, and their contract tests. No HTTP layer, no handler, no polling logic - that is feature 26, blocked on P5.",
+      "covers": [],
+      "depends_on": [4, 5, 6, 8, 14],
       "acceptance": [
-        "Deferred until the real-time transport is chosen"
+        "A MarcaCambio item type exists, one instance per pollable partition (SEMANA#<idSemana>, BIBLIOTECA#<idBiblioteca>, COMPRA#<idLista>, GRUPOREGLAS#<idGrupoReglas>), per docs/data_model.md section 1",
+        "WeekRepository, RuleRepository, ShoppingListRepository and RecipeRepository each gain a current_version read (AP29 shape, docs/data_model.md section 4.7) — a cheap, strongly-consistent read of only the marker",
+        "Every mutating method on those four ports returns the resource's new version instead of None, and bumps marcaCambio inside the same atomic operation as the data write it marks — never a separate call, never before the data write (docs/data_model.md section 1.1/5.5)",
+        "The marker is never used as a write precondition/ConditionExpression on any port method — mechanically enforced by a scan test, mirroring test_ports_are_storage_agnostic.py's technique (docs/data_model.md section 1.1's explicit warning)",
+        "Fakes (FakeWeekRepository, FakeRuleRepository, FakeShoppingListRepository, FakeRecipeRepository) implement the version bump with a simple in-memory counter",
+        "Contract suites assert: every mutating method changes the version; no read method changes it; the version a write returns equals what the next current_version() call reports; delete_checked_items() with nothing checked stays a no-op and does not bump (its existing idempotency guarantee, feature 8, is preserved)",
+        "No handler.py, no wiring.py, no HTTP concern of any kind — this is pure planner_core (domain/ports/application) plus contract tests, the same shape persistence_ports (feature 14) already established",
+        "A bulk logical operation (whole-week AI generation, shopping-list re-sync) bumping its marker once per underlying item write, rather than once for the whole operation, is accepted as correct-but-not-optimal for this feature — collapsing it to one bump is explicitly out of scope here (docs/data_model.md section 4.2/4.4)"
       ],
       "sdd": true,
-      "status": "blocked",
-      "blocked_reason": "Architecture P3 (real-time transport) undecided."
+      "status": "pending"
     },
     {
       "id": 19,
@@ -404,13 +411,13 @@
       "title": "Single-page application",
       "description": "The responsive es-ES SPA: two live weeks, candidates and the three-way authoring flow (library pick / from scratch / AI, reused by library authoring minus the self-pick), definitive selection, library, rules, shopping list, summary and archive.",
       "covers": ["FR-MENU-01", "FR-MENU-04", "FR-MENU-05", "FR-MENU-07", "FR-CAND-02", "FR-CAND-03", "FR-LIB-01", "FR-LIB-02", "FR-LIB-04", "FR-UX-01", "FR-UX-02", "FR-UX-03", "FR-UX-04", "FR-UX-05", "FR-UX-06", "FR-UX-07"],
-      "depends_on": [16],
+      "depends_on": [16, 26],
       "acceptance": [
         "Deferred until the initial frontend code is supplied"
       ],
       "sdd": true,
       "status": "blocked",
-      "blocked_reason": "Blocked on feature 16 ONLY - the SPA needs the REST contract (P5). P7 was CLOSED 2026-08-17: idiomatic React (function components, hooks, JSX), Vite, Vitest, ESLint + Prettier, plain JS/ESM - see docs/architecture.md section 1.1. A Claude Design prototype was supplied 2026-08-16 (prototypes/wireframe/, moved out of frontend/ on 2026-08-17 so no SPA toolchain can reach it) and analysed in docs/frontend_prototype.md: it is an executable wireframe, NOT portable code (Anthropic-internal DC runtime, CDN-loaded React, single-file inline styles, no components or tests). Mine it for the 18 colour tokens, the es-ES strings, the screen inventory and the handler names - but NOT for the type or spacing scale (24 distinct font sizes with half-pixel steps, 91 distinct paddings: that is drift, not a system). Read docs/frontend_prototype.md section 4 first - the prototype contradicts eleven frozen requirements, including the shopping re-sync rule settled by G-77. Conventions: docs/conventions.md section 'Frontend conventions'."
+      "blocked_reason": "Blocked on feature 16 (REST contract, P5) and feature 26 (real-time transport wiring, G-88) - the SPA's sync hook needs the polling/conditional-GET shape feature 26 delivers. P7 was CLOSED 2026-08-17: idiomatic React (function components, hooks, JSX), Vite, Vitest, ESLint + Prettier, plain JS/ESM - see docs/architecture.md section 1.1. A Claude Design prototype was supplied 2026-08-16 (prototypes/wireframe/, moved out of frontend/ on 2026-08-17 so no SPA toolchain can reach it) and analysed in docs/frontend_prototype.md: it is an executable wireframe, NOT portable code (Anthropic-internal DC runtime, CDN-loaded React, single-file inline styles, no components or tests). Mine it for the 18 colour tokens, the es-ES strings, the screen inventory and the handler names - but NOT for the type or spacing scale (24 distinct font sizes with half-pixel steps, 91 distinct paddings: that is drift, not a system). Read docs/frontend_prototype.md section 4 first - the prototype contradicts eleven frozen requirements, including the shopping re-sync rule settled by G-77. Conventions: docs/conventions.md section 'Frontend conventions'."
     },
     {
       "id": 21,
@@ -493,6 +500,21 @@
       ],
       "sdd": true,
       "status": "done"
+    },
+    {
+      "id": 26,
+      "name": "realtime_channel_transport",
+      "tier": 3,
+      "title": "Real-time collaboration channel — transport",
+      "description": "The HTTP-facing half of real-time support (G-88, architecture P3, split from the original realtime_channel 2026-08-27): the api Lambda's conditional-GET handling (If-None-Match parsing, 304 mapping), and the frontend's adaptive polling hook, backoff, connection-loss indication and optimistic self-updates. Depends on feature 18's persistence half and feature 16's REST contract.",
+      "covers": ["FR-RT-01", "FR-RT-02", "FR-RT-03"],
+      "depends_on": [16, 18],
+      "acceptance": [
+        "Deferred until the REST contract (P5) is defined"
+      ],
+      "sdd": true,
+      "status": "blocked",
+      "blocked_reason": "Architecture P3 is DECIDED (docs/architecture.md section 1.2.4, G-88) and its persistence half is feature 18 (unblocked, tier 2). This feature is the transport wiring: the api Lambda's conditional-GET handler and the frontend's polling hook. Blocked on P5 (REST contract) for the handler shape, and on feature 16 (rest_api_lambda) to exist at all — see G-88's boundary note: how the marker travels over HTTP (header vs. payload field) is P5's decision, not this document's."
     }
   ]
 }

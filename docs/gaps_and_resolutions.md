@@ -1111,3 +1111,80 @@ item type and per-attempt lockout counters.
   mechanism-agnostic and remains true under the new design. `NFR-SEC-04`
   reviewed, **not amended** — only its covering feature changes (15 → 21
   in `feature_list.json`, not requirements.md). Supersedes nothing.
+
+---
+
+## Part X — Architecture P3: real-time transport decided as adaptive polling (2026-08-27)
+
+Directed by the requirements owner, in the same manner as Parts I through
+W. Raised while scoping feature 18 `realtime_channel`, still `blocked` at
+the time — the leader ran an investigation (an `Agent`-launched analysis,
+not a formal `spec_author` pass) once the owner had narrowed the choice to
+a polling-based design, to work out whether it could actually satisfy
+`FR-RT-01`–`-03` against the settled single-table, no-secondary-index data
+model before recording the decision.
+
+### G-88 · Real-time transport is adaptive polling with a conditional-GET version marker, not WebSocket API Gateway, AppSync, or long polling
+
+- **Gap:** `docs/architecture.md` §2 P3 left the real-time transport open
+  among three named options (WebSocket API, AppSync, polling).
+  `docs/data_model.md` §9 had parked "Real-time" as adding no new read
+  patterns and only a write-side fan-out obligation — written before any
+  transport was chosen, and, it turns out, only half right once polling
+  was the mechanism (see below).
+- **Decision:**
+  1. **Adaptive short polling**, not long polling. The client interval
+     backs off when the tab is hidden/blurred, resumes immediately on
+     `visibilitychange`, and backs off further (capped, jittered) on
+     repeated failures.
+  2. **A conditional GET, short-circuited by a per-resource version
+     marker**, not a plain re-fetch every poll. Each pollable resource — a
+     live week, the shared shopping list, the shared rules, the shared
+     library — gets one `MarcaCambio` item in its partition, an
+     atomically-incremented counter bumped inside the **same
+     `TransactWriteItems`** as any write to that resource. A poll reads
+     only the marker (cheap, strongly consistent) and skips the full
+     payload fetch when it matches what the client already holds.
+  3. **WebSocket API Gateway, AppSync, and long polling are all
+     rejected.** WebSocket/AppSync were rejected on cost-and-complexity
+     grounds relative to this project's 2-10 user scale (`G-35`) and,
+     for AppSync specifically, because it would mean running GraphQL
+     alongside the REST contract every other decided piece assumes, for
+     no matching benefit — its headline features (schema-driven queries,
+     offline conflict resolution) don't map onto `FR-RT-02`'s already-
+     settled last-write-wins policy. Long polling was considered and
+     rejected specifically for this architecture: API Gateway's
+     integration timeout caps any held-open request at 29 seconds, and
+     Lambda bills by compute-*time* — a connection held open "waiting"
+     for a change pays full compute price the entire time it waits,
+     worse than either short polling or a real WebSocket (which bills by
+     idle connection-*time*, not compute-*time*).
+- **Reasoning:** At this project's scale, cost is a non-issue for any of
+  the four options considered — the deciding factors were architectural
+  fit and forward cost-shape, not today's bill. The marker-plus-`304`
+  design keeps the write path inside the already-committed single-table,
+  transaction-based model (the same primitive AP4/AP5 already use), adds
+  no new API paradigm, and makes a "nothing changed" poll roughly 15×
+  cheaper than a full resource fetch (a marker `GetItem` vs. a full
+  `Query`) — closing most of the cost gap against WebSocket without any
+  new infrastructure. `FR-RT-03`'s "indicate loss, reconnect
+  automatically, re-synchronize state" maps onto polling almost for free,
+  because polling carries no connection state to lose: loss is N
+  consecutive failed polls, reconnect is the timer never stopping, and
+  resync is simply the next successful poll — `data_model.md` §9's
+  original "reconnect resynchronisation is re-calling existing reads"
+  turns out to be exactly true once the mechanism is polling.
+- **The one hard rule this decision imposes on every future write path:**
+  the marker is **read-only metadata, never a write precondition**. It
+  must never appear in a `ConditionExpression`. `FR-RT-02`'s last-write-wins
+  policy (`G-07`) is unaffected by this decision and must stay that way —
+  conditioning a write on the marker would silently turn last-write-wins
+  into optimistic locking with conflict errors nothing in the requirements
+  or the UI is designed to handle. The attribute is deliberately **not**
+  named `version` for this reason (see `data_model.md` §1.1).
+- **Requirements:** None amended. `FR-RT-01`–`-03` are satisfied by this
+  mechanism as written; this decision picks *how*, not *what*.
+  `data_model.md` §9's "Real-time" row is corrected — it previously
+  claimed no new read patterns, which was true only for the pre-decision
+  state; polling adds `AP29` and amends three existing whole-partition
+  reads. Supersedes nothing.
