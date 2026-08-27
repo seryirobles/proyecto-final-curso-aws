@@ -8,8 +8,10 @@
 > remains the authoring surface.
 
 **Status: closed and verified.** One DynamoDB table, **9 item types**,
-**27 access patterns**, **no secondary indexes**, **no scans**. Verified
-attribute-by-attribute against the spreadsheet on 2026-08-16.
+**28 access patterns**, **no secondary indexes**, **no scans**. Verified
+attribute-by-attribute against the spreadsheet on 2026-08-16; AP28 added
+2026-08-27 by `G-87`/feature 15 `auth_flow` (human-approved, not yet in
+the owner's spreadsheet).
 
 **Read §2 before writing a single line of persistence code.** It is the section
 that exists nowhere else and the one that causes silent, hard-to-find bugs.
@@ -22,7 +24,7 @@ Single table, named **`data`**. All nine item types share it.
 
 | PK | SK | Item type | Attributes |
 |---|---|---|---|
-| `USUARIOS` | `ID#<idUsuario>` | `DatosUsuario` | `nombreUsuario, tipo, isPassReseteada, passHash` |
+| `USUARIOS` | `ID#<idUsuario>` | `DatosUsuario` | `nombreUsuario, tipo, isPassReseteada, passHash, validoDesde` |
 | `USUARIOS` | `NOMBRE#<nombreUsuario>` | `NombreIDUsuario` | `idUsuario` |
 | `SEMANA#<idSemana>` | `DIA#<numeroDia>#COMIDA#<numeroComida>#ID#<idPlato>` | `DatosPlatoSemana` | `nombrePlato, tiempo, numeroComensales, tipoAlimento, lista(nombreIngrediente, cantidad, unidad), lista(nombreUtensilio), lista(numeroPaso, descripcionPaso), añadidoPor` |
 | `SEMANA#<idSemana>` | `DIA#<numeroDia>#COMIDA#<numeroComida>#DEFINITIVO` | `DatosDefinitivoSemana` | `idPlatoDefinitivo` |
@@ -55,6 +57,15 @@ adapter boundary, not in the domain.
   under the same name. This is **required**: DynamoDB TTL is configured on
   exactly one attribute name per table. No other item type may carry a `ttl`
   attribute, or it will start expiring.
+- **`validoDesde`** (`G-87`, feature 15 `auth_flow`) is the auth-token revocation
+  marker: a token is trusted only if its `issued_at` is after this timestamp.
+  Set at account creation to the creation instant. **AP4** advances it to now
+  on an admin-driven password change/reset, and the new **AP28** (Cerrar
+  sesión) advances it to now on a self-service logout — both revoke every
+  token issued to the account before that moment, on every device. **AP7**
+  (the account holder's own mandatory set-password step) deliberately leaves
+  it untouched: bumping it there would invalidate the very token the caller
+  is using to complete that same request.
 
 ---
 
@@ -188,7 +199,7 @@ reserved-word list; aliasing unconditionally sidesteps the question.
 
 ---
 
-## 4. The 27 access patterns
+## 4. The 28 access patterns
 
 Every pattern below resolves to a `GetItem`, a single-partition `Query`, or a
 transactional/batch write. **No scans. No indexes.**
@@ -202,10 +213,11 @@ transactional/batch write. **No scans. No indexes.**
 | AP1 | Pantalla admin - Listar usuarios | — | `lista(idUsuario, nombreUsuario, tipo, isPassReseteada)` | Baja | `Query` `PK=USUARIOS AND begins_with(SK,'ID#')` |
 | AP2 | Obtener usuario | `idUsuario` | `idUsuario, nombreUsuario, tipo, isPassReseteada` | Baja | `GetItem` `USUARIOS / ID#<idUsuario>` |
 | AP3 | Obtener usuario por nombre | `nombreUsuario` | `idUsuario, nombreUsuario, tipo, isPassReseteada` | Baja | `GetItem` ×2 — `NOMBRE#<fold>` → `ID#<idUsuario>` |
-| AP4 | Pantalla admin - Crear o editar usuario | `nombreUsuario, idUsuario, tipo, pass, isPassReseteada` | `idUsuario, nombreUsuario, tipo, isPassReseteada` | Baja | `TransactWriteItems` — see §5.1 / §5.2 |
+| AP4 | Pantalla admin - Crear o editar usuario | `nombreUsuario, idUsuario, tipo, pass, isPassReseteada` | `idUsuario, nombreUsuario, tipo, isPassReseteada` | Baja | `TransactWriteItems` — see §5.1 / §5.2. Sets `validoDesde` to the creation instant on create, or to now on an admin-driven password change/reset of an existing account (revokes that account's outstanding tokens) |
 | AP5 | Pantalla admin - Eliminar usuario | `idUsuario` | — | Baja | `Query` + `TransactWriteItems` — see §5.2 |
 | AP6 | Login | `nombreUsuario, pass` | `idUsuario, tipo, isPassReseteada` | **Alta** | `GetItem` ×2 as AP3, then compare `passHash` |
-| AP7 | Establecer contraseña | `idUsuario, pass` | — | Media | `UpdateItem` `USUARIOS / ID#<idUsuario>` — sets `passHash`, clears `isPassReseteada` |
+| AP7 | Establecer contraseña | `idUsuario, pass` | — | Media | `UpdateItem` `USUARIOS / ID#<idUsuario>` — sets `passHash`, clears `isPassReseteada`. Does **not** touch `validoDesde` (§1.1) |
+| AP28 | Cerrar sesión | `idUsuario` | — | Baja | `UpdateItem` `USUARIOS / ID#<idUsuario>` — sets `validoDesde = now`, revoking every outstanding token for the account |
 
 ### 4.2 Weeks — `FR-MENU-*`, `FR-CAND-*`
 
@@ -455,7 +467,7 @@ Do not report these as gaps.
 |---|---|
 | **Archive** (`FR-ARCH-01`…`-04`) | Parked, MVP scope. Reading a past week *is* AP8 pointed at an older `idSemana`, and read-only needs no stored flag — a week is closed iff its id sorts before the computed current week. ⚠ But `FR-ARCH-04`'s reverse-chronological browse is **not** free: `idSemana` is in the **partition** key and DynamoDB cannot list or sort partition keys. Unparking costs ids generated backwards arithmetically, or an index. The `FR-ARCH-02` shopping-list snapshot has no item type and parks with it. |
 | **Real-time** (`FR-RT-01`…`-03`) | Out of scope for the data layer by owner decision. Adds no new *read* patterns — reconnect resynchronisation is re-calling existing reads. What it adds is a fan-out obligation on existing writes, which belongs in the design. Blocked on architecture **P3**. |
-| **Sessions** (`FR-AUTH-09`, `-11`, `-14`, `-16`) | Blocked on architecture **P2**. If a managed identity provider is chosen these items may not exist at all. Note the shape when it unblocks: "invalidate **all** sessions of an account" is a query by `idUsuario`, not a point delete. |
+| **Sessions** (`FR-AUTH-09`, `-11`, `-14`, `-16`) | **Resolved by `G-87` (2026-08-27, human-approved): no dedicated item type.** Authentication is stateless — a token carries `user_id` + `issued_at`, signed, and expires 30 days after issuance with no database access (`FR-AUTH-16`, amended). "Invalidate all sessions of an account" (`FR-AUTH-11`, `-14`) and voluntary logout (`FR-AUTH-09`) are both satisfied by `DatosUsuario.validoDesde` (§1.1, AP4, AP28) — one revocation-marker attribute, not a session table. Removal needs no write at all — deleting the account already fails every token lookup. |
 | **Cold storage** (`FR-ARCH-03`) | Blocked on **P6**. Export needs a whole-week full-content read that no pattern provides. |
 
 **Week rollover needs no dedicated pattern.** Three of its five steps dissolve

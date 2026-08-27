@@ -1459,3 +1459,84 @@ killed, reverted. 133 → 137 tests.
   `"sdd": true`, `depends_on: [5, 6, 8]`, all done) — closes P1
   (`docs/architecture.md` §1.2.1); full `spec_author` pass and the
   approval gate before any code.
+
+---
+
+## 2026-08-26/27 — Feature 25 `recipe_metadata_fields` closed, then feature 14 `persistence_ports` closed
+
+- **Feature:** 25 — `recipe_metadata_fields` — `done`, committed `32ac397`
+  (*"feat: servings, estimated time"*)
+- **Agent:** spec_author (gate questions, 2 rounds) → human (overrode G-85's
+  deployment-config framing for `servings`; `data_model.md` ruled source of
+  truth) → leader (Part U/`G-85` supersedes `G-64`, amended `FR-LIB-03`/
+  `FR-MENU-04`/`FR-AI-13`) → human (2nd override: AI must be *instructed* to
+  state both fields, not just optionally carry them) → leader (Part V/`G-86`
+  corrects `G-85`, re-amended `FR-AI-13`) → spec_author (revised) →
+  implementer → reviewer (CHANGES_REQUESTED, 1 finding: guard matched only
+  the literal string `CONFIGURED_SERVINGS`, a rename defeated it) →
+  implementer (fixed, AST-based structural scan banning any top-level `int`
+  constant in `ai_prompt.py`) → reviewer (cheap verification, killed) →
+  human sign-off.
+
+**Done:**
+
+- `Recipe`/`MealSnapshot` gain `servings: int | None`, `estimated_time: str |
+  None` — informational only, no validation, no shopping-aggregation logic
+  (mechanically proven by `test_no_recipe_metadata_logic.py`).
+- `ai_prompt.py`'s `CONFIGURED_SERVINGS` deployment-config constant removed
+  outright; replaced by `RECIPE_METADATA_INSTRUCTION` /
+  `recipe_metadata_instruction` telling the model to *state* both fields
+  without scaling ingredients off them.
+- Cross-feature spec maintenance: `specs/ai_prompt_builder/requirements.md`
+  and `specs/ai_prompt_versioning/{requirements,design}.md` amended in place
+  (original text kept, blockquoted), matching feature 24's precedent.
+- **Learned:** a string-literal guard against a renamed constant is not
+  enough — the surviving mutant was a same-purpose constant under a new
+  name. The fix scopes an AST check to the module rather than trying to
+  enumerate names.
+
+- **Feature:** 14 — `persistence_ports` — `done`, committed `e42abc0`
+  (*"feat: data repositories"*)
+- **Agent:** spec_author (4 gate questions) → human (accepted 1/3/4;
+  acknowledged 2 as a pre-existing feature-4 gap, not fixed here) →
+  implementer (T1-T30) → reviewer (CHANGES_REQUESTED, 2 findings: untested
+  `>=`/`>` lock-expiry boundary, storage-agnostic scan's allowlist too wide)
+  → implementer (fixed) → reviewer (cheap verification, both named mutants
+  killed) → human sign-off.
+
+**Done:**
+
+- Six `typing.Protocol` ports (`accounts`, `recipes`, `weeks`, `rules`,
+  `shopping_list`, `archive`) in `planner_core.ports`, zero storage leakage
+  in their signatures — closes P1 (`docs/architecture.md` §1.2.1).
+- Six in-memory fakes in `core/tests/support/fakes.py`, including atomicity
+  traps for `FakeAccountRepository.create/rename` and
+  `FakeShoppingListRepository.acquire_lock`.
+- One parametrized contract suite per port under `backend/tests/contract/`,
+  ready to run against a real adapter later.
+- Mechanical storage-agnosticism scan (`test_ports_are_storage_agnostic.py`)
+  — a `DENYLIST_STORAGE_MODULES` check plus a narrowed
+  `planner_core.domain`/`planner_core.ports`-only allowlist, tracking full
+  dotted import paths rather than top-level segments.
+- **Learned:** an import allowlist checked on top-level segment alone (e.g.
+  `stdlib`) is too permissive — `sqlite3`/`dbm`/`shelve` slipped through
+  until the fix tracked full dotted paths.
+
+### State at close
+
+- **Feature 25 `done` (`32ac397`), feature 14 `done` (`e42abc0`)**, tree
+  clean. `./init.sh` green: 385 tests.
+- **No actionable pending feature.** Every remaining feature (15-20) is
+  `blocked` on an undecided architecture item owned by the human:
+  - **P2** (auth mechanism) blocks 15 `auth_flow`
+  - **P5** (REST contract) + **P6** (deployment topology) block 16
+    `rest_api_lambda`
+  - **P4** (AI provider) blocks 17 `ai_lambda` — plus **G-81**, an open
+    question on whether `NFR-AI-01`'s cost cap needs a real kill switch or
+    an alert-plus-reaction-time is acceptable for a course project
+  - **P3** (real-time transport) blocks 18 `realtime_channel`
+  - **P6** (cold-storage wiring) blocks 19 `archive_and_cold_storage`
+  - Feature 20 `frontend_spa` is blocked transitively on 16 (P5)
+  - Features 21-23 (tier 5) are human-owned by design, not decision-blocked
+- Next actionable feature requires the human to resolve at least one of
+  P2/P3/P4/P5/P6 in `docs/architecture.md` §2.

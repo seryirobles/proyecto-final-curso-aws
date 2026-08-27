@@ -101,10 +101,15 @@ class FakeAccountRepository:
             role=existing.role,
             password_hash=existing.password_hash,
             password_reset_required=existing.password_reset_required,
+            credentials_valid_since=existing.credentials_valid_since,
         )
 
     def update_credentials(
-        self, user_id: str, password_hash: str, password_reset_required: bool
+        self,
+        user_id: str,
+        password_hash: str,
+        password_reset_required: bool,
+        credentials_valid_since: datetime,
     ) -> None:
         existing = self.accounts.get(user_id)
         if existing is None:
@@ -115,6 +120,7 @@ class FakeAccountRepository:
             role=existing.role,
             password_hash=password_hash,
             password_reset_required=password_reset_required,
+            credentials_valid_since=credentials_valid_since,
         )
 
     def delete(self, user_id: str) -> None:
@@ -123,6 +129,33 @@ class FakeAccountRepository:
             raise AccountNotFound(user_id)
         del self.accounts[user_id]
         del self.reservations[normalize(existing.username)]
+
+    def revoke_credentials(self, user_id: str, revoked_at: datetime) -> None:
+        existing = self.accounts.get(user_id)
+        if existing is None:
+            raise AccountNotFound(user_id)
+        self.accounts[user_id] = AccountRecord(
+            user_id=user_id,
+            username=existing.username,
+            role=existing.role,
+            password_hash=existing.password_hash,
+            password_reset_required=existing.password_reset_required,
+            credentials_valid_since=revoked_at,
+        )
+
+
+@dataclass
+class FakePasswordHasher:
+    """A `PasswordHasher` stand-in: fast and deterministic, never the real
+    600,000-iteration PBKDF2 loop (docs/conventions.md's fakes-not-mocks rule)."""
+
+    prefix: str = "fake:"
+
+    def hash(self, password: str) -> str:
+        return self.prefix + password
+
+    def verify(self, password: str, password_hash: str) -> bool:
+        return password_hash == self.prefix + password
 
 
 @dataclass

@@ -4,7 +4,7 @@ application/ module needed to prove it."""
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date, datetime
 
 from support.fakes import (
     FakeAccountRepository,
@@ -17,6 +17,7 @@ from planner_core.domain.calendar import IsoWeek, MealSlot, SlotRef
 from planner_core.domain.candidate import SlotContents, new_candidate, promote
 from planner_core.domain.ingredient_category import IngredientCategory
 from planner_core.domain.recipe import Ingredient, Recipe, snapshot
+from planner_core.domain.role import Role
 from planner_core.domain.shopping import ShoppingItem, required_shopping_items
 from planner_core.domain.units import Unit
 from planner_core.ports.accounts import AccountRecord
@@ -36,9 +37,10 @@ def test_fakes_compose_from_account_through_recipe_week_and_shopping_list() -> N
         AccountRecord(
             user_id="u1",
             username="Ana",
-            role="member",
+            role=Role.USER,
             password_hash="hash",
             password_reset_required=True,
+            credentials_valid_since=datetime(2026, 1, 1, tzinfo=UTC),
         )
     )
 

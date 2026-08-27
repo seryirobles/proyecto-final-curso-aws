@@ -82,7 +82,7 @@ Exactly **two Lambdas**, no more:
 **Decided by the human 2026-08-16.** Formerly P1.
 
 **Amazon DynamoDB**, in a **single-table design**. One table named `data`, nine
-item types, serving all 27 access patterns.
+item types, serving all 28 access patterns.
 
 > **Where to read the model and the catalogue.** Both are in
 > **`docs/data_model.md`** — the persistence source of truth. The owner authors
@@ -159,6 +159,33 @@ dependency — time from an AWS service, a distributed clock. Then it is a true
 adapter and moves to the Lambda that owns that dependency. Nothing in
 `docs/requirements.md` points that way.
 
+### 1.2.3 Auth mechanism — application-managed (was P2)
+
+**Decided by the human 2026-08-27.** Formerly P2.
+
+**Application-managed.** No external identity provider. Credentials
+(password hashes), password-reset state and session tokens are owned,
+validated and persisted by the application itself, through the
+`AccountRepository` port (feature 14) — not delegated to Cognito or any
+other managed IdP.
+
+- Keeps `planner_core/domain/{password_policy,username_policy}.py`
+  (feature 9, done) as the live validation path. Routing through Cognito
+  would have left that domain logic dead or duplicated.
+- The application builds, and owns testing, the admin-assigned
+  temporary-password force-change flow (`FR-AUTH-10`, `-11`). **Amended by
+  `G-87` (2026-08-27):** session tracking was dropped from the MVP —
+  `FR-AUTH-16` is a flat 30-day expiry computed from the token alone, no
+  sliding inactivity window, no database access for the check itself; and
+  login brute-force protection (`NFR-SEC-04`) moved to infrastructure (an
+  API Gateway/WAF rate-based rule, feature 21), not application code. See
+  `docs/gaps_and_resolutions.md` Part W for the full reasoning.
+
+This closes P2 and unblocks `auth_flow` (feature 15). It does **not**
+decide P5 or P6 — how the session token travels over the REST contract
+(cookie vs. bearer header) and how API Gateway/Lambda authorizers are
+wired remain those pending items.
+
 ### 1.3 Toolchain
 
 | Concern | Tool |
@@ -197,7 +224,7 @@ Hitting any of these means: mark the feature `blocked`, write the reason in
 | # | Undecided | Blocks |
 |---|---|---|
 | ~~P1~~ | ~~**Datastore**~~ — **DECIDED 2026-08-16: DynamoDB, single table. See §1.2.1.** | — |
-| P2 | **Auth mechanism** (Cognito? application-managed?) | the whole `FR-AUTH-*` family |
+| ~~P2~~ | ~~**Auth mechanism**~~ — **DECIDED 2026-08-27: application-managed. See §1.2.3.** | — |
 | P3 | **Real-time transport** (WebSocket API? AppSync? polling?) | `FR-RT-01`–`-03` |
 | P4 | **AI provider and model** (Bedrock? external API?) | `ai` Lambda, and the enforcing path for the €50/month **global** cap (`G-70`, supersedes `G-38`) |
 | P5 | **REST API contract** (resources, verbs, payload shapes, error format) | `api` Lambda handlers |

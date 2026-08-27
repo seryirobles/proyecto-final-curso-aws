@@ -3,21 +3,26 @@
 from __future__ import annotations
 
 import dataclasses
+from datetime import UTC, datetime
 
 import pytest
 from support.fakes import FakeAccountRepository
 
+from planner_core.domain.role import Role
 from planner_core.domain.username_policy import UsernameAlreadyTaken
 from planner_core.ports.accounts import AccountNotFound, AccountRecord, AccountRepository
+
+VALID_SINCE = datetime(2026, 1, 1, tzinfo=UTC)
 
 
 def _record(user_id: str, username: str) -> AccountRecord:
     return AccountRecord(
         user_id=user_id,
         username=username,
-        role="member",
+        role=Role.USER,
         password_hash="hash",
         password_reset_required=True,
+        credentials_valid_since=VALID_SINCE,
     )
 
 
@@ -95,19 +100,41 @@ def test_rename_raises_username_already_taken_when_the_new_name_collides() -> No
 def test_update_credentials_round_trip() -> None:
     repo = FakeAccountRepository()
     repo.create(_record("u1", "Ana"))
+    new_valid_since = datetime(2026, 2, 1, tzinfo=UTC)
 
-    repo.update_credentials("u1", "new-hash", False)
+    repo.update_credentials("u1", "new-hash", False, new_valid_since)
 
     updated = repo.get_by_id("u1")
     assert updated is not None
     assert updated.password_hash == "new-hash"
     assert updated.password_reset_required is False
+    assert updated.credentials_valid_since == new_valid_since
 
 
 def test_update_credentials_raises_account_not_found_for_a_missing_user() -> None:
     repo = FakeAccountRepository()
     with pytest.raises(AccountNotFound):
-        repo.update_credentials("missing", "hash", False)
+        repo.update_credentials("missing", "hash", False, VALID_SINCE)
+
+
+def test_revoke_credentials_advances_the_marker_and_touches_nothing_else() -> None:
+    repo = FakeAccountRepository()
+    repo.create(_record("u1", "Ana"))
+    revoked_at = datetime(2026, 3, 1, tzinfo=UTC)
+
+    repo.revoke_credentials("u1", revoked_at)
+
+    updated = repo.get_by_id("u1")
+    assert updated is not None
+    assert updated.credentials_valid_since == revoked_at
+    assert updated.password_hash == "hash"
+    assert updated.password_reset_required is True
+
+
+def test_revoke_credentials_raises_account_not_found_for_a_missing_user() -> None:
+    repo = FakeAccountRepository()
+    with pytest.raises(AccountNotFound):
+        repo.revoke_credentials("missing", VALID_SINCE)
 
 
 def test_delete_removes_the_account_and_releases_its_reservation() -> None:

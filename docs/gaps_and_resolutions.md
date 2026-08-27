@@ -1046,3 +1046,68 @@ same manner as Parts I through U. Raised at feature 25
 - **Requirements:** `FR-AI-13` (amended again). Corrects `G-85`'s
   replacement text; does not touch `G-85`'s decision or reasoning, both of
   which stand. Supersedes nothing.
+
+---
+
+## Part W — Auth: session tracking dropped, flat expiry, brute-force moved to infrastructure (2026-08-27)
+
+Directed by the requirements owner, overriding the freeze in `CLAUDE.md` in the
+same manner as Parts I through V. Raised at feature 15 `auth_flow`'s
+design-gate review, once architecture P2 (auth mechanism, application-managed)
+unblocked the feature and `spec_author`'s first design proposed a `DatosSesion`
+item type and per-attempt lockout counters.
+
+### G-87 · Session tracking, sliding-window expiry and app-level brute-force lockout all cost a new per-request or per-attempt database write; the owner rejected that cost for the MVP
+
+- **Gap:** `docs/data_model.md` §9 had parked "Sessions" pending P2, noting
+  the shape to build once unblocked (a `Query`-by-`idUsuario` item type).
+  Once P2 landed on application-managed, `spec_author`'s `design.md`
+  proposed exactly that shape — a `DatosSesion` item type tracking
+  `last_activity_at` per session, plus two new `DatosUsuario` attributes
+  for a failed-login counter and lockout timestamp (`NFR-SEC-04`). The
+  owner rejected both at the gate: neither was a data shape he intended to
+  carry into the MVP, and the lockout counter specifically would add a
+  write on every login attempt that `data_model.md`'s access-pattern
+  catalogue does not currently have.
+- **Decision:**
+  1. **No `DatosSesion` item type, no per-session persistence, no
+     last-activity tracking.** Authentication becomes stateless: a token
+     carries `user_id` and `issued_at`; validity is computed, never looked
+     up in a session table.
+  2. **`FR-AUTH-11`/`-14`'s "invalidate all active sessions" is satisfied
+     by a lightweight revocation marker** — one timestamp-shaped attribute
+     on the existing `DatosUsuario` item, checked against the token's
+     `issued_at` on every authenticated request. It costs no new write: a
+     password reset already issues an `UpdateItem` on `DatosUsuario` (for
+     the new `password_hash`), and this rides along on the same call;
+     removal is free because deleting the account row already fails every
+     lookup for its tokens. Neither `FR-AUTH-11` nor `-14`'s text changes —
+     the requirement is behavioural ("sessions are invalidated"), not
+     mechanism-specific, and a global-per-account revocation still makes
+     every prior token fail on its next use.
+  3. **`FR-AUTH-16` is amended** (see `requirements.md`): the 12-hour
+     inactivity clause is dropped, leaving a flat 30-day expiry computed
+     from `issued_at` alone — zero database access for the expiry check
+     itself, versus a write on every authenticated request for a sliding
+     window.
+  4. **`NFR-SEC-04` (brute-force protection) moves from the application to
+     infrastructure** — an API Gateway usage plan or WAF rate-based rule,
+     Terraform-owned (`feature_list.json` #21), not `planner_core` domain
+     code. The requirement's own text already allows this ("rate limiting
+     **and/or** progressive lockout"); it does not mandate an
+     application-layer counter. `NFR-SEC-04`'s text is unchanged — only
+     which feature covers it moves, from #15 to #21.
+- **Reasoning:** All three cut items shared one property: they turn a
+  request-time or attempt-time event into a database write, on top of the
+  no-secondary-index, no-eventual-consistency design `docs/architecture.md`
+  §1.2.1 already committed to. The owner judged that cost not worth paying
+  for a course project's MVP, and confirmed a flat expiry plus a
+  reset/removal-triggered revocation marker still delivers `FR-AUTH-11`,
+  `-14` and (mostly) `-16`'s user-visible guarantee — an already-open
+  session still gets kicked out on reset or removal, it just does not also
+  time out from mere inactivity.
+- **Requirements:** `FR-AUTH-16` (amended — see `requirements.md`).
+  `FR-AUTH-09`, `-11`, `-14` reviewed, **not amended** — their text is
+  mechanism-agnostic and remains true under the new design. `NFR-SEC-04`
+  reviewed, **not amended** — only its covering feature changes (15 → 21
+  in `feature_list.json`, not requirements.md). Supersedes nothing.

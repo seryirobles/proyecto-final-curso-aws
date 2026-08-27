@@ -313,15 +313,29 @@
       "name": "auth_flow",
       "tier": 3,
       "title": "Authentication, sessions and account lifecycle",
-      "description": "Login, the mandatory set-password step, temporary admin-assigned passwords, session lifetimes, session invalidation, admin account management and user removal.",
-      "covers": ["FR-AUTH-01", "FR-AUTH-02", "FR-AUTH-03", "FR-AUTH-04", "FR-AUTH-05", "FR-AUTH-06", "FR-AUTH-07", "FR-AUTH-08", "FR-AUTH-09", "FR-AUTH-10", "FR-AUTH-11", "FR-AUTH-12", "FR-AUTH-13", "FR-AUTH-14", "FR-AUTH-16", "FR-AUTH-18", "NFR-SEC-04"],
+      "description": "Login, the mandatory set-password step, temporary admin-assigned passwords, stateless session expiry, session invalidation via a revocation marker, admin account management and user removal. No session-tracking persistence and no app-level brute-force lockout - both dropped from the MVP by G-87.",
+      "covers": ["FR-AUTH-01", "FR-AUTH-02", "FR-AUTH-03", "FR-AUTH-04", "FR-AUTH-05", "FR-AUTH-06", "FR-AUTH-07", "FR-AUTH-08", "FR-AUTH-09", "FR-AUTH-10", "FR-AUTH-11", "FR-AUTH-12", "FR-AUTH-13", "FR-AUTH-14", "FR-AUTH-16", "FR-AUTH-18"],
       "depends_on": [9, 14],
       "acceptance": [
-        "Deferred until the auth mechanism is chosen"
+        "Exactly two roles enforced (Admin, User) with strict view separation - admin has no access to meal-planning features, users have no access to the admin view (FR-AUTH-01, FR-AUTH-05, FR-AUTH-06)",
+        "Authentication is username + password only; no self-registration; accounts are created only by an admin (FR-AUTH-02, FR-AUTH-03)",
+        "Neither role may change its own password except through the mandatory set-password step (FR-AUTH-04)",
+        "Exactly one admin account is provisioned via IaC bootstrap at deploy time; multiple admins are supported thereafter; admin accounts are never created, provisioned or removed through the application (FR-AUTH-07, FR-AUTH-18)",
+        "Admin recovery is by IaC re-seed of the bootstrap admin's secret, landing at the same mandatory set-password step as any other temporary password (FR-AUTH-08)",
+        "Authenticated sessions and logout are enforced; no session table or per-request persistence - authentication is stateless, a token carries user_id and issued_at (FR-AUTH-09, G-87)",
+        "A first login and every admin-issued password (creation, change, reset) is temporary and forces the set-password step before granting access - it never admits directly (FR-AUTH-10, FR-AUTH-11)",
+        "An admin password reset or a user removal invalidates every active session of the affected account via a revocation-marker attribute on the account record, checked against the token's issued_at - no session table, no per-session delete (FR-AUTH-11, FR-AUTH-14, G-87)",
+        "The revocation marker is written on the same update a password reset already makes to the account record; user removal needs no separate invalidation write - deleting the account record already fails every lookup for its tokens (FR-AUTH-11, FR-AUTH-14, G-87)",
+        "The admin view lists every account (username, role, pending set-password status) and launches reset/rename/removal from that list (FR-AUTH-12)",
+        "Removing a user retains and reattributes their authored content to the reserved 'unknown user' placeholder rather than deleting it or blocking removal (FR-AUTH-13)",
+        "Password policy is enforced via the existing domain module (password_policy.py, feature 9) - no re-implementation (FR-AUTH-15)",
+        "Sessions expire after a flat 30-day lifetime from issuance, computed from the token alone with no database access; no inactivity-based expiry (FR-AUTH-16, amended by G-87)",
+        "Usernames are unique among active accounts; a removed account's username may be reused; the 'unknown user' placeholder name is reserved and renders as a distinct system label (FR-AUTH-17)",
+        "NFR-SEC-04 (login brute-force protection) is NOT implemented here - it moves to infrastructure (feature 21, G-87); no failed-attempt counter, no lockout state, no per-login-attempt write",
+        "No external identity provider is introduced - credentials and the revocation marker are owned and persisted by the application via the AccountRepository port (feature 14), per docs/architecture.md section 1.2.3"
       ],
       "sdd": true,
-      "status": "blocked",
-      "blocked_reason": "Architecture P2 (auth mechanism) undecided. A managed identity provider would supply forced password change, session invalidation and brute-force protection natively; an application-managed design must build all three."
+      "status": "done"
     },
     {
       "id": 16,
@@ -404,10 +418,10 @@
       "tier": 5,
       "title": "Terraform infrastructure",
       "description": "All AWS infrastructure as code.",
-      "covers": ["NFR-ARCH-01", "NFR-IAC-01", "NFR-HA-01", "NFR-BKP-01", "NFR-SEC-01", "NFR-SEC-02", "NFR-SEC-03", "NFR-OBS-01", "NFR-OBS-02", "NFR-FIN-01", "NFR-FIN-02"],
+      "covers": ["NFR-ARCH-01", "NFR-IAC-01", "NFR-HA-01", "NFR-BKP-01", "NFR-SEC-01", "NFR-SEC-02", "NFR-SEC-03", "NFR-SEC-04", "NFR-OBS-01", "NFR-OBS-02", "NFR-FIN-01", "NFR-FIN-02"],
       "depends_on": [],
       "acceptance": [
-        "Written by the human"
+        "Written by the human. NFR-SEC-04 (login brute-force protection) moved here from feature 15 by G-87 - an API Gateway usage plan or WAF rate-based rule, not application code"
       ],
       "sdd": false,
       "status": "blocked",

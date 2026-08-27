@@ -3,21 +3,26 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Protocol, runtime_checkable
 
 from planner_core.domain.errors import PlannerError
+from planner_core.domain.role import Role
 
 
 @dataclass(frozen=True)
 class AccountRecord:
-    """One persisted account (DatosUsuario). role is an opaque string here —
-    no domain Role model exists yet; feature 15 auth_flow owns that (design.md section 7)."""
+    """One persisted account (DatosUsuario). credentials_valid_since is the
+    G-87 revocation marker (`validoDesde`): advanced whenever every token
+    issued before it must stop working (feature 15 auth_flow design.md
+    section 9)."""
 
     user_id: str
     username: str
-    role: str
+    role: Role
     password_hash: str
     password_reset_required: bool
+    credentials_valid_since: datetime
 
 
 class AccountNotFound(PlannerError):
@@ -57,11 +62,22 @@ class AccountRepository(Protocol):
         ...
 
     def update_credentials(
-        self, user_id: str, password_hash: str, password_reset_required: bool
+        self,
+        user_id: str,
+        password_hash: str,
+        password_reset_required: bool,
+        credentials_valid_since: datetime,
     ) -> None:
-        """Raises AccountNotFound."""
+        """Raises AccountNotFound. credentials_valid_since rides the same
+        UpdateItem a password reset already makes (G-87, design.md section 9);
+        set_password passes the account's existing value through unchanged."""
         ...
 
     def delete(self, user_id: str) -> None:
         """Raises AccountNotFound. Releases the username reservation too (section 5.2)."""
+        ...
+
+    def revoke_credentials(self, user_id: str, revoked_at: datetime) -> None:
+        """Raises AccountNotFound. The logout-only write (G-87, design.md
+        section 9): advances credentials_valid_since with no other change."""
         ...

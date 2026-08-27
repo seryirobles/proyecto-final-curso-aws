@@ -114,7 +114,7 @@ story added in the same-day stakeholder round and covered from the start.
 | US | Story (abridged) | Requirements | Verdict | Gaps found |
 |----|------------------|--------------|---------|------------|
 | US1 | Admin-exclusive view to create/manage users, nothing else | FR-AUTH-01, -03, -05, -06, -07, -12 | Full (fixed) | No requirement said the admin can *see* the accounts to manage (G-11). |
-| US2 | Admin logs in with username+password; no register / password change | FR-AUTH-01, -02, -03, -04, -07, -16, NFR-SEC-04 | Full (fixed) | FR-AUTH-04 amended for compatibility with US27 (G-09). Login brute-force protection was unspecified (G-12). Password policy and session lifetime resolved (G-30, G-31). |
+| US2 | Admin logs in with username+password; no register / password change | FR-AUTH-01, -02, -03, -04, -07, -16, NFR-SEC-04 | Full (fixed) | FR-AUTH-04 amended for compatibility with US27 (G-09). Login brute-force protection was unspecified (G-12), later moved to infrastructure (G-87). Password policy and session lifetime resolved (G-30, G-31); session lifetime simplified to a flat 30-day expiry (G-87). |
 | US3 | Admin can reset a user's password | FR-AUTH-01, -05, -11 | Full (fixed) | Was only implicit and mis-attributed to US1 (G-03). Post-reset semantics (temporary password, session invalidation) were undefined (G-10). |
 | US4 | Admin can remove a user; content reattributed to "unknown user" | FR-AUTH-12, -13, -14, FR-SUM-03 | Full (new) | Added to close PEND-09. Session invalidation on removal and attribution fallback specified (G-29). |
 | US5 | User logs in with username+password; no register / password change | FR-AUTH-01, -02, -03, -04, -16, NFR-SEC-04 | Full (fixed) | Same as US2. |
@@ -225,13 +225,14 @@ Full reasoning per gap in `gaps_and_resolutions.md`.
 | G-84 | AI/Prompt | Prompt instructions versioned; prompt version is deployment configuration | FR-AI-14 (new) |
 | G-85 | Library/AI | Servings and prep/cook time become per-recipe, informational metadata | FR-LIB-03, FR-MENU-04, FR-AI-13 (amended) — supersedes G-64 |
 | G-86 | AI | AI is instructed to state a servings count and estimated time per recipe (informational only) | FR-AI-13 (amended) — corrects G-85 |
+| G-87 | Auth | Session tracking dropped from MVP (stateless token + revocation marker); FR-AUTH-16 flat 30-day expiry; NFR-SEC-04 brute-force moves to infrastructure | FR-AUTH-16 (amended) |
 
 ## 4. Open questions remaining
 
 None. Every question raised across all review passes is resolved or confirmed
 (PEND-01 to PEND-13 on 2026-07-03; PEND-14 and PEND-15 on 2026-07-04). See
 `gaps_pending_stakeholders.md` for the historical record and
-`gaps_and_resolutions.md` (G-01 to G-86, Parts A–V, including the
+`gaps_and_resolutions.md` (G-01 to G-87, Parts A–W, including the
 examined-and-rejected list in Part H) for the reasoning.
 
 **One question is open and belongs to the human.** `NFR-AI-01` requires an

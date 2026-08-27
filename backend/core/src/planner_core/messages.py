@@ -16,3 +16,9 @@ AI_GENERATION_INSUFFICIENT_LIBRARY_RECIPES = (
 AI_GENERATION_UNAVAILABLE = (
     "La generación con IA no está disponible en este momento. Puedes intentarlo más tarde."
 )
+
+FORBIDDEN = "No tienes permiso para realizar esta operación."
+INVALID_CREDENTIALS = "El nombre de usuario o la contraseña no son correctos."
+SESSION_EXPIRED = "La sesión ha caducado. Vuelve a iniciar sesión."
+SET_PASSWORD_REQUIRED = "Debes establecer una nueva contraseña antes de continuar."
+SET_PASSWORD_NOT_ALLOWED = "No es necesario establecer una nueva contraseña en este momento."
