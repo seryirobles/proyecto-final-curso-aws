@@ -56,8 +56,8 @@ messages module, no business logic in the client, and fluid-first layout with
 - ~~The human supplies the **initial version of the frontend code**. Until it
   exists, no agent writes frontend code (`frontend_spa` is `blocked`).~~
   **Superseded 2026-08-17** — the drop already happened and was the prototype.
-  `frontend_spa` stays `blocked`, but now only on **feature 16** (it needs the
-  REST contract, P5), no longer on the stack.
+  `frontend_spa` (feature 20) now depends only on **feature 16** (the REST
+  contract, §1.2.5) and **feature 26** — no architecture decision blocks it.
 
 ### 1.2 Backend
 
@@ -69,6 +69,15 @@ Exactly **two Lambdas**, no more:
 | `ai`  | AI generation only (single recipe + whole week) |
 
 - Language: **Python**.
+- **`api` hands AI work to `ai` over a standard SQS queue** (decided
+  2026-08-30, §1.2.6 / `docs/rest_api_contract.md` Q12; previously only in
+  `docs/decisiones_arquitectura.md`). `api` enqueues a generation request
+  and the client polls for the result; `ai` is a queue-driven worker. This
+  is the one queue the design has — a further one still needs an approved
+  `design.md` (§6).
+- Also on the `api` package: a **non-HTTP entry point for scheduled week
+  rollover** (`FR-MENU-06`/`-08`), invoked by EventBridge Scheduler
+  (`docs/rest_api_contract.md` Q8) — not a third Lambda.
 - Splitting AI generation into its own Lambda is deliberate: AI calls are slow
   (seconds to a minute-plus, `G-19`), cost-capped (`NFR-AI-01`) and need their
   own concurrency and idempotency behaviour (`FR-AI-08`, `FR-AI-09`). Do not
@@ -106,9 +115,9 @@ item types, serving all 29 access patterns.
   lookup, the `FR-SHOP-10` re-sync lock and its TTL trap, and read-time
   resolution of dangling references.
 
-This closes P1 and unblocks `persistence_ports` (feature 14). It does **not**
-decide P6 — DynamoDB TTL configuration, cold-storage wiring and table
-provisioning remain deployment topology, and remain human-owned.
+This closes P1 and unblocks `persistence_ports` (feature 14). DynamoDB TTL
+configuration and table provisioning are IaC — feature 21 (§1.2.7);
+cold-storage wiring stays parked (`data_model.md` §9).
 
 ### 1.2.2 A port's dependency-free default implementation ships with the port
 
@@ -181,10 +190,9 @@ other managed IdP.
   API Gateway/WAF rate-based rule, feature 21), not application code. See
   `docs/gaps_and_resolutions.md` Part W for the full reasoning.
 
-This closes P2 and unblocks `auth_flow` (feature 15). It does **not**
-decide P5 or P6 — how the session token travels over the REST contract
-(cookie vs. bearer header) and how API Gateway/Lambda authorizers are
-wired remain those pending items.
+This closes P2 and unblocks `auth_flow` (feature 15). How the session
+token travels (an `HttpOnly` cookie) and how the Lambda authorizer is
+wired were settled by P5 — §1.2.5.
 
 ### 1.2.4 Real-time transport — adaptive polling with conditional GET (was P3)
 
@@ -226,11 +234,87 @@ this before P3 was decided ("reconnect resynchronisation is re-calling
 existing reads").
 
 This closes P3 and unblocks the persistence half of `realtime_channel`
-(feature 18) immediately — the marker item, the port signature changes and
-their contract tests need no other pending decision. It does **not**
-decide P5 or P6: how the marker travels over HTTP (a header? a field in the
-payload?) is P5's; API Gateway throttling/caching of poll traffic, and any
-cost monitoring on request volume, is P6's.
+(feature 18). How the marker travels over HTTP was settled by P5
+(**`ETag` / `If-None-Match`**, §1.2.5); API Gateway throttling/caching of
+poll traffic is a feature 21 infra detail.
+
+### 1.2.5 REST API contract — decided (was P5)
+
+**Decided by the human 2026-08-30.** Formerly P5. The full contract —
+resources, verbs, payload shapes, error format, all 29 access patterns
+mapped — is **`docs/rest_api_contract.md`**, authoritative for the `api`
+Lambda. This section records only the load-bearing shape:
+
+- **Base path `/v1`.** JSON in and out, English `camelCase` keys (Spanish
+  is reserved for user-facing strings, mapped at the persistence adapter).
+- **Auth transport: `HttpOnly` cookie** (`Secure; SameSite=Lax;
+  Max-Age=2592000`), not a bearer header — no per-token revocation exists,
+  so XSS token theft dominates. Requires the SPA and API to be
+  **same-site**: `/v1/*` routes through the same CloudFront distribution
+  that serves the SPA (§1.2.7). A `REQUEST`-type Lambda authorizer runs
+  `authenticate()` and passes `userId`/`role`/`passwordResetRequired` in
+  its context; authorizer result caching is **TTL 0** (`FR-AUTH-14` says
+  "immediately"). Every authenticated request costs one `AP2` `GetItem`
+  for the revocation check — that is `G-87` working as designed, not a
+  regression.
+- **Marker transport: `ETag` / `If-None-Match`**, value = `marcaCambio`
+  verbatim, strong ETag, `Cache-Control: no-store`. Unchanged poll →
+  `304`, no body. Mutations return the new marker as their `ETag`. A
+  client keeps a mutation's returned marker **only if it equals held + 1**
+  (`data_model.md` §4.7); otherwise it refetches. The four pollable
+  resources are exactly `FR-RT-01`'s four — weeks, library, shopping
+  list, rules.
+- **Error format: RFC 9457 `application/problem+json`.** Machine-readable
+  `code` as an extension member; `detail` copied verbatim from
+  `planner_core.messages` (es-ES, never composed in the handler); `400`
+  malformed vs. `422` domain-rejected. API Gateway's own
+  authorizer/throttle responses need Gateway Response templates to match
+  this shape — a feature 21 infra detail.
+- **Rules use per-rule endpoints** (`PUT`/`DELETE /v1/rules/{ruleId}`),
+  matching `AP23`/`AP24`'s per-item writes — genuine per-rule
+  last-write-wins. Satisfiability (`FR-RULE-07`) is still validated
+  whole-set in the adapter on each write.
+- **`api` → `ai` is a standard SQS queue** (§1.2.6). The AI HTTP surface
+  is submit-then-poll and is provider-agnostic.
+
+The 13 gate questions and their rulings are recorded in
+`docs/rest_api_contract.md` §7.
+
+### 1.2.6 AI provider — AWS Bedrock + Claude (was P4)
+
+**Decided by the human 2026-08-30.** Formerly P4.
+
+- **AWS Bedrock**, Anthropic **Claude** models. **Sonnet tier to start**
+  (`anthropic.claude-sonnet-5` via Bedrock's `anthropic.` prefix); whether
+  **Haiku** (`anthropic.claude-haiku-4-5`) is sufficient is evaluated
+  during generation testing, not now. (Google Gemini was the initial ask
+  but is not available on Bedrock — only Google's open Gemma models are.)
+- The `ai` Lambda's provider client is a Bedrock adapter — the Bedrock
+  SDK path is **its** dependency closure, never `api`'s (§1.2 rule).
+- **Cost cap: a real kill-switch**, resolving `G-81` / `NFR-AI-01` — an
+  alert alone is not acceptable. The mechanism (reserved concurrency 0,
+  event-source-mapping disable, or a flag the `ai` worker reads before
+  invoking the provider) is a feature 17 spec-gate detail.
+- The `ai` worker consumes from the `api` → `ai` SQS queue (§1.2.5). It
+  writes whole-week results through `WeekRepository` — never a separate
+  write path (`G-88`, recorded on feature 17).
+
+### 1.2.7 Deployment topology — decided to the level code needs (was P6)
+
+**Decided by the human 2026-08-30.** Formerly P6. Decided only as far as
+application code depends on it:
+
+- **API Gateway → Lambda**, reachable from the SPA. The Lambdas sit in a
+  **VPC**, but that is transparent to application code — no handler
+  touches networking.
+- **`/v1/*` routes through the same CloudFront distribution** that serves
+  the SPA, making them same-origin (required by §1.2.5's cookie auth, and
+  it removes the CORS preflight on every poll).
+- **Detailed network configuration** (subnets, security groups, VPC
+  endpoints), the API Gateway stage/throttling config, and all IaC remain
+  **human-owned, feature 21** — not a blocker for feature 16.
+- **Cold storage / archive lifecycle stays parked** (`data_model.md` §9),
+  MVP scope. No endpoint, no `restoring` state.
 
 ### 1.3 Toolchain
 
@@ -272,10 +356,14 @@ Hitting any of these means: mark the feature `blocked`, write the reason in
 | ~~P1~~ | ~~**Datastore**~~ — **DECIDED 2026-08-16: DynamoDB, single table. See §1.2.1.** | — |
 | ~~P2~~ | ~~**Auth mechanism**~~ — **DECIDED 2026-08-27: application-managed. See §1.2.3.** | — |
 | ~~P3~~ | ~~**Real-time transport**~~ — **DECIDED 2026-08-27: adaptive polling with conditional GET. See §1.2.4.** | — |
-| P4 | **AI provider and model** (Bedrock? external API?) | `ai` Lambda, and the enforcing path for the €50/month **global** cap (`G-70`, supersedes `G-38`) |
-| P5 | **REST API contract** (resources, verbs, payload shapes, error format) | `api` Lambda handlers |
-| P6 | **Deployment topology** (API Gateway config, VPC, cold-storage wiring) | anything touching AWS |
+| ~~P4~~ | ~~**AI provider and model**~~ — **DECIDED 2026-08-30: AWS Bedrock + Anthropic Claude, real cost kill-switch. See §1.2.6.** | — |
+| ~~P5~~ | ~~**REST API contract**~~ — **DECIDED 2026-08-30: see §1.2.5 and `docs/rest_api_contract.md`.** | — |
+| ~~P6~~ | ~~**Deployment topology**~~ — **DECIDED 2026-08-30 to the level application code needs (§1.2.7); detailed network config and IaC remain feature 21, cold storage stays parked (`data_model.md` §9).** | — |
 | ~~P7~~ | ~~**Frontend framework identity, bootstrap idiom and test runner**~~ — **DECIDED 2026-08-17: idiomatic React (function components, hooks, JSX), Vite, Vitest. See §1.1.** | — |
+
+**No pending architecture items remain.** Every `P<n>` is decided. A feature
+that still reads `blocked` on one of these is stale — check its `blocked_reason`
+against §1.2.
 
 ### 2.1 Not pending — decide these in a spec, not in chat
 
@@ -286,7 +374,7 @@ These read like open questions but the requirements explicitly classify them as
 - The literal **unit list** for ingredients/shopping (`G-39`, `FR-SHOP-03`).
 - The literal **ingredient-category list** for the rules (`G-69`, supersedes `G-63`; `FR-RULE-04`). It is the same set stored per recipe as `tipoAlimento` (`FR-LIB-03`).
 - The configured **servings count** for AI prompts (`G-64`, `FR-AI-13`).
-- ~~The **per-user daily generation cap** figure, once P4 is decided (`G-38`).~~ **Removed** by `G-70`: the cap is **global** for the whole deployment, enforced through AWS cost tooling. The application stores and enforces **no per-user quota**. What remains open is the *enforcing path* (a Budget action or equivalent), since Budgets alert but do not stop spend — an infrastructure question, not an access pattern.
+- ~~The **per-user daily generation cap** figure, once P4 is decided (`G-38`).~~ **Removed** by `G-70`: the cap is **global** for the whole deployment, enforced through AWS cost tooling. The application stores and enforces **no per-user quota**. The *enforcing path* — `G-81`'s open question — was **decided 2026-08-30: a real kill-switch, not an alert alone** (§1.2.6). Its mechanism (reserved concurrency, event-source disable, or a flag the `ai` worker reads) is a feature 17 spec-gate detail, not an access pattern.
 
 ---
 
@@ -314,9 +402,9 @@ backend/                     uv workspace root; shared ruff/mypy/pytest config
     src/planner_api/
       handler.py             AWS entry point. Thin: parse event, call a use case, map result.
       wiring.py              Composition root: picks adapters by environment.
-      adapters/              Real port implementations this Lambda owns. Empty until §2 resolves.
+      adapters/              Real port implementations this Lambda owns (DynamoDB; §1.2.5/§1.2.7 decided).
     tests/
-  lambda_ai/                 Distribution: planner-ai. Depends: planner-core (+ AI SDK at P4).
+  lambda_ai/                 Distribution: planner-ai. Depends: planner-core (+ Bedrock SDK, §1.2.6).
     pyproject.toml
     src/planner_ai/
       handler.py
@@ -396,9 +484,9 @@ uv export --package planner-ai  --no-dev   # exactly the ai closure
   suite, the local fake is a faithful stand-in. Without this, local mocking is a
   story you tell yourself until production disagrees.
 - **Whether `core` ships vendored into each zip or as a shared Lambda layer is
-  P6 (deployment topology) — human-owned.** This layout supports both unchanged;
-  the choice only changes how the (human-written) CI pipeline assembles the
-  final artifact.
+  an IaC choice — feature 21, human-owned.** This layout supports both
+  unchanged; the choice only changes how the (human-written) CI pipeline
+  assembles the final artifact.
 
 ---
 
@@ -497,8 +585,9 @@ not "helpfully" scaffold a `main.tf`.
   default implementation (§1.2.2, §3.1 rule 6) — do not add a second.
 - ❌ Do not mix IO with domain logic.
 - ❌ Do not add a runtime dependency to `core`. It stays stdlib-only.
-- ❌ Do not add a third Lambda, a queue, a cache, or any service without an
-  approved `design.md` and human sign-off.
+- ❌ Do not add a third Lambda, a **second** queue, a cache, or any service
+  without an approved `design.md` and human sign-off. (The `api` → `ai` SQS
+  queue is signed off — §1.2, decided 2026-08-30.)
 - ❌ Do not build a configuration framework. Configuration is explicit values
   passed in, or a single documented constants module.
 - ❌ Do not add accessibility work — it is an explicit **scope exclusion**

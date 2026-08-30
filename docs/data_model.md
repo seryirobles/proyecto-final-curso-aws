@@ -316,7 +316,7 @@ still holds for every individual write) but not optimal: other clients may
 see a few redundant "changed" polls mid-re-sync instead of one at the end.
 Collapsing that to a single bump requires re-sync to become its own
 transaction rather than a loop of `AP19` calls — a design choice for
-whoever builds feature 18b, not settled here. Its serialization is §5.3;
+whoever builds feature 26, not settled here. Its serialization is §5.3;
 §5.3's lock release is the natural place to add that single bump if the
 collapse is done.
 
@@ -379,9 +379,9 @@ needs nothing beyond `AP29` and the resource's own existing read (`AP8`/
 payload only on a mismatch.
 
 **Where `AP29` is consumed:** the `api` Lambda's conditional-GET handling
-(the actual `If-None-Match`/`304` mechanics are `docs/architecture.md` §2
-P5's job, not this document's — `AP29` only supplies the comparison
-value).
+(the actual `If-None-Match`/`304` mechanics are the REST contract's job —
+`docs/rest_api_contract.md` §6, `ETag`/`If-None-Match` with the
+`marcaCambio` value; `AP29` only supplies the comparison value).
 
 ---
 
@@ -576,7 +576,7 @@ Do not report these as gaps.
 | **Archive** (`FR-ARCH-01`…`-04`) | Parked, MVP scope. Reading a past week *is* AP8 pointed at an older `idSemana`, and read-only needs no stored flag — a week is closed iff its id sorts before the computed current week. ⚠ But `FR-ARCH-04`'s reverse-chronological browse is **not** free: `idSemana` is in the **partition** key and DynamoDB cannot list or sort partition keys. Unparking costs ids generated backwards arithmetically, or an index. The `FR-ARCH-02` shopping-list snapshot has no item type and parks with it. |
 | **Real-time** (`FR-RT-01`…`-03`) | **Resolved by `G-88` (2026-08-27, human-approved): adaptive polling with a conditional-GET version marker.** The pre-decision note above was half right: reconnect resynchronisation genuinely is re-calling existing reads (§4.7, no new mechanism needed for `FR-RT-03`), but the claim of "no new read patterns" did not survive contact with a real transport choice — polling added `AP29` and amended three existing whole-partition reads (§3, §4.2–§4.5). The "fan-out obligation on existing writes" became one marker item (`MarcaCambio`) bumped inside each write's own transaction (§1.1, §5.5) — not a fan-out to other clients, since polling clients pull rather than being pushed to. |
 | **Sessions** (`FR-AUTH-09`, `-11`, `-14`, `-16`) | **Resolved by `G-87` (2026-08-27, human-approved): no dedicated item type.** Authentication is stateless — a token carries `user_id` + `issued_at`, signed, and expires 30 days after issuance with no database access (`FR-AUTH-16`, amended). "Invalidate all sessions of an account" (`FR-AUTH-11`, `-14`) and voluntary logout (`FR-AUTH-09`) are both satisfied by `DatosUsuario.validoDesde` (§1.1, AP4, AP28) — one revocation-marker attribute, not a session table. Removal needs no write at all — deleting the account already fails every token lookup. |
-| **Cold storage** (`FR-ARCH-03`) | Blocked on **P6**. Export needs a whole-week full-content read that no pattern provides. |
+| **Cold storage** (`FR-ARCH-03`) | Parked, MVP scope — reaffirmed 2026-08-30 when P6 was decided. Export needs a whole-week full-content read that no pattern provides. Unpark needs an explicit owner decision. |
 
 **Week rollover needs no dedicated pattern.** Three of its five steps dissolve
 because `idSemana` is computed from the clock: promotion is a no-op ("current" is
@@ -601,7 +601,8 @@ authoritative record of *why* each requirement reads as it does.
 
 `docs/architecture.md` **§1.2.1** carries the P1 decision (DynamoDB, single
 table) and **§1.1** the P7 decision (React/Vite/Vitest, 2026-08-17). **P2–P6
-remain pending and human-owned** — hitting one means the feature is `blocked`.
+are all decided** as of 2026-08-30 (§1.2.3–§1.2.7); no architecture item
+remains pending.
 
 ---
 

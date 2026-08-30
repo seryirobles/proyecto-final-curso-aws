@@ -263,8 +263,9 @@ counter**. There is nothing to display.
    product working end to end.
 
 **P7 is decided (2026-08-17)**, so the prototype should be re-expressed as React
-components with a real toolchain. That is feature 20 `frontend_spa`, now blocked
-on feature 16 alone (the REST contract, P5).
+components with a real toolchain. That is feature 20 `frontend_spa`, which waits
+only on its dependencies — features 16 and 26. The REST contract is decided
+(`docs/rest_api_contract.md`); no architecture item blocks it.
 
 ---
 

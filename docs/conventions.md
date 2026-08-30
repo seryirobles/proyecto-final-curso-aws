@@ -32,7 +32,7 @@ raise ValueError("quantity must be positive")
   uv provisions it rather than reusing whatever is installed locally. The upper
   bound is deliberate: it is a **bounded range, not a floor**, so a new minor
   release cannot silently change the interpreter under the gates. Confirm
-  against the Lambda runtime once §2 P6 of `docs/architecture.md` is decided.
+  against the Lambda runtime chosen in IaC (feature 21).
 - **Formatting and linting:** `ruff format` + `ruff check`. Line length 100.
 - **Typing:** `mypy` in strict mode. Every public function is fully annotated.
   No bare `Any` without an inline justification comment.
@@ -91,7 +91,10 @@ Rules:
 
 - Functions that can fail **raise**. They never return `None` to signal failure.
 - The Lambda handler layer catches domain exceptions and maps them to the API
-  error format. Stack traces never reach the user.
+  error format — RFC 9457 `application/problem+json` (`docs/rest_api_contract.md`
+  §4): a machine-readable `code`, `detail` copied verbatim from
+  `planner_core.messages`, `400` malformed vs. `422` domain-rejected. Stack
+  traces never reach the user.
 - Never catch bare `Exception` outside the handler boundary.
 
 ## Tests
@@ -128,9 +131,9 @@ Rules:
   dependency. What belongs in a Lambda package is an implementation that pulls
   in an external one (`boto3`, an AI SDK, an HTTP client). See
   `docs/architecture.md` §1.2.2. `wiring.py` still names whichever it selects.
-- A Lambda's own dependencies (AWS SDK, AI provider SDK) are declared in **that
-  Lambda's** `pyproject.toml`, added only when its adapter is built (P1 / P4),
-  and only through an approved `design.md`.
+- A Lambda's own dependencies (`boto3` for DynamoDB, the Bedrock SDK for AI) are
+  declared in **that Lambda's** `pyproject.toml`, added only when its adapter is
+  built, and only through an approved `design.md`.
 - `handler.py` is **thin**: parse the event, call one application use case, map
   the result or the domain exception to the transport format. No business logic.
 - `wiring.py` is the **only** place that names concrete adapters, and it selects
@@ -327,5 +330,6 @@ frontend code.~~
 §1.1): React with function components and hooks, bootstrapped by Vite, tested
 with Vitest. There is no base class to extend — a component is a plain function.
 
-`frontend_spa` (feature 20) remains `blocked`, but on **feature 16** alone: the
-SPA needs the REST contract (P5). The stack no longer blocks it.
+`frontend_spa` (feature 20) waits only on its dependencies — **features 16 and
+26**. No architecture decision blocks it: the REST contract is decided
+(`architecture.md` §1.2.5, `docs/rest_api_contract.md`).

@@ -71,6 +71,7 @@ pending decision, you **stop** — you do not choose for them.
 | `docs/architecture.md` | What "good work" means here; decided vs pending architecture. **§1 = decided, §2 = pending. Authoritative for both** | Before implementing |
 | `docs/decisiones_arquitectura.md` | The owner's **personal** working record, permanently. **Not authoritative and not to be reconciled with `architecture.md`.** It never unblocks anything — if it and §2 disagree, §2 wins | Only if the owner points you at it |
 | `docs/data_model.md` | **The persistence source of truth.** The `data` table and its 10 item types (§1), **the key formats — which exist nowhere else, and four carry traps (§2)**, all 29 access patterns mapped to concrete operations (§4), the concurrency rules (§5), and what is settled and must not be re-opened (§7) | **Before writing any persistence code** |
+| `docs/rest_api_contract.md` | **The REST contract source of truth** (decided 2026-08-30, P5). All 29 access patterns as HTTP endpoints, payload shapes, RFC 9457 errors, cookie auth, `ETag` polling; §7 records the 13 gate rulings | **Before writing any `api` Lambda or SPA code** |
 | `docs/conventions.md` | Style, naming, structure, error handling, language rules | Before writing code |
 | `docs/specs.md` | SDD process: EARS notation, the 3 files, the human approval gate | Before writing or reading a spec |
 | `docs/verification.md` | How to prove your work functions (incl. FR traceability) | Before declaring anything `done` |

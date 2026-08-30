@@ -346,11 +346,16 @@
       "covers": ["NFR-SEC-03", "NFR-OBS-01"],
       "depends_on": [14],
       "acceptance": [
-        "Deferred until the REST contract is defined"
+        "Implements the contract in docs/rest_api_contract.md (decided 2026-08-30, architecture.md section 1.2.5): /v1 base path, English camelCase JSON, RFC 9457 application/problem+json errors with a machine-readable code extension member and detail copied verbatim from planner_core.messages, 400 malformed vs 422 domain-rejected",
+        "All 29 access patterns mapped per docs/rest_api_contract.md section 2; the four pollable resources (weeks, library, shopping list, rules) serve ETag / If-None-Match with the marcaCambio value and return 304 on no change; mutations return the new marker as their ETag",
+        "Auth via a REQUEST-type Lambda authorizer reading the HttpOnly session cookie, authorizer result cache TTL 0, userId/role/passwordResetRequired passed in authorizer context (docs/rest_api_contract.md section 5)",
+        "Rules use per-rule endpoints PUT/DELETE /v1/rules/{ruleId} matching AP23/AP24; satisfiability validated whole-set in the adapter on each write (docs/rest_api_contract.md section 7 Q5). RuleRepository may need save_rule/delete_rule to replace the save(RuleSet) blob — resolve in this spec",
+        "GET /v1/weeks/{weekId}?include=ingredients (AP9) is NOT exposed publicly; the re-sync path calls the repository method internally (docs/rest_api_contract.md section 7 Q13)",
+        "A non-HTTP entry point for scheduled week rollover (EventBridge Scheduler, docs/rest_api_contract.md section 7 Q8) lives in this package, not a third Lambda",
+        "The api package never ships the Bedrock SDK; the api to ai hop is an SQS enqueue (architecture.md section 1.2)"
       ],
       "sdd": true,
-      "status": "blocked",
-      "blocked_reason": "Architecture P5 (REST API contract) and P6 (deployment topology) undecided."
+      "status": "pending"
     },
     {
       "id": 17,
@@ -361,12 +366,14 @@
       "covers": ["FR-AI-09", "NFR-AI-01"],
       "depends_on": [12, 14],
       "acceptance": [
-        "Deferred until the AI provider is chosen",
-        "CONSTRAINT (recorded 2026-08-27, G-88): whole-week AI generation must write candidates through the same WeekRepository port every other write path uses (save_slot/save_week per feature 14/18), never a separate write path - MarcaCambio's marker bump lives inside that port's methods (docs/data_model.md section 4.7), so any write that bypasses the port silently produces candidates other clients' polling never detects. Not verifiable until this feature has code; recorded here for whoever specs it."
+        "Provider client targets AWS Bedrock + Anthropic Claude (architecture.md section 1.2.6): Sonnet tier to start (anthropic.claude-sonnet-5), the model id a spec-level choice revisited after generation testing; the Bedrock SDK is this package's dependency only, never api's",
+        "Consumes from the api to ai SQS queue (architecture.md section 1.2); the HTTP surface is submit-then-poll per docs/rest_api_contract.md",
+        "Cost cap is a REAL kill-switch (G-81 resolved 2026-08-30, not alert-only). Decide the mechanism in this spec: reserved concurrency 0, event-source-mapping disable, or a flag the worker reads before invoking Bedrock. Global cap, no per-user counter (NFR-AI-01, G-70)",
+        "Idempotency: idPeticionIA is a deterministic hash of the request including a server-authoritative attempt ordinal (count of completed generations for the slot, never a client click counter) so a double-submit dedupes; the server also returns 409 for a slot that already has a pending/running generation (FR-AI-09 per-slot concurrency). See docs/rest_api_contract.md section 7 Q3",
+        "CONSTRAINT (recorded 2026-08-27, G-88): whole-week AI generation must write candidates through the same WeekRepository port every other write path uses (save_slot/save_week per feature 14/18), never a separate write path - MarcaCambio's marker bump lives inside that port's methods (docs/data_model.md section 4.7), so any write that bypasses the port silently produces candidates other clients' polling never detects."
       ],
       "sdd": true,
-      "status": "blocked",
-      "blocked_reason": "Architecture P4 (AI provider and model) undecided. Cost-cap enforcement is global via AWS cost tooling, not a per-user quota (NFR-AI-01, G-70, supersedes G-38) — the application stores no counter. OPEN QUESTION FOR THE HUMAN (G-81): AWS Budgets only alert, they do not stop spend, so NFR-AI-01's 'enforcing path' needs either a real kill switch (Budget action or equivalent) or an explicit decision that an alert plus reaction time is acceptable for a course project. This determines whether this Lambda needs a flag it can read before invoking the provider."
+      "status": "pending"
     },
     {
       "id": 18,
@@ -402,22 +409,24 @@
       ],
       "sdd": true,
       "status": "blocked",
-      "blocked_reason": "Architecture P6 (cold-storage wiring) undecided. P1 was closed 2026-08-16 (DynamoDB, single table); the archive itself remains parked by decision as MVP scope — see docs/data_model.md section 9. Note the reverse-chronological browse of FR-ARCH-04 is NOT free: idSemana is in the partition key, which DynamoDB cannot list or sort."
+      "blocked_reason": "PARKED, MVP scope (docs/data_model.md section 9) — not an open decision. Cold storage (FR-ARCH-03) and the reverse-chronological archive browse (FR-ARCH-04) both stay out of the MVP; reaffirmed by the owner 2026-08-30 when P6 was decided. FR-ARCH-04 is not free: idSemana is in the partition key, which DynamoDB cannot list or sort. Unpark needs an explicit owner decision."
     },
     {
       "id": 20,
       "name": "frontend_spa",
       "tier": 4,
       "title": "Single-page application",
-      "description": "The responsive es-ES SPA: two live weeks, candidates and the three-way authoring flow (library pick / from scratch / AI, reused by library authoring minus the self-pick), definitive selection, library, rules, shopping list, summary and archive.",
+      "description": "The responsive es-ES SPA: two live weeks, candidates and the three-way authoring flow (library pick / from scratch / AI, reused by library authoring minus the self-pick), definitive selection, library, rules, shopping list, summary and archive. A Claude Design prototype exists at prototypes/wireframe/ (analysed in docs/frontend_prototype.md) — an executable wireframe to mine for colour tokens, es-ES strings, screen inventory and handler names, NOT portable code; see docs/frontend_prototype.md section 4 for the eleven places it contradicts the frozen requirements.",
       "covers": ["FR-MENU-01", "FR-MENU-04", "FR-MENU-05", "FR-MENU-07", "FR-CAND-02", "FR-CAND-03", "FR-LIB-01", "FR-LIB-02", "FR-LIB-04", "FR-UX-01", "FR-UX-02", "FR-UX-03", "FR-UX-04", "FR-UX-05", "FR-UX-06", "FR-UX-07"],
       "depends_on": [16, 26],
       "acceptance": [
-        "Deferred until the initial frontend code is supplied"
+        "Idiomatic React (function components, hooks, JSX), Vite, Vitest, ESLint + Prettier, plain JS/ESM (architecture.md section 1.1); custom hook owns state/handlers/API calls, component is a pure function of props; inline style objects off a shared tokens module (docs/conventions.md 'Frontend conventions')",
+        "Consumes docs/rest_api_contract.md: /v1 endpoints, HttpOnly cookie session (no token handling in JS), RFC 9457 error bodies, the adaptive polling + ETag/If-None-Match hook from feature 26 (connection-loss indication, optimistic self-updates)",
+        "Mine prototypes/wireframe/ (analysed in docs/frontend_prototype.md) for the 18 colour tokens, the es-ES strings, the screen inventory and the handler names — NOT the type/spacing scale (drift, not a system) and NOT as portable code. Read docs/frontend_prototype.md section 4 first: the prototype contradicts eleven frozen requirements, including the shopping re-sync rule settled by G-77",
+        "No business logic in the client (architecture.md section 1.1); all UI text es-ES from one messages module, Intl pinned to es-ES; fluid-first layout, matchMedia for genuine breakpoints"
       ],
       "sdd": true,
-      "status": "blocked",
-      "blocked_reason": "Blocked on feature 16 (REST contract, P5) and feature 26 (real-time transport wiring, G-88) - the SPA's sync hook needs the polling/conditional-GET shape feature 26 delivers. P7 was CLOSED 2026-08-17: idiomatic React (function components, hooks, JSX), Vite, Vitest, ESLint + Prettier, plain JS/ESM - see docs/architecture.md section 1.1. A Claude Design prototype was supplied 2026-08-16 (prototypes/wireframe/, moved out of frontend/ on 2026-08-17 so no SPA toolchain can reach it) and analysed in docs/frontend_prototype.md: it is an executable wireframe, NOT portable code (Anthropic-internal DC runtime, CDN-loaded React, single-file inline styles, no components or tests). Mine it for the 18 colour tokens, the es-ES strings, the screen inventory and the handler names - but NOT for the type or spacing scale (24 distinct font sizes with half-pixel steps, 91 distinct paddings: that is drift, not a system). Read docs/frontend_prototype.md section 4 first - the prototype contradicts eleven frozen requirements, including the shopping re-sync rule settled by G-77. Conventions: docs/conventions.md section 'Frontend conventions'."
+      "status": "pending"
     },
     {
       "id": 21,
@@ -506,15 +515,16 @@
       "name": "realtime_channel_transport",
       "tier": 3,
       "title": "Real-time collaboration channel — transport",
-      "description": "The HTTP-facing half of real-time support (G-88, architecture P3, split from the original realtime_channel 2026-08-27): the api Lambda's conditional-GET handling (If-None-Match parsing, 304 mapping), and the frontend's adaptive polling hook, backoff, connection-loss indication and optimistic self-updates. Depends on feature 18's persistence half and feature 16's REST contract.",
+      "description": "The HTTP-facing half of real-time support (G-88, architecture P3, split from the original realtime_channel 2026-08-27): the api Lambda's conditional-GET handling (If-None-Match parsing, 304 mapping), and the frontend's adaptive polling hook, backoff, connection-loss indication and optimistic self-updates. Also owns the shopping-list re-sync marker-bump collapse (docs/data_model.md section 4.4 note / section 5.3): making re-sync its own transaction instead of a loop of AP19 calls so COMPRA#<idLista>'s marcaCambio bumps once per re-sync rather than once per differing item — the single bump added at section 5.3's lock release. Depends on feature 18's persistence half and feature 16's REST contract.",
       "covers": ["FR-RT-01", "FR-RT-02", "FR-RT-03"],
       "depends_on": [16, 18],
       "acceptance": [
-        "Deferred until the REST contract (P5) is defined"
+        "api Lambda conditional-GET handler: parse If-None-Match, do the cheap strongly-consistent marcaCambio read first, return 304 (ETag echo, no body) on match else 200 with the payload and new ETag (docs/rest_api_contract.md section 6)",
+        "Frontend adaptive polling hook: per-resource interval, backoff on tab hidden/blurred, immediate resume on visibilitychange, capped jittered backoff on repeated failures; N consecutive failures surface connection loss; optimistic self-updates keep a mutation's returned marker only when it equals held + 1, else refetch (FR-RT-01/-02/-03)",
+        "Shopping-list re-sync bumps COMPRA#<idLista> marcaCambio once per re-sync, not once per differing item — re-sync becomes its own transaction, single bump at docs/data_model.md section 5.3's lock release"
       ],
       "sdd": true,
-      "status": "blocked",
-      "blocked_reason": "Architecture P3 is DECIDED (docs/architecture.md section 1.2.4, G-88) and its persistence half is feature 18 (unblocked, tier 2). This feature is the transport wiring: the api Lambda's conditional-GET handler and the frontend's polling hook. Blocked on P5 (REST contract) for the handler shape, and on feature 16 (rest_api_lambda) to exist at all — see G-88's boundary note: how the marker travels over HTTP (header vs. payload field) is P5's decision, not this document's."
+      "status": "pending"
     }
   ]
 }

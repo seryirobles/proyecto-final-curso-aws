@@ -1726,3 +1726,189 @@ alone (those match the current "no review report files" convention).
 - Remaining architecture items: P4 (AI provider), P5 (REST contract), P6
   (deployment topology) — blocking features 16, 17, 19, 26 and
   transitively 20. Features 21-23 (tier 5) remain human-owned.
+
+---
+
+## 2026-08-30 — Feature 18 `realtime_channel_persistence` implemented, reviewed, APPROVED, committed; feature 26 scope widened
+
+- **Feature:** 18 — `realtime_channel_persistence` — `done` (committed `151cad6`)
+- **Agent:** spec_author → human gate (6 questions) → spec_author (fold
+  rulings) → human approval → implementer → reviewer (CHANGES_REQUESTED,
+  2 surviving mutants) → implementer (fix pass) → reviewer (cheap
+  re-verify, APPROVED) → human commit
+
+**Spec:**
+
+- `spec_author` wrote `specs/realtime_channel_persistence/{requirements,
+  design,tasks}.md` — R1–R12 (all citing `FR-RT-01`), 16 tasks. Six gate
+  questions in `design.md` §10.
+- Leader flagged Q1's `FR-RT-02` half as weak — `G-88` +
+  `data_model.md` §1/§1.1/§4.7 tie `MarcaCambio` to `FR-RT-01`/`-03`
+  only; R7/R8's `FR-RT-02` cites were *not-regressing* last-write-wins,
+  not implementing it.
+- Owner ruled all six (2026-08-30): Q1 → add **`FR-RT-01` only** to
+  feature 18's `covers` ("requirement-free would not be honest"), NOT
+  `FR-RT-02`; Q2 baseline `0` OK; Q3 plain `int` OK; Q4
+  `delete_checked_items -> int` always OK; Q5 strong-consistency
+  deferral OK; Q6 `acquire_lock`/`release_lock` stay `-> None`.
+- `spec_author` re-ran: R7/R8 re-cited `FR-RT-02` → `FR-RT-01`; each
+  R-block, the coverage map and the rationale note now state they only
+  *preserve* `FR-RT-02` (last-write-wins, `G-07`), which stays out of
+  `covers`. `design.md` §10 converted to a resolved record. Owner
+  approved: "Go ahead with the implementation."
+
+**Implementation:**
+
+- Four `planner_core/ports/*.py` (weeks, rules, shopping list, recipes)
+  gained `current_version() -> int` + `-> int` returns on every mutating
+  method; four fakes gained an in-memory counter; conformance + contract
+  suites extended; new scan test
+  `test_change_marker_is_not_a_write_condition.py` (R7, R12).
+- Implementer flipped `feature_list.json` status `spec_ready` →
+  `in_progress` despite the brief saying not to touch that file —
+  status-only, matches the SDD lifecycle and spec_author precedent,
+  flagged for the owner.
+- Reviewer round 1: **CHANGES_REQUESTED**. R1–R12, T1–T16, C1–C7 green;
+  ruff/mypy/pytest 476 re-verified. 6/8 mutants killed, **2 survived** —
+  (1) widening the R7 scan's `current_version` allowlist wasn't caught
+  (self-test had no known-bad fixture); (2) deleting `current_version` /
+  the `-> int` returns from a *Protocol* stayed green (nothing asserted
+  the Protocol's own declarations, only the fake). The
+  `impl_realtime_channel_persistence.md:103` kill claim for (1) was
+  false.
+- Implementer fix pass: R7 self-test gained a `widened_read` fixture;
+  added `test_the_<port>_repository_protocol_pins_the_marker_surface` to
+  all four `tests/ports/test_*.py` (pins `current_version` + the `-> int`
+  returns via `__dict__` / `get_type_hints`, not just the fake); port
+  docstrings trimmed to the 3-line ceiling. Both mutants re-applied →
+  killed.
+- Reviewer re-verify (cheap, re-apply the 2 mutants): **APPROVED** — 0
+  findings, 0 mutants survived, plus 2 spot-check mutants killed. 480
+  pytest, ruff/mypy clean, `./init.sh` green.
+
+**Also this session (2026-08-30, after the commit):**
+
+- Owner asked what architecture decisions remain — leader explained P4,
+  P5, P6 in full (see State at close).
+- `docs/data_model.md` §4.4 re-sync note: stale "feature 18b" →
+  "feature 26" (there is no 18b; the original `realtime_channel` split
+  into id 18 + id 26, not 18a/18b).
+- `feature_list.json` feature 26 (`realtime_channel_transport`)
+  description + a new `acceptance` line widened to formally own the
+  shopping-list re-sync marker-bump collapse: making re-sync its own
+  transaction instead of a loop of `AP19` calls so
+  `COMPRA#<idLista>`'s `marcaCambio` bumps once per re-sync, not once
+  per differing item (single bump at `data_model.md` §5.3's lock
+  release). `covers` unchanged — optimization, no new FR.
+
+**Incidents:**
+
+- The fix-pass implementer twice `git checkout HEAD --`'d the two
+  owner-deleted `progress/impl_gga_*.md` files, reading ` D` as damage;
+  leader also wrongly `git restore`d them once before the owner
+  corrected. They stay deleted. Memory:
+  *dont-revert-changes-without-checking-whose-they-are*.
+- Reviewer caught a CRLF rewrite of `ports/shopping_list.py` from a
+  `write_text` round-trip during a mutant revert; normalized back to LF
+  (0 CRLF verified), re-ran all gates green. Platform hazard logged.
+
+### State at close
+
+- Feature 18 committed `151cad6`, tree clean. `./init.sh` green: **480
+  tests**, 26 features (**18 done, 8 blocked, 0 pending**), coverage
+  104/104.
+- **No actionable feature.** All 8 remaining wait on a human
+  architecture decision:
+  - **P4** — AI provider/model, plus `G-81` / `NFR-AI-01`: the €50/month
+    cap is global (`G-70`) but AWS Budgets only alert; decide a real
+    kill-switch vs. accepting alert-plus-reaction-time. Blocks feature 17
+    `ai_lambda`.
+  - **P5** — REST API contract (paths, verbs, payloads, error format,
+    token transport, marker transport). Blocks feature 16
+    `rest_api_lambda` → 26 `realtime_channel_transport` → 20
+    `frontend_spa`.
+  - **P6** — deployment topology (API Gateway, VPC, DynamoDB TTL +
+    cold-storage wiring; `FR-ARCH-04` reverse-chrono browse is not free —
+    `idSemana` is in the partition key). Blocks features 16 and 19
+    `archive_and_cold_storage`.
+- Features 21–23 (Terraform, CI/CD, README) are human-authored by
+  design and never needed a decision.
+- Next session cannot start feature work until the owner decides P4, P5
+  or P6. P5 + P6 together open the largest chain.
+
+---
+
+## 2026-08-30 — P4, P5, P6 all decided; architecture backlog closed
+
+- **Architecture:** the last three pending items decided by the human,
+  folded into the docs. **No `P<n>` item remains pending.**
+
+**Decision path:**
+
+- Owner asked what decisions remained; leader explained P4/P5/P6 in full.
+- **P5** — owner asked for an Opus agent to draft the REST contract.
+  `Plan`-style analysis, verified against the docs, produced
+  `docs/rest_api_contract_proposal.md`: `/v1` surface, all 29 access
+  patterns as endpoints, `HttpOnly` cookie auth, `ETag`/`If-None-Match`
+  marker transport, a custom error shape, 13 gate questions.
+- **P4** — owner: AWS Bedrock + a Gemini model. Leader verified (web
+  search) that **Gemini is not on Bedrock** (only Google's open Gemma
+  is). Owner corrected to **Bedrock + Claude — Sonnet to start, evaluate
+  Haiku** during generation testing; **a real cost kill-switch**, not an
+  alert alone (resolves `G-81`).
+- **P6** — owner: standard API Gateway → Lambda reachable from the SPA,
+  VPC transparent to code, network detail is feature 21. Reaffirmed the
+  **archive / cold-storage lifecycle stays parked** (`data_model.md` §9)
+  after the leader repeatedly resurfaced it.
+- Owner ruled on all **13 P5 gate questions** — accepted as recommended
+  except **Q5** (per-rule rule endpoints, not whole-set `PUT` — the
+  access patterns store rules as separate `REGLA#` items), **Q10** (RFC
+  9457 `application/problem+json` adopted upfront, not a later rename),
+  and **Q12** (the `api` → `ai` hop is a standard SQS queue — definitive).
+  `Q3` gained a server-authoritative `attempt` + a per-slot in-flight
+  `409`; `Q13` made `AP9` internal-only.
+
+**Documentation (all of it, no code):**
+
+- `docs/architecture.md`: §2 P4/P5/P6 struck; new **§1.2.5** (REST
+  contract), **§1.2.6** (Bedrock + Claude, kill-switch), **§1.2.7**
+  (deployment topology); §1.2 backend gains the `api` → `ai` SQS queue and
+  the scheduled-rollover entry point; §6's "no queue without sign-off"
+  now exempts it; stale "does not decide P5/P6" tails in
+  §1.2.1/§1.2.3/§1.2.4 corrected; §2.1's `G-81` line updated.
+- `docs/rest_api_contract.md`: **new, authoritative** (renamed from the
+  proposal by a writer subagent; `mv`, not `git mv` — it was never
+  committed). All 13 rulings folded, §4 rewritten to RFC 9457, Rules rows
+  → `PUT`/`DELETE /v1/rules/{ruleId}`, `?include=ingredients` removed from
+  the public surface.
+- `feature_list.json`: features **16, 17, 20, 26** `blocked` → `pending`
+  with real acceptance criteria; **19** reworded (parked, not "P6
+  undecided"). Feature 20's `description` now names the prototype.
+- Stale-ref sweep: `AGENTS.md` (new repo-map row), `conventions.md`
+  (error handling names RFC 9457; dep notes de-P'd), `data_model.md`
+  (§9 cold-storage row, §10 provenance, the `AP29` note),
+  `frontend_prototype.md`.
+- `docs/gaps_and_resolutions.md` **left untouched** — frozen; owner
+  confirmed no Part is needed (`G-81` had delegated its answer to feature
+  17, which now carries it).
+
+**Learned:**
+
+- Google Gemini is not available on AWS Bedrock and per current AWS docs
+  likely never will be — only the open Gemma family is. Gemini is Vertex
+  AI / AI Studio only.
+- `git mv` fails on a never-committed file ("not under version control") —
+  use plain `mv`.
+
+### State at close
+
+- `./init.sh` green: **480 tests**, 26 features (**18 done, 4 pending, 4
+  blocked**), coverage 104/104. Tree: 8 modified + `docs/rest_api_contract.md`
+  untracked, all uncommitted (owner commits). Includes the feature-18
+  archive from earlier the same day.
+- **Next actionable: feature 16 `rest_api_lambda`.** `sdd: true` → launch
+  `spec_author` against `docs/rest_api_contract.md` + `architecture.md`
+  §1.2.5, then STOP for the human gate. Not launched — owner said wrap up.
+- Also pending: 17 `ai_lambda`, 26 `realtime_channel_transport`, 20
+  `frontend_spa` (deps not yet done). Blocked: 19 (parked), 21–23
+  (human-owned).
