@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from typing import get_type_hints
 
 import pytest
 from support.fakes import FakeShoppingListRepository
@@ -105,3 +106,87 @@ def test_release_lock_then_acquire_by_another_owner_succeeds() -> None:
 
     with pytest.raises(ShoppingListLockHeld):
         repo.acquire_lock("owner-c", NOW, NOW + timedelta(minutes=5))
+
+
+# --- change marker (FR-RT-01): R2, R4, R5, R9 ---
+
+
+def test_the_shopping_list_repository_protocol_pins_the_marker_surface() -> None:
+    """R1: current_version and the int-returning writes are on the Protocol
+    itself, not only the fake — deleting either from ports/shopping_list.py
+    fails here. acquire_lock / release_lock stay -> None (design.md section 3)."""
+    assert "current_version" in ShoppingListRepository.__dict__
+    for method in ("save_item", "delete_item", "delete_checked_items"):
+        assert get_type_hints(getattr(ShoppingListRepository, method))["return"] is int
+    for method in ("acquire_lock", "release_lock"):
+        assert get_type_hints(getattr(ShoppingListRepository, method))["return"] is type(None)
+
+
+def test_current_version_is_zero_before_any_write() -> None:
+    assert FakeShoppingListRepository().current_version() == 0  # R3
+
+
+def test_save_item_and_delete_item_advance_the_marker_and_return_the_new_value() -> None:
+    repo = FakeShoppingListRepository()
+
+    saved = repo.save_item(_item("i1"))
+    assert saved == 1  # R4, R5
+    assert repo.current_version() == saved  # R4
+
+    deleted = repo.delete_item("i1")
+    assert deleted == 2
+    assert repo.current_version() == deleted  # R4
+
+
+def test_reads_do_not_advance_the_marker() -> None:
+    repo = FakeShoppingListRepository()
+    repo.save_item(_item("i1"))
+
+    repo.list_items()
+    repo.current_version()
+
+    assert repo.current_version() == 1  # R2
+
+
+def test_delete_checked_items_with_nothing_checked_returns_the_marker_without_advancing() -> None:
+    repo = FakeShoppingListRepository()
+    repo.save_item(_item("i1", checked=False))
+
+    first = repo.delete_checked_items()
+    second = repo.delete_checked_items()  # Level 4: idempotent, marker included
+
+    assert (first, second) == (1, 1)  # R9 — returns the marker, does not advance
+    assert repo.current_version() == 1
+
+
+def test_delete_checked_items_advances_the_marker_when_it_removes_an_item() -> None:
+    repo = FakeShoppingListRepository()
+    repo.save_item(_item("i1", checked=True))
+    repo.save_item(_item("i2", checked=False))
+
+    returned = repo.delete_checked_items()
+
+    assert returned == 3  # two saves + this removal (R5)
+    assert repo.current_version() == returned
+    assert repo.list_items() == (_item("i2", checked=False),)
+
+
+def test_delete_checked_items_leaves_an_unchecked_item_byte_for_byte_untouched() -> None:
+    repo = FakeShoppingListRepository()
+    kept = _item("i2", checked=False)
+    repo.save_item(_item("i1", checked=True))
+    repo.save_item(kept)
+
+    repo.delete_checked_items()
+
+    assert repo.list_items() == (kept,)
+
+
+def test_lock_operations_do_not_advance_the_marker() -> None:
+    repo = FakeShoppingListRepository()
+    repo.save_item(_item("i1"))
+
+    repo.acquire_lock("owner-a", NOW, NOW + timedelta(minutes=5))
+    repo.release_lock("owner-a")
+
+    assert repo.current_version() == 1  # R2 — the lock is not shopping-list content

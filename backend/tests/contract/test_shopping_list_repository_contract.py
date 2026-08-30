@@ -93,3 +93,58 @@ def test_release_lock_is_a_no_op_for_a_non_owner(
 
     with pytest.raises(ShoppingListLockHeld):
         repo.acquire_lock("owner-c", NOW, NOW + timedelta(minutes=5))
+
+
+# --- change marker (FR-RT-01): R2, R4, R5, R8, R9, R11 ---
+
+
+@pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
+def test_every_mutating_method_advances_the_marker_and_returns_the_new_value(
+    repository_factory: type[FakeShoppingListRepository],
+) -> None:
+    repo = repository_factory()
+
+    assert repo.save_item(_item("i1")) == 1  # R4, R5
+    assert repo.current_version() == 1
+    repo.save_item(_item("i2", checked=True))
+    assert repo.delete_item("i1") == 3
+    assert repo.delete_checked_items() == 4  # removed i2 (R5)
+    assert repo.current_version() == 4
+
+
+@pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
+def test_reads_leave_the_marker_unchanged(
+    repository_factory: type[FakeShoppingListRepository],
+) -> None:
+    repo = repository_factory()
+    repo.save_item(_item("i1"))
+
+    repo.list_items()
+    repo.current_version()
+    repo.acquire_lock("owner-a", NOW, NOW + timedelta(minutes=5))
+    repo.release_lock("owner-a")
+
+    assert repo.current_version() == 1  # R2 — reads and the lock do not advance
+
+
+@pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
+def test_two_successive_writes_both_apply_and_advance_the_marker_twice(
+    repository_factory: type[FakeShoppingListRepository],
+) -> None:
+    repo = repository_factory()
+
+    first = repo.save_item(_item("i1"))
+    second = repo.save_item(_item("i1"))  # no raise: upsert, last-write-wins (R8)
+
+    assert (first, second) == (1, 2)  # R11
+
+
+@pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
+def test_delete_checked_items_with_nothing_checked_does_not_advance_the_marker(
+    repository_factory: type[FakeShoppingListRepository],
+) -> None:
+    repo = repository_factory()
+    repo.save_item(_item("i1", checked=False))
+
+    assert repo.delete_checked_items() == 1  # R9 — returns the marker, no bump
+    assert repo.current_version() == 1

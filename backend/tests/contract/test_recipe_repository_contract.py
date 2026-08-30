@@ -53,3 +53,46 @@ def test_delete_removes_the_entry_and_raises_when_missing(
     assert repo.get("r1") is None
     with pytest.raises(RecipeNotFound):
         repo.delete("r1")
+
+
+# --- change marker (FR-RT-01): R2, R4, R5, R8, R11 ---
+
+
+@pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
+def test_every_mutating_method_advances_the_marker_and_returns_the_new_value(
+    repository_factory: type[FakeRecipeRepository],
+) -> None:
+    repo = repository_factory()
+    entry = LibraryRecipe(id="r1", recipe=_recipe(), author="u1")
+
+    assert repo.save(entry) == 1  # R4, R5
+    assert repo.current_version() == 1
+    assert repo.delete("r1") == 2
+    assert repo.current_version() == 2
+
+
+@pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
+def test_reads_leave_the_marker_unchanged(
+    repository_factory: type[FakeRecipeRepository],
+) -> None:
+    repo = repository_factory()
+    repo.save(LibraryRecipe(id="r1", recipe=_recipe(), author="u1"))
+
+    repo.get("r1")
+    repo.list_all()
+    repo.current_version()
+
+    assert repo.current_version() == 1  # R2
+
+
+@pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
+def test_two_successive_writes_both_apply_and_advance_the_marker_twice(
+    repository_factory: type[FakeRecipeRepository],
+) -> None:
+    repo = repository_factory()
+    entry = LibraryRecipe(id="r1", recipe=_recipe(), author="u1")
+
+    first = repo.save(entry)
+    second = repo.save(entry)  # no raise: upsert, last-write-wins (R8)
+
+    assert (first, second) == (1, 2)  # R11

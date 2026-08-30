@@ -160,9 +160,16 @@ class FakePasswordHasher:
 
 @dataclass
 class FakeRecipeRepository:
-    """A `RecipeRepository` over a plain dict keyed by recipe id."""
+    """A `RecipeRepository` over a plain dict keyed by recipe id.
+
+    `version` is the in-memory change marker (docs/data_model.md section 1.1):
+    a counter bumped inside each mutating method, 0 before any write."""
 
     entries: dict[str, LibraryRecipe] = field(default_factory=dict)
+    version: int = 0
+
+    def current_version(self) -> int:
+        return self.version
 
     def get(self, recipe_id: str) -> LibraryRecipe | None:
         return self.entries.get(recipe_id)
@@ -170,42 +177,66 @@ class FakeRecipeRepository:
     def list_all(self) -> tuple[LibraryRecipe, ...]:
         return tuple(self.entries.values())
 
-    def save(self, entry: LibraryRecipe) -> None:
+    def save(self, entry: LibraryRecipe) -> int:
         self.entries[entry.id] = entry
+        self.version += 1
+        return self.version
 
-    def delete(self, recipe_id: str) -> None:
+    def delete(self, recipe_id: str) -> int:
         if recipe_id not in self.entries:
             raise RecipeNotFound(recipe_id)
         del self.entries[recipe_id]
+        self.version += 1
+        return self.version
 
 
 @dataclass
 class FakeWeekRepository:
-    """A `WeekRepository` over a dict of dicts, keyed by `IsoWeek` then `SlotRef`."""
+    """A `WeekRepository` over a dict of dicts, keyed by `IsoWeek` then `SlotRef`.
+
+    `versions` holds one change marker per week (docs/data_model.md section 1.1):
+    a counter bumped inside each mutating method, 0 for a week never written."""
 
     weeks: dict[IsoWeek, dict[SlotRef, SlotContents]] = field(default_factory=dict)
+    versions: dict[IsoWeek, int] = field(default_factory=dict)
+
+    def current_version(self, week: IsoWeek) -> int:
+        return self.versions.get(week, 0)
 
     def get_week(self, week: IsoWeek) -> Mapping[SlotRef, SlotContents]:
         return dict(self.weeks.get(week, {}))
 
-    def save_slot(self, week: IsoWeek, slot: SlotRef, contents: SlotContents) -> None:
+    def save_slot(self, week: IsoWeek, slot: SlotRef, contents: SlotContents) -> int:
         self.weeks.setdefault(week, {})[slot] = contents
+        self.versions[week] = self.versions.get(week, 0) + 1
+        return self.versions[week]
 
-    def save_week(self, week: IsoWeek, plans: Mapping[SlotRef, SlotContents]) -> None:
+    def save_week(self, week: IsoWeek, plans: Mapping[SlotRef, SlotContents]) -> int:
         self.weeks[week] = dict(plans)
+        self.versions[week] = self.versions.get(week, 0) + 1
+        return self.versions[week]
 
 
 @dataclass
 class FakeRuleRepository:
-    """A `RuleRepository` over a single stored `RuleSet`, defaulting to empty."""
+    """A `RuleRepository` over a single stored `RuleSet`, defaulting to empty.
+
+    `version` is the in-memory change marker (docs/data_model.md section 1.1):
+    a counter bumped inside `save`, 0 before any write."""
 
     rule_set: RuleSet | None = None
+    version: int = 0
+
+    def current_version(self) -> int:
+        return self.version
 
     def get(self) -> RuleSet:
         return self.rule_set if self.rule_set is not None else RuleSet()
 
-    def save(self, rule_set: RuleSet) -> None:
+    def save(self, rule_set: RuleSet) -> int:
         self.rule_set = rule_set
+        self.version += 1
+        return self.version
 
 
 @dataclass
@@ -218,20 +249,32 @@ class FakeShoppingListRepository:
 
     items: dict[str, ShoppingItem] = field(default_factory=dict)
     lock: tuple[str, datetime] | None = None  # (owner_id, expires_at)
+    version: int = 0  # change marker (docs/data_model.md section 1.1), 0 before any write
+
+    def current_version(self) -> int:
+        return self.version
 
     def list_items(self) -> tuple[ShoppingItem, ...]:
         return tuple(self.items.values())
 
-    def save_item(self, item: ShoppingItem) -> None:
+    def save_item(self, item: ShoppingItem) -> int:
         self.items[item.id] = item
+        self.version += 1
+        return self.version
 
-    def delete_item(self, item_id: str) -> None:
+    def delete_item(self, item_id: str) -> int:
         if item_id not in self.items:
             raise ShoppingItemNotFound(item_id)
         del self.items[item_id]
+        self.version += 1
+        return self.version
 
-    def delete_checked_items(self) -> None:
-        self.items = {item_id: item for item_id, item in self.items.items() if not item.checked}
+    def delete_checked_items(self) -> int:
+        survivors = {item_id: item for item_id, item in self.items.items() if not item.checked}
+        if len(survivors) != len(self.items):  # removed >= 1 checked item (R9)
+            self.items = survivors
+            self.version += 1
+        return self.version
 
     def acquire_lock(self, owner_id: str, now: datetime, expires_at: datetime) -> None:
         if self.lock is not None:

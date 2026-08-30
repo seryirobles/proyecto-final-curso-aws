@@ -374,7 +374,7 @@
       "tier": 2,
       "title": "Real-time change markers — persistence and ports",
       "description": "The data-layer half of real-time support (G-88, architecture P3, split from the original realtime_channel 2026-08-27): the MarcaCambio item type (one per pollable partition - weeks, library, shopping list, rules), the current_version read and version-returning writes on WeekRepository/RuleRepository/ShoppingListRepository/RecipeRepository, and their contract tests. No HTTP layer, no handler, no polling logic - that is feature 26, blocked on P5.",
-      "covers": [],
+      "covers": ["FR-RT-01"],
       "depends_on": [4, 5, 6, 8, 14],
       "acceptance": [
         "A MarcaCambio item type exists, one instance per pollable partition (SEMANA#<idSemana>, BIBLIOTECA#<idBiblioteca>, COMPRA#<idLista>, GRUPOREGLAS#<idGrupoReglas>), per docs/data_model.md section 1",
@@ -387,7 +387,7 @@
         "A bulk logical operation (whole-week AI generation, shopping-list re-sync) bumping its marker once per underlying item write, rather than once for the whole operation, is accepted as correct-but-not-optimal for this feature — collapsing it to one bump is explicitly out of scope here (docs/data_model.md section 4.2/4.4)"
       ],
       "sdd": true,
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": 19,
