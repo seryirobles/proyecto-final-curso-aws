@@ -341,21 +341,25 @@
       "id": 16,
       "name": "rest_api_lambda",
       "tier": 3,
-      "title": "REST API Lambda",
-      "description": "The api Lambda: routing, request validation, domain exception to error mapping, and wiring of application use cases.",
-      "covers": ["NFR-SEC-03", "NFR-OBS-01"],
-      "depends_on": [14],
+      "title": "REST API Lambda - HTTP shell and event boundary",
+      "description": "The api Lambda's transport layer: routing, request parsing and camelCase serialization, domain-exception to RFC 9457 error mapping, the REQUEST cookie authorizer, ETag/Cache-Control emission, the SQS producer call site and the EventBridge rollover entry point. Split from the original whole-feature spec on 2026-08-31 (GQ4, owner): the DynamoDB adapters, the planner_core application use cases and the RuleRepository port change are feature 27 rest_api_persistence_and_services.",
+      "covers": ["NFR-SEC-03", "NFR-OBS-01", "FR-AUTH-09", "FR-UX-03", "FR-RT-01", "FR-MENU-08", "FR-AI-08"],
+      "depends_on": [14, 27],
       "acceptance": [
         "Implements the contract in docs/rest_api_contract.md (decided 2026-08-30, architecture.md section 1.2.5): /v1 base path, English camelCase JSON, RFC 9457 application/problem+json errors with a machine-readable code extension member and detail copied verbatim from planner_core.messages, 400 malformed vs 422 domain-rejected",
-        "All 29 access patterns mapped per docs/rest_api_contract.md section 2; the four pollable resources (weeks, library, shopping list, rules) serve ETag / If-None-Match with the marcaCambio value and return 304 on no change; mutations return the new marker as their ETag",
-        "Auth via a REQUEST-type Lambda authorizer reading the HttpOnly session cookie, authorizer result cache TTL 0, userId/role/passwordResetRequired passed in authorizer context (docs/rest_api_contract.md section 5)",
-        "Rules use per-rule endpoints PUT/DELETE /v1/rules/{ruleId} matching AP23/AP24; satisfiability validated whole-set in the adapter on each write (docs/rest_api_contract.md section 7 Q5). RuleRepository may need save_rule/delete_rule to replace the save(RuleSet) blob — resolve in this spec",
-        "GET /v1/weeks/{weekId}?include=ingredients (AP9) is NOT exposed publicly; the re-sync path calls the repository method internally (docs/rest_api_contract.md section 7 Q13)",
-        "A non-HTTP entry point for scheduled week rollover (EventBridge Scheduler, docs/rest_api_contract.md section 7 Q8) lives in this package, not a third Lambda",
-        "The api package never ships the Bedrock SDK; the api to ai hop is an SQS enqueue (architecture.md section 1.2)"
+        "Every access pattern in docs/rest_api_contract.md section 2 is routed to exactly one method + path template, plus the computed GET /v1/live-weeks; AP3, AP9, AP29 and week rollover have no route; no GET route writes through a repository port",
+        "The four pollable resources (weeks, library, shopping list, rules) emit ETag = marcaCambio as a strong validator on 200, mutations echo the marker their write returned, and Cache-Control: no-store is set on every response. If-None-Match parsing, the marker-first read and the 304 mapping are feature 26 realtime_channel_transport (GQ2, owner 2026-08-31)",
+        "Auth via a REQUEST-type Lambda authorizer reading the HttpOnly session cookie, authorizer result cache TTL 0, userId/role/passwordResetRequired passed in authorizer context; the handler gates role and passwordResetRequired from that context without a second AP2 read (docs/rest_api_contract.md section 5)",
+        "PUT/DELETE /v1/rules/{ruleId} route to feature 27's single-rule operations (AP23/AP24) and UnsatisfiableRuleSet maps to 422 UNSATISFIABLE_RULE_SET with details.conflicts; the whole-set satisfiability check itself is feature 27",
+        "GET /v1/weeks/{weekId}?include=ingredients (AP9) is NOT exposed publicly (docs/rest_api_contract.md section 7 Q13)",
+        "A non-HTTP entry point for scheduled week rollover (EventBridge Scheduler, docs/rest_api_contract.md section 7 Q8) lives in this package, not a third Lambda, and leaves identical persisted state on re-invocation. Archive is parked for the MVP (owner 2026-08-31, docs/data_model.md section 9 parks FR-ARCH-02 with no item type): wiring.py injects a no-op ArchiveRepository that retains nothing and logs the discarded ArchivedWeek through the standard-library logging module. The real adapter and the snapshot item type are post-MVP",
+        "The api package never ships the Bedrock SDK; the api to ai hop is an SQS enqueue through the GenerationQueue port (architecture.md section 1.2)",
+        "Structured logging through the standard-library logging module on every invocation; no print; no traceback or stack frame in any response body (NFR-OBS-01)",
+        "The session cookie is HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=2592000, the token never appears in a response body, and DELETE /v1/session expires the cookie on the same response that advances validoDesde",
+        "SCOPE: the DynamoDB adapters, the GenerationQueue SQS adapter, the new planner_core application use cases and the RuleRepository save_rule/delete_rule change are feature 27 rest_api_persistence_and_services, which this feature depends on"
       ],
       "sdd": true,
-      "status": "pending"
+      "status": "spec_ready"
     },
     {
       "id": 17,
@@ -525,6 +529,27 @@
       ],
       "sdd": true,
       "status": "pending"
+    },
+    {
+      "id": 27,
+      "name": "rest_api_persistence_and_services",
+      "tier": 3,
+      "title": "REST API persistence adapters and application services",
+      "description": "The substrate the api Lambda shell calls, split out of feature 16 on 2026-08-31 (GQ4, owner): the real DynamoDB adapters for every api-side port, the GenerationQueue port and its SQS adapter, the new planner_core application use cases (week/library/shopping/rule editing and generation submission), and the RuleRepository per-rule port change docs/rest_api_contract.md section 7 Q5 requires. No handler, no routing, no HTTP concern - feature 16 owns those and depends on this.",
+      "covers": ["NFR-BKP-01", "FR-RT-01", "FR-RULE-07", "FR-SHOP-06", "FR-AI-08"],
+      "depends_on": [14],
+      "acceptance": [
+        "A DynamoDB-backed implementation of AccountRepository, WeekRepository, RecipeRepository, RuleRepository and ShoppingListRepository lives under planner_api/adapters/dynamo/, using the partition key, sort key and Spanish attribute names docs/data_model.md section 1 and section 3 assign; no Spanish attribute name reaches planner_core, and planner_core imports no boto3 (architecture.md section 3.1 rule 3)",
+        "The real adapters pass the existing per-port contract suites in backend/tests/contract/ unchanged, alongside the in-memory fakes (architecture.md section 3.2); moto-backed, running in the default gate",
+        "Every mutating adapter method bumps marcaCambio inside the same TransactWriteItems as the data write and returns the resulting value; no ConditionExpression ever references marcaCambio; current_version is a strongly-consistent marker-only read (docs/data_model.md section 1.1/4.7/5.5)",
+        "GQ3, resolved 2026-08-31: RuleRepository gains save_rule(rule) -> int and delete_rule(ruleId) -> int and loses save(RuleSet); rule ids are deterministic natural keys (cat#<category>, pin#<day>#<slot>, day#<day>); DisabledDay becomes a frozen value object in domain/rules.py so a disabled day is individually addressable (docs/rest_api_contract.md section 7 Q5, docs/data_model.md section 4.5)",
+        "rule_editing validates whole-set satisfiability in memory before committing the single-item write; an unsatisfiable result raises UnsatisfiableRuleSet and performs no write. library_editing implements the section 3.4 pin cascade: an unconfirmed delete reports the affected pins, a confirmed delete removes recipe and pins (FR-RULE-07)",
+        "The shopping-list re-sync composition reads the week in-process (AP9, never a public route), is purely additive, never modifies a checked item, and is serialized by the FR-SHOP-10 lock (docs/rest_api_contract.md section 3.3, section 7 Q13). Collapsing its marker bumps to one per re-sync stays feature 26's acceptance item 3",
+        "A GenerationQueue port in planner_core.ports names no queue technology; its SQS adapter lives in planner_api/adapters/; generation_submission derives idPeticionIA via domain/generation and returns a stored result (AP26) without enqueuing (FR-AI-08)",
+        "The new use cases live in planner_core/application/ and take only ports and plain values - no HTTP, event or AWS type in any signature (architecture.md section 3.1 rule 2, conventions.md thin-handler rule)"
+      ],
+      "sdd": true,
+      "status": "in_progress"
     }
   ]
 }
