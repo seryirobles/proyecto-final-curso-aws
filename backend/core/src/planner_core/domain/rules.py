@@ -26,7 +26,16 @@ class InvalidWeekday(PlannerError):
 
 
 class UnsatisfiableRuleSet(PlannerError):
-    """Raised when a RuleSet's own rules cannot all hold at once (FR-RULE-07)."""
+    """Raised when a RuleSet's own rules cannot all hold at once (FR-RULE-07).
+
+    `conflicting` carries the existing rules that clash with an attempted change
+    (R16); empty when raised from bare RuleSet validation."""
+
+    conflicting: tuple[Rule, ...]
+
+    def __init__(self, conflicting: tuple[Rule, ...] = ()) -> None:
+        super().__init__(conflicting)
+        self.conflicting = conflicting
 
 
 @dataclass(frozen=True)
@@ -44,6 +53,44 @@ class PinRule:
     day: int
     slot: MealSlot
     recipe_id: str
+
+
+@dataclass(frozen=True)
+class DisabledDay:
+    """A single disabled weekday, addressable as one rule item (GQ3,
+    docs/data_model.md section 4.5 — one REGLA#<idRegla> per rule)."""
+
+    day: int
+
+    def __post_init__(self) -> None:
+        if self.day not in WEEKDAYS:
+            raise InvalidWeekday(self.day)
+
+
+class PinRulesAffected(PlannerError):
+    """Raised when a library-recipe delete would leave pin rules dangling and
+    the caller has not confirmed the cascade (docs/rest_api_contract.md section 3.4)."""
+
+    pins: tuple[PinRule, ...]
+
+    def __init__(self, pins: tuple[PinRule, ...]) -> None:
+        super().__init__(pins)
+        self.pins = pins
+
+
+Rule = CategoryCountRule | PinRule | DisabledDay
+
+
+def rule_id(rule: Rule) -> str:
+    """The deterministic natural-key id of a rule (design.md section 3):
+    cat#<category>, pin#<day>#<slot>, day#<day>."""
+    match rule:
+        case CategoryCountRule():
+            return f"cat#{rule.category.value}"
+        case PinRule():
+            return f"pin#{rule.day}#{rule.slot.value}"
+        case DisabledDay():
+            return f"day#{rule.day}"
 
 
 @dataclass(frozen=True)
@@ -168,6 +215,47 @@ def remove_pins_referencing(rule_set: RuleSet, recipe_id: str) -> RemovePinsResu
         disabled_days=rule_set.disabled_days,
     )
     return RemovePinsResult(rule_set=new_rule_set, removed_pins=removed)
+
+
+class InvalidRuleId(PlannerError):
+    """Raised when a rule id does not match a known natural-key prefix."""
+
+    value: str
+
+    def __init__(self, value: str) -> None:
+        super().__init__(value)
+        self.value = value
+
+
+def apply_rule(rule_set: RuleSet, rule: Rule) -> RuleSet:
+    """Apply one per-rule change through the existing natural-key mutators; the
+    resulting RuleSet validates itself in __post_init__ (design.md section 3)."""
+    match rule:
+        case CategoryCountRule():
+            return set_category_count(rule_set, rule.category, rule.count)
+        case PinRule():
+            return set_pin(rule_set, rule.day, rule.slot, rule.recipe_id)
+        case DisabledDay():
+            return disable_day(rule_set, rule.day)
+
+
+def remove_rule_by_id(rule_set: RuleSet, rule_id_value: str) -> RuleSet:
+    """Drop the rule the natural-key id names; a no-op if none matches
+    (design.md section 3, mirrors the per-mutator no-op contract)."""
+    kind, _, rest = rule_id_value.partition("#")
+    try:
+        if kind == "cat":
+            return remove_category_count(rule_set, IngredientCategory(rest))
+        if kind == "pin":
+            day_str, _, slot_str = rest.partition("#")
+            return remove_pin(rule_set, int(day_str), MealSlot(int(slot_str)))
+        if kind == "day":
+            return enable_day(rule_set, int(rest))
+    except ValueError as exc:
+        # A known prefix with a malformed body is still an invalid id, not a
+        # 500: raise the named domain exception (architecture.md section 4, invariant 12).
+        raise InvalidRuleId(rule_id_value) from exc
+    raise InvalidRuleId(rule_id_value)
 
 
 def apply_override(

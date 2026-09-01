@@ -7,9 +7,12 @@ cover, with its own patterns checked against known-good and known-bad lines
 first (design.md section 6).
 
 R7 — no mutating port method accepts a caller-supplied expected-marker value,
-so the marker can never become a `ConditionExpression` (G-88).
-R12 — the marker name stays inside the four port modules; no other
-`planner_core` module and no Lambda `src` module references it.
+so the marker can never become a `ConditionExpression` (G-88). Feature 27
+extends R7 to the real adapters: no adapter names `marcaCambio` in a write's
+`ConditionExpression` (design.md section 6).
+R12 — the marker name stays inside the four port modules on the `planner_core`
+side; the only other place it may appear is the DynamoDB adapters, which
+implement it (feature 27).
 """
 
 from __future__ import annotations
@@ -33,6 +36,14 @@ LAMBDA_SRC_ROOTS = (
     BACKEND_ROOT / "lambda_api" / "src",
     BACKEND_ROOT / "lambda_ai" / "src",
 )
+
+# The DynamoDB adapters legitimately name the marker — they implement it
+# (feature 27). Everything else on the Lambda side still may not.
+ADAPTERS_ROOT = BACKEND_ROOT / "lambda_api" / "src" / "planner_api" / "adapters"
+
+# design.md section 6: the marker bump is `ADD marcaCambio 1`, never a write
+# precondition. Captures the string body of any ConditionExpression=.
+CONDITION_EXPRESSION = re.compile(r"ConditionExpression\s*[=:]\s*\(?\s*[\"']([^\"']*)[\"']")
 
 # Names that would let a caller pin the write to an expected marker value
 # (design.md section 6). `current_version` is here so a parameter named after
@@ -139,14 +150,39 @@ def test_the_marker_name_pattern_detects_what_it_claims_to() -> None:
 
 
 def test_the_change_marker_stays_inside_the_four_port_modules() -> None:
-    """R12: no `planner_core` module outside the four ports, and no Lambda `src`
-    module, references the marker."""
+    """R12: on the `planner_core` side only the four ports reference the marker;
+    the only Lambda-side exception is the DynamoDB adapters, which implement it."""
     scanned = sorted(CORE_SRC.rglob("*.py"))
     for root in LAMBDA_SRC_ROOTS:
         assert root.is_dir(), root
         scanned += sorted(root.rglob("*.py"))
 
     assert CORE_SRC / "application" / "live_weeks.py" in scanned
+    assert ADAPTERS_ROOT.is_dir(), ADAPTERS_ROOT
     permitted = set(PORT_MODULES)
-    offenders = [detail for path, detail in _marker_hits(scanned) if path not in permitted]
+    offenders = [
+        detail
+        for path, detail in _marker_hits(scanned)
+        if path not in permitted and ADAPTERS_ROOT not in path.parents
+    ]
+    assert offenders == []
+
+
+def test_no_adapter_conditions_a_write_on_the_change_marker() -> None:
+    """R7 (feature 27): the adapters bump `marcaCambio` with `ADD`, never inside
+    a `ConditionExpression` (docs/data_model.md section 1.1)."""
+    adapter_sources = sorted(ADAPTERS_ROOT.rglob("*.py"))
+    assert adapter_sources, ADAPTERS_ROOT
+
+    # self-check: the pattern catches a planted violation and clears a clean line
+    assert CONDITION_EXPRESSION.search('ConditionExpression="attribute_not_exists(SK)"')
+    planted = CONDITION_EXPRESSION.search('ConditionExpression="marcaCambio < :v"')
+    assert planted is not None and "marca" in planted.group(1)
+
+    offenders: list[str] = []
+    for source in adapter_sources:
+        for number, line in enumerate(source.read_text(encoding="utf-8").splitlines(), start=1):
+            match = CONDITION_EXPRESSION.search(line)
+            if match and MARKER_NAME.search(match.group(1)):
+                offenders.append(f"{source.name}:{number}: {line.strip()}")
     assert offenders == []

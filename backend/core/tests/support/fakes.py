@@ -8,12 +8,21 @@ from datetime import datetime
 
 from planner_core.domain.calendar import IsoWeek, SlotRef
 from planner_core.domain.candidate import SlotContents
+from planner_core.domain.generation import GenerationRequest
 from planner_core.domain.rollover import ArchivedWeek
-from planner_core.domain.rules import RuleSet
+from planner_core.domain.rules import (
+    CategoryCountRule,
+    DisabledDay,
+    PinRule,
+    Rule,
+    RuleSet,
+    rule_id,
+)
 from planner_core.domain.shopping import ShoppingItem, ShoppingItemNotFound
 from planner_core.domain.text import normalize
 from planner_core.domain.username_policy import UsernameAlreadyTaken
 from planner_core.ports.accounts import AccountNotFound, AccountRecord
+from planner_core.ports.generation_queue import StoredGeneration
 from planner_core.ports.recipes import LibraryRecipe, RecipeNotFound
 from planner_core.ports.shopping_list import ShoppingListLockHeld
 
@@ -219,23 +228,35 @@ class FakeWeekRepository:
 
 @dataclass
 class FakeRuleRepository:
-    """A `RuleRepository` over a single stored `RuleSet`, defaulting to empty.
+    """A `RuleRepository` over per-rule items keyed by natural id (GQ3).
 
     `version` is the in-memory change marker (docs/data_model.md section 1.1):
-    a counter bumped inside `save`, 0 before any write."""
+    a counter bumped inside each mutating method, 0 before any write. `writes`
+    counts mutations so a test can assert an unsatisfiable change never wrote."""
 
-    rule_set: RuleSet | None = None
+    rules: dict[str, Rule] = field(default_factory=dict)
     version: int = 0
+    writes: int = 0
 
     def current_version(self) -> int:
         return self.version
 
     def get(self) -> RuleSet:
-        return self.rule_set if self.rule_set is not None else RuleSet()
+        category_counts = tuple(r for r in self.rules.values() if isinstance(r, CategoryCountRule))
+        pins = tuple(r for r in self.rules.values() if isinstance(r, PinRule))
+        disabled_days = tuple(r.day for r in self.rules.values() if isinstance(r, DisabledDay))
+        return RuleSet(category_counts=category_counts, pins=pins, disabled_days=disabled_days)
 
-    def save(self, rule_set: RuleSet) -> int:
-        self.rule_set = rule_set
+    def save_rule(self, rule: Rule) -> int:
+        self.rules[rule_id(rule)] = rule
         self.version += 1
+        self.writes += 1
+        return self.version
+
+    def delete_rule(self, rule_id: str) -> int:
+        self.rules.pop(rule_id, None)
+        self.version += 1
+        self.writes += 1
         return self.version
 
 
@@ -299,3 +320,24 @@ class FakeArchiveRepository:
 
     def save(self, archived: ArchivedWeek) -> None:
         self.archives[archived.week] = archived
+
+
+@dataclass
+class FakeGenerationQueue:
+    """A `GenerationQueue` over a dict of stored records and a list of submissions.
+
+    `submissions` lets a test assert an idempotent hit enqueued nothing while a
+    fresh request enqueued exactly once (design.md section 9)."""
+
+    stored: dict[str, StoredGeneration] = field(default_factory=dict)
+    submissions: list[tuple[str, GenerationRequest]] = field(default_factory=list)
+
+    def stored_generation(self, idempotency_key: str) -> StoredGeneration | None:
+        return self.stored.get(idempotency_key)
+
+    def submit(self, idempotency_key: str, request: GenerationRequest) -> None:
+        # AP25: the hand-off writes a pending record, mirroring the SQS adapter.
+        self.submissions.append((idempotency_key, request))
+        self.stored.setdefault(
+            idempotency_key, StoredGeneration(idempotency_key=idempotency_key, status="pending")
+        )

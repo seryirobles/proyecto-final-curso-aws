@@ -1,5 +1,5 @@
-"""Source scans for the six persistence ports: no storage-technology leakage (R7),
-no AWS SDK import anywhere this feature touches (R10).
+"""Source scans for the persistence and hand-off ports: no storage-technology
+leakage (R7), no AWS SDK import anywhere this feature touches (R10).
 
 R7 and R10 are negative claims about a whole set of modules, so no single call
 site can prove either — only a scan of the sources can. Built to the same
@@ -27,6 +27,7 @@ PORT_MODULES = (
     CORE_SRC / "ports" / "rules.py",
     CORE_SRC / "ports" / "shopping_list.py",
     CORE_SRC / "ports" / "archive.py",
+    CORE_SRC / "ports" / "generation_queue.py",
 )
 FAKES_MODULE = TESTS_ROOT / "support" / "fakes.py"
 
@@ -73,7 +74,7 @@ def test_the_aws_sdk_pattern_detects_what_it_claims_to() -> None:
 
 
 def test_port_signatures_use_only_domain_and_stdlib_types() -> None:
-    """R7: every one of the six ports imports only stdlib or sibling planner_core modules."""
+    """R7: every port module imports only stdlib or sibling planner_core modules."""
     assert PORT_MODULES, "no port modules listed"
     for module in PORT_MODULES:
         assert module.is_file(), module
@@ -97,8 +98,12 @@ def test_port_signatures_use_only_domain_and_stdlib_types() -> None:
 
 
 def test_no_aws_sdk_import() -> None:
-    """R10: no port module, fake, or contract test names an AWS SDK."""
-    sources = [*PORT_MODULES, FAKES_MODULE, *sorted(CONTRACT_TESTS.rglob("*.py"))]
+    """R10: no port module, fake, or contract test names an AWS SDK.
+
+    `dynamo_contract.py` is exempt: it is the deliberate moto/boto3 bridge that
+    lets the real adapters run the fake-authored suites (design.md section 9)."""
+    contract_files = (p for p in CONTRACT_TESTS.rglob("*.py") if p.name != "dynamo_contract.py")
+    sources = [*PORT_MODULES, FAKES_MODULE, *sorted(contract_files)]
     assert FAKES_MODULE in sources
     assert any(path.name.endswith("_contract.py") or path.name == "conftest.py" for path in sources)
 
