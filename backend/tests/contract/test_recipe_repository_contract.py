@@ -3,13 +3,20 @@ implementation (R9)."""
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import pytest
 from planner_core.domain.ingredient_category import IngredientCategory
 from planner_core.domain.recipe import Recipe
-from planner_core.ports.recipes import LibraryRecipe, RecipeNotFound
+from planner_core.ports.recipes import LibraryRecipe, RecipeNotFound, RecipeRepository
 from support.fakes import FakeRecipeRepository
 
-IMPLEMENTATIONS = [FakeRecipeRepository]
+from tests.contract.dynamo_contract import dynamo_recipe_repository
+
+IMPLEMENTATIONS: list[Callable[[], RecipeRepository]] = [
+    FakeRecipeRepository,
+    dynamo_recipe_repository,
+]
 
 
 def _recipe(name: str = "Tortilla") -> Recipe:
@@ -19,7 +26,9 @@ def _recipe(name: str = "Tortilla") -> Recipe:
 
 
 @pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
-def test_save_then_get_and_list_round_trip(repository_factory: type[FakeRecipeRepository]) -> None:
+def test_save_then_get_and_list_round_trip(
+    repository_factory: Callable[[], RecipeRepository],
+) -> None:
     repo = repository_factory()
     entry = LibraryRecipe(id="r1", recipe=_recipe(), author="u1")
 
@@ -30,7 +39,7 @@ def test_save_then_get_and_list_round_trip(repository_factory: type[FakeRecipeRe
 
 
 @pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
-def test_save_overwrites_by_id(repository_factory: type[FakeRecipeRepository]) -> None:
+def test_save_overwrites_by_id(repository_factory: Callable[[], RecipeRepository]) -> None:
     repo = repository_factory()
     repo.save(LibraryRecipe(id="r1", recipe=_recipe("Tortilla"), author="u1"))
 
@@ -43,7 +52,7 @@ def test_save_overwrites_by_id(repository_factory: type[FakeRecipeRepository]) -
 
 @pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
 def test_delete_removes_the_entry_and_raises_when_missing(
-    repository_factory: type[FakeRecipeRepository],
+    repository_factory: Callable[[], RecipeRepository],
 ) -> None:
     repo = repository_factory()
     repo.save(LibraryRecipe(id="r1", recipe=_recipe(), author="u1"))
@@ -60,7 +69,7 @@ def test_delete_removes_the_entry_and_raises_when_missing(
 
 @pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
 def test_every_mutating_method_advances_the_marker_and_returns_the_new_value(
-    repository_factory: type[FakeRecipeRepository],
+    repository_factory: Callable[[], RecipeRepository],
 ) -> None:
     repo = repository_factory()
     entry = LibraryRecipe(id="r1", recipe=_recipe(), author="u1")
@@ -73,7 +82,7 @@ def test_every_mutating_method_advances_the_marker_and_returns_the_new_value(
 
 @pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
 def test_reads_leave_the_marker_unchanged(
-    repository_factory: type[FakeRecipeRepository],
+    repository_factory: Callable[[], RecipeRepository],
 ) -> None:
     repo = repository_factory()
     repo.save(LibraryRecipe(id="r1", recipe=_recipe(), author="u1"))
@@ -87,7 +96,7 @@ def test_reads_leave_the_marker_unchanged(
 
 @pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
 def test_two_successive_writes_both_apply_and_advance_the_marker_twice(
-    repository_factory: type[FakeRecipeRepository],
+    repository_factory: Callable[[], RecipeRepository],
 ) -> None:
     repo = repository_factory()
     entry = LibraryRecipe(id="r1", recipe=_recipe(), author="u1")

@@ -1,18 +1,23 @@
-"""Contract suite for AccountRepository: one suite, run against every registered
-implementation (R9). Today: the fake alone; a real adapter appends its factory
-later (design.md section 5)."""
+"""Contract suite for AccountRepository: one suite, run against the in-memory
+fake and the moto-backed DynamoDB adapter (docs/architecture.md section 3.2)."""
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import UTC, datetime
 
 import pytest
 from planner_core.domain.role import Role
 from planner_core.domain.username_policy import UsernameAlreadyTaken
-from planner_core.ports.accounts import AccountNotFound, AccountRecord
+from planner_core.ports.accounts import AccountNotFound, AccountRecord, AccountRepository
 from support.fakes import FakeAccountRepository
 
-IMPLEMENTATIONS = [FakeAccountRepository]
+from tests.contract.dynamo_contract import dynamo_account_repository
+
+IMPLEMENTATIONS: list[Callable[[], AccountRepository]] = [
+    FakeAccountRepository,
+    dynamo_account_repository,
+]
 
 VALID_SINCE = datetime(2026, 1, 1, tzinfo=UTC)
 
@@ -30,7 +35,7 @@ def _record(user_id: str, username: str) -> AccountRecord:
 
 @pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
 def test_create_then_get_by_id_and_get_by_username_round_trip(
-    repository_factory: type[FakeAccountRepository],
+    repository_factory: Callable[[], AccountRepository],
 ) -> None:
     repo = repository_factory()
     account = _record("u1", "Ana Perez")
@@ -43,7 +48,7 @@ def test_create_then_get_by_id_and_get_by_username_round_trip(
 
 @pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
 def test_create_raises_username_already_taken_on_folded_collision(
-    repository_factory: type[FakeAccountRepository],
+    repository_factory: Callable[[], AccountRepository],
 ) -> None:
     repo = repository_factory()
     repo.create(_record("u1", "Ana"))
@@ -54,7 +59,7 @@ def test_create_raises_username_already_taken_on_folded_collision(
 
 @pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
 def test_rename_releases_the_old_reservation(
-    repository_factory: type[FakeAccountRepository],
+    repository_factory: Callable[[], AccountRepository],
 ) -> None:
     repo = repository_factory()
     repo.create(_record("u1", "Ana"))
@@ -65,9 +70,15 @@ def test_rename_releases_the_old_reservation(
     repo.create(_record("u2", "Ana"))
     assert repo.get_by_id("u2") is not None
 
+    # The account row itself carries the new name — pins the `#nombreUsuario`
+    # alias target in the adapter's rename Update (docs/data_model.md 5.2).
+    renamed = repo.get_by_id("u1")
+    assert renamed is not None and renamed.username == "Beatriz"
+    assert repo.get_by_username("beatriz") == renamed
+
 
 @pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
-def test_update_credentials_round_trip(repository_factory: type[FakeAccountRepository]) -> None:
+def test_update_credentials_round_trip(repository_factory: Callable[[], AccountRepository]) -> None:
     repo = repository_factory()
     repo.create(_record("u1", "Ana"))
     new_valid_since = datetime(2026, 2, 1, tzinfo=UTC)
@@ -82,8 +93,8 @@ def test_update_credentials_round_trip(repository_factory: type[FakeAccountRepos
 
 
 @pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
-def test_revoke_credentials_advances_the_marker(
-    repository_factory: type[FakeAccountRepository],
+def test_revoke_credentials_sets_valido_desde(
+    repository_factory: Callable[[], AccountRepository],
 ) -> None:
     repo = repository_factory()
     repo.create(_record("u1", "Ana"))
@@ -97,7 +108,7 @@ def test_revoke_credentials_advances_the_marker(
 
 
 @pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
-def test_delete_removes_the_account(repository_factory: type[FakeAccountRepository]) -> None:
+def test_delete_removes_the_account(repository_factory: Callable[[], AccountRepository]) -> None:
     repo = repository_factory()
     repo.create(_record("u1", "Ana"))
 
@@ -108,7 +119,7 @@ def test_delete_removes_the_account(repository_factory: type[FakeAccountReposito
 
 @pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
 def test_operations_on_a_missing_user_raise_account_not_found(
-    repository_factory: type[FakeAccountRepository],
+    repository_factory: Callable[[], AccountRepository],
 ) -> None:
     repo = repository_factory()
 

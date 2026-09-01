@@ -3,6 +3,7 @@ implementation (R9)."""
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import date
 
 import pytest
@@ -10,9 +11,12 @@ from planner_core.domain.calendar import IsoWeek, MealSlot, SlotRef
 from planner_core.domain.candidate import Candidate, SlotContents
 from planner_core.domain.ingredient_category import IngredientCategory
 from planner_core.domain.recipe import MealSnapshot
+from planner_core.ports.weeks import WeekRepository
 from support.fakes import FakeWeekRepository
 
-IMPLEMENTATIONS = [FakeWeekRepository]
+from tests.contract.dynamo_contract import dynamo_week_repository
+
+IMPLEMENTATIONS: list[Callable[[], WeekRepository]] = [FakeWeekRepository, dynamo_week_repository]
 
 WEEK = IsoWeek(2026, 30)
 MONDAY = SlotRef(date(2026, 7, 20), MealSlot.LUNCH)
@@ -26,13 +30,13 @@ def _meal() -> MealSnapshot:
 
 @pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
 def test_get_week_returns_an_empty_mapping_for_an_unwritten_week(
-    repository_factory: type[FakeWeekRepository],
+    repository_factory: Callable[[], WeekRepository],
 ) -> None:
     assert repository_factory().get_week(WEEK) == {}
 
 
 @pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
-def test_save_slot_round_trip(repository_factory: type[FakeWeekRepository]) -> None:
+def test_save_slot_round_trip(repository_factory: Callable[[], WeekRepository]) -> None:
     repo = repository_factory()
     contents = SlotContents(candidates=(Candidate(id="c1", meal=_meal(), author="u1"),))
 
@@ -43,7 +47,7 @@ def test_save_slot_round_trip(repository_factory: type[FakeWeekRepository]) -> N
 
 @pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
 def test_save_week_overwrites_every_slot_at_once(
-    repository_factory: type[FakeWeekRepository],
+    repository_factory: Callable[[], WeekRepository],
 ) -> None:
     repo = repository_factory()
     repo.save_slot(WEEK, MONDAY, SlotContents(candidates=(Candidate("c1", _meal(), "u1"),)))
@@ -62,7 +66,7 @@ _CONTENTS = SlotContents(candidates=(Candidate(id="c1", meal=_meal(), author="u1
 
 @pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
 def test_every_mutating_method_advances_the_marker_and_returns_the_new_value(
-    repository_factory: type[FakeWeekRepository],
+    repository_factory: Callable[[], WeekRepository],
 ) -> None:
     repo = repository_factory()
 
@@ -74,7 +78,7 @@ def test_every_mutating_method_advances_the_marker_and_returns_the_new_value(
 
 @pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
 def test_reads_leave_the_marker_unchanged(
-    repository_factory: type[FakeWeekRepository],
+    repository_factory: Callable[[], WeekRepository],
 ) -> None:
     repo = repository_factory()
     repo.save_slot(WEEK, MONDAY, _CONTENTS)
@@ -87,7 +91,7 @@ def test_reads_leave_the_marker_unchanged(
 
 @pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
 def test_two_successive_writes_both_apply_and_advance_the_marker_twice(
-    repository_factory: type[FakeWeekRepository],
+    repository_factory: Callable[[], WeekRepository],
 ) -> None:
     repo = repository_factory()
 

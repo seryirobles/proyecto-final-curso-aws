@@ -1,71 +1,113 @@
 """Contract suite for RuleRepository: one suite, run against every registered
-implementation (R9)."""
+implementation. GQ3: per-rule writes keyed by natural id, no whole-RuleSet
+blob write. Feature 18's marker assertions carry over unchanged."""
 
 from __future__ import annotations
+
+from collections.abc import Callable
 
 import pytest
 from planner_core.domain.calendar import MealSlot
 from planner_core.domain.ingredient_category import IngredientCategory
-from planner_core.domain.rules import CategoryCountRule, PinRule, RuleSet
+from planner_core.domain.rules import CategoryCountRule, DisabledDay, PinRule, RuleSet, rule_id
+from planner_core.ports.rules import RuleRepository
 from support.fakes import FakeRuleRepository
 
-IMPLEMENTATIONS = [FakeRuleRepository]
+from tests.contract.dynamo_contract import dynamo_rule_repository
+
+IMPLEMENTATIONS: list[Callable[[], RuleRepository]] = [FakeRuleRepository, dynamo_rule_repository]
+
+CAT = CategoryCountRule(category=IngredientCategory.MEAT, count=2)
+PIN = PinRule(day=1, slot=MealSlot.LUNCH, recipe_id="r1")
 
 
 @pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
-def test_get_returns_an_empty_rule_set_before_any_save(
-    repository_factory: type[FakeRuleRepository],
+def test_get_returns_an_empty_rule_set_before_any_write(
+    repository_factory: Callable[[], RuleRepository],
 ) -> None:
     assert repository_factory().get() == RuleSet()
 
 
 @pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
-def test_save_then_get_round_trip(repository_factory: type[FakeRuleRepository]) -> None:
+def test_save_rule_then_get_reconstructs_the_set(
+    repository_factory: Callable[[], RuleRepository],
+) -> None:
     repo = repository_factory()
-    rule_set = RuleSet(
-        category_counts=(CategoryCountRule(category=IngredientCategory.MEAT, count=2),),
-        pins=(PinRule(day=1, slot=MealSlot.LUNCH, recipe_id="r1"),),
-        disabled_days=(7,),
-    )
+    repo.save_rule(CAT)
+    repo.save_rule(PIN)
+    repo.save_rule(DisabledDay(day=7))
 
-    repo.save(rule_set)
-
-    assert repo.get() == rule_set
-
-
-# --- change marker (FR-RT-01): R2, R4, R5, R8, R11 ---
+    assert repo.get() == RuleSet(category_counts=(CAT,), pins=(PIN,), disabled_days=(7,))
 
 
 @pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
-def test_save_advances_the_marker_and_returns_the_new_value(
-    repository_factory: type[FakeRuleRepository],
+def test_save_rule_replaces_by_natural_key(
+    repository_factory: Callable[[], RuleRepository],
+) -> None:
+    repo = repository_factory()
+    repo.save_rule(CategoryCountRule(category=IngredientCategory.MEAT, count=2))
+    repo.save_rule(CategoryCountRule(category=IngredientCategory.MEAT, count=3))
+
+    assert repo.get().category_counts == (
+        CategoryCountRule(category=IngredientCategory.MEAT, count=3),
+    )
+
+
+@pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
+def test_delete_rule_drops_the_item_by_id(
+    repository_factory: Callable[[], RuleRepository],
+) -> None:
+    repo = repository_factory()
+    repo.save_rule(PIN)
+
+    repo.delete_rule(rule_id(PIN))
+
+    assert repo.get() == RuleSet()
+
+
+@pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
+def test_the_port_retains_no_whole_rule_set_write(
+    repository_factory: Callable[[], RuleRepository],
+) -> None:
+    """R12 — save(RuleSet) is gone; only per-rule writes remain."""
+    assert not hasattr(repository_factory(), "save")
+
+
+# --- change marker (FR-RT-01): feature 18's assertions, retargeted ---
+
+
+@pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
+def test_each_mutation_advances_the_marker_and_returns_the_new_value(
+    repository_factory: Callable[[], RuleRepository],
 ) -> None:
     repo = repository_factory()
 
-    assert repo.save(RuleSet()) == 1  # R4, R5
+    assert repo.save_rule(CAT) == 1
     assert repo.current_version() == 1
+    assert repo.delete_rule("cat#meat") == 2
+    assert repo.current_version() == 2
 
 
 @pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
 def test_reads_leave_the_marker_unchanged(
-    repository_factory: type[FakeRuleRepository],
+    repository_factory: Callable[[], RuleRepository],
 ) -> None:
     repo = repository_factory()
-    repo.save(RuleSet())
+    repo.save_rule(CAT)
 
     repo.get()
     repo.current_version()
 
-    assert repo.current_version() == 1  # R2
+    assert repo.current_version() == 1
 
 
 @pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
 def test_two_successive_writes_both_apply_and_advance_the_marker_twice(
-    repository_factory: type[FakeRuleRepository],
+    repository_factory: Callable[[], RuleRepository],
 ) -> None:
     repo = repository_factory()
 
-    first = repo.save(RuleSet())
-    second = repo.save(RuleSet())  # no raise: last-write-wins (R8)
+    first = repo.save_rule(CAT)
+    second = repo.save_rule(PIN)  # no raise: last-write-wins per rule
 
-    assert (first, second) == (1, 2)  # R11
+    assert (first, second) == (1, 2)
