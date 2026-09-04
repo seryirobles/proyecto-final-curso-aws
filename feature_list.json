@@ -549,7 +549,7 @@
         "The new use cases live in planner_core/application/ and take only ports and plain values - no HTTP, event or AWS type in any signature (architecture.md section 3.1 rule 2, conventions.md thin-handler rule)"
       ],
       "sdd": true,
-      "status": "in_progress"
+      "status": "done"
     }
   ]
 }
