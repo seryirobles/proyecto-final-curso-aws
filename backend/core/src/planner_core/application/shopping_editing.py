@@ -30,9 +30,19 @@ class ResyncOutcome:
     marker: int | None
 
 
-def list_shopping(*, shopping: ShoppingListRepository) -> tuple[ShoppingItem, ...]:
-    """AP18."""
-    return shopping.list_items()
+@dataclass(frozen=True)
+class ShoppingView:
+    """AP18 read: the shopping-list items plus its change marker (R34), marker
+    read before the payload (R35)."""
+
+    items: tuple[ShoppingItem, ...]
+    marker: int
+
+
+def list_shopping(*, shopping: ShoppingListRepository) -> ShoppingView:
+    """AP18 — the shopping-list items and its marker, marker read first."""
+    marker = shopping.current_version()  # marker before payload (R35)
+    return ShoppingView(items=shopping.list_items(), marker=marker)
 
 
 def save_item(item: ShoppingItem, *, shopping: ShoppingListRepository) -> int:

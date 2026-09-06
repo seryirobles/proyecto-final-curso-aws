@@ -10,9 +10,10 @@ R7 — no mutating port method accepts a caller-supplied expected-marker value,
 so the marker can never become a `ConditionExpression` (G-88). Feature 27
 extends R7 to the real adapters: no adapter names `marcaCambio` in a write's
 `ConditionExpression` (design.md section 6).
-R12 — the marker name stays inside the four port modules on the `planner_core`
-side; the only other place it may appear is the DynamoDB adapters, which
-implement it (feature 27).
+R12 — the marker name stays inside its permitted `planner_core` modules: the
+four ports plus the four `application/*_editing.py` read services (feature 27
+R34/R35, design.md section 6). The only Lambda-side place it may appear is the
+DynamoDB adapters, which implement it (feature 27).
 """
 
 from __future__ import annotations
@@ -31,6 +32,19 @@ PORT_MODULES = (
     CORE_SRC / "ports" / "rules.py",
     CORE_SRC / "ports" / "shopping_list.py",
 )
+
+# The four pollable read services name the marker only to read it before their
+# payload, never as a write precondition (feature 27 R34/R35; design.md
+# section 6). Pinned by test_the_permitted_marker_modules_are_pinned.
+READ_SERVICE_MODULES = (
+    CORE_SRC / "application" / "week_editing.py",
+    CORE_SRC / "application" / "library_editing.py",
+    CORE_SRC / "application" / "rule_editing.py",
+    CORE_SRC / "application" / "shopping_editing.py",
+)
+
+# Every `planner_core` module allowed to name the marker (design.md section 6).
+PERMITTED_MARKER_MODULES = frozenset(PORT_MODULES) | frozenset(READ_SERVICE_MODULES)
 
 LAMBDA_SRC_ROOTS = (
     BACKEND_ROOT / "lambda_api" / "src",
@@ -149,9 +163,27 @@ def test_the_marker_name_pattern_detects_what_it_claims_to() -> None:
     assert not MARKER_NAME.search("    def save(self, entry: LibraryRecipe) -> int: ...")
 
 
-def test_the_change_marker_stays_inside_the_four_port_modules() -> None:
-    """R12: on the `planner_core` side only the four ports reference the marker;
-    the only Lambda-side exception is the DynamoDB adapters, which implement it."""
+def test_the_permitted_marker_modules_are_pinned() -> None:
+    """Pin the read-service exemption to exactly the four named files (design.md
+    section 6) so a glob- or directory-based widening of `READ_SERVICE_MODULES`
+    cannot loosen the scan without this test."""
+    read_services = {
+        CORE_SRC / "application" / name
+        for name in (
+            "week_editing.py",
+            "library_editing.py",
+            "rule_editing.py",
+            "shopping_editing.py",
+        )
+    }
+    assert set(READ_SERVICE_MODULES) == read_services
+    assert PERMITTED_MARKER_MODULES <= frozenset(PORT_MODULES) | read_services
+
+
+def test_the_change_marker_stays_inside_its_permitted_modules() -> None:
+    """R12: on the `planner_core` side the marker name appears only in the four
+    ports and the four `application/*_editing.py` read services (design.md
+    section 6); the only Lambda-side exception is the DynamoDB adapters."""
     scanned = sorted(CORE_SRC.rglob("*.py"))
     for root in LAMBDA_SRC_ROOTS:
         assert root.is_dir(), root
@@ -159,11 +191,10 @@ def test_the_change_marker_stays_inside_the_four_port_modules() -> None:
 
     assert CORE_SRC / "application" / "live_weeks.py" in scanned
     assert ADAPTERS_ROOT.is_dir(), ADAPTERS_ROOT
-    permitted = set(PORT_MODULES)
     offenders = [
         detail
         for path, detail in _marker_hits(scanned)
-        if path not in permitted and ADAPTERS_ROOT not in path.parents
+        if path not in PERMITTED_MARKER_MODULES and ADAPTERS_ROOT not in path.parents
     ]
     assert offenders == []
 

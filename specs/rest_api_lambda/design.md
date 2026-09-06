@@ -48,6 +48,19 @@ serialization, marker-emission, scheduled-entry tests.
 
 Nothing under `backend/core/` is modified by this feature.
 
+**Reopened 2026-09-06 (bundled with feature 27):**
+
+- `routing.py` gains a `DELETE /v1/generations/{generationId}` route (`R42`):
+  the handler calls `deps.queue.discard(path["generationId"])` directly — the
+  same direct-port pattern as `_get_generation` for `AP26`, with no `application`
+  use case and no `generation_submission` involvement — and returns `204` with
+  no `ETag`. Closes spec-gap 4.
+- `adapters/markers.py` (the spec-gap 2 forwarding shim) is **deleted**.
+  Feature 27's four read use cases now return the `marcaCambio` in their result
+  DTO (feature 27 `R34`); `routing.py` reads it from there. No name
+  `current_version` then appears in `lambda_api/src` outside the real adapters,
+  so the feature-18 guard passes without leaning on the directory exemption.
+
 ## 3. The authorizer (`R6`–`R13`, `contract` §5)
 
 - `authorizer.py` is a separate Lambda handler function in the same package
@@ -83,6 +96,13 @@ returns and set it as a strong `ETag`; mutation handlers set the `ETag` to the
 value the write returned (feature 18's version-returning writes, surfaced
 through feature 27's services). `Cache-Control: no-store` is set once, in
 `handler.py`'s response builder, on every response including errors.
+
+Reopened 2026-09-06: the read-service marker is now a field of feature 27's
+read-use-case result DTO (feature 27 `R34`, marker read first) — the
+first-round `adapters/markers.py` shim is deleted. Generation routes
+(`GET`/`DELETE /v1/generations/{generationId}`) carry **no** `ETag`:
+`PETICIONIA#` has no `MarcaCambio` (`contract` §2, §6). `DELETE` there returns
+`204 No Content` (`R42`).
 
 ## 6. What is feature 21 (IaC), not here
 
@@ -144,8 +164,11 @@ from the job path and lets them scale and fail independently. Rejected:
 - **Errors**: each `contract` §4 row → status + `code` + `detail` is the
   `messages` constant verbatim; malformed → 400; unmapped → 500 no traceback
   (`R14`–`R21`, `R24`, `R25`).
-- **Markers**: pollable `200` carries `ETag` = the service's marker; mutation
-  response carries the write's returned marker; `no-store` always (`R28`–`R30`).
+- **Markers**: pollable `200` carries `ETag` = the marker on the read-use-case
+  result DTO (feature 27 `R34`); mutation response carries the write's returned
+  marker; `no-store` always (`R28`–`R30`). A source scan asserts no
+  `current_version` literal in `lambda_api/src` outside the real adapters
+  (`markers.py` is gone).
 - **Session**: cookie attribute string exact match; token absent from every
   response body; logout emits `Max-Age=0` (`R1`, `R3`, `R4`, `R5`).
 - **Scheduled entry**: invoking twice = one effect against fakes; not in the
@@ -155,5 +178,8 @@ from the job path and lets them scale and fail independently. Rejected:
 - **Generation**: `POST /v1/generations` calls `FakeGenerationQueue.send`;
   stored-`idPeticionIA` hit returns 200 without a send; import-scan test —
   `planner_api` imports no `bedrock`/AI SDK module (`R35`–`R37`).
+  `DELETE /v1/generations/{generationId}` calls `GenerationQueue.discard` with
+  the path segment as the key and returns `204` with no `ETag`; the route table
+  test now lists `AP27` as routed (`R42`).
 - **Serialization**: camelCase round-trips; `author`/`id` in a request body →
   400 (`R38`, `R39`).

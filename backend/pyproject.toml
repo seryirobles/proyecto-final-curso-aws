@@ -42,3 +42,8 @@ markers = [
     "aws: marks tests that hit real AWS services; deselected by default (see docs/verification.md)",
 ]
 addopts = "-m \"not aws\""
+# Lets lambda_api's tests `from support.fakes import ...` without a second
+# conftest.py named "conftest" (mypy treats same-named rootless test dirs as
+# a module clash; core/tests/conftest.py already does this insertion for
+# core's own tests, and this reuses the same target, feature 16 design.md).
+pythonpath = ["core/tests"]

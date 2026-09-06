@@ -36,6 +36,13 @@ def test_delete_recipe_outcome_is_frozen() -> None:
         outcome.__setattr__("marker", 2)
 
 
+def test_library_view_is_frozen() -> None:
+    """docs/conventions.md: every new frozen dataclass gets this test."""
+    view = library_editing.LibraryView(entries=(), marker=1)
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        view.__setattr__("marker", 2)
+
+
 def test_save_recipe_returns_marker_and_duplicate_warning() -> None:
     recipes = FakeRecipeRepository()
 
@@ -98,5 +105,5 @@ def test_delete_of_an_unpinned_recipe_needs_no_confirmation() -> None:
 def test_list_library_reads_without_writing() -> None:
     recipes = FakeRecipeRepository()
     recipes.save(_entry("r1"))
-    assert library_editing.list_library(recipes=recipes) == (_entry("r1"),)
+    assert library_editing.list_library(recipes=recipes).entries == (_entry("r1"),)
     assert recipes.current_version() == 1

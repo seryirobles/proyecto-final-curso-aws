@@ -359,7 +359,7 @@
         "SCOPE: the DynamoDB adapters, the GenerationQueue SQS adapter, the new planner_core application use cases and the RuleRepository save_rule/delete_rule change are feature 27 rest_api_persistence_and_services, which this feature depends on"
       ],
       "sdd": true,
-      "status": "spec_ready"
+      "status": "in_progress"
     },
     {
       "id": 17,

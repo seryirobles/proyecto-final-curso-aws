@@ -46,6 +46,8 @@ a dev dependency for adapter tests.
 with `save_rule` / `delete_rule` (§3).
 
 **`backend/core/src/planner_core/ports/generation_queue.py`** — new port.
+Reopened 2026-09-06: add `discard(idempotency_key: str) -> None` (`R31`, `R33`)
+as a sibling of `stored_generation` / `submit` — absent-key discard is a no-op.
 
 **`backend/core/src/planner_core/domain/rules.py`** — add `DisabledDay`; add the
 `rule_id` derivation helper.
@@ -59,8 +61,20 @@ with `save_rule` / `delete_rule` (§3).
 Reads (`AP8`, `AP14`, `AP18`, `AP22`, live-weeks) reuse the existing
 `application.live_weeks` and add thin read services as needed.
 
+Reopened 2026-09-06 (`R34`, `R35`): the four pollable read services —
+`week_editing.load_week`, `library_editing.list_library`,
+`rule_editing.read_rules`, `shopping_editing.list_shopping` — each return a
+small frozen result object carrying the resource data **and** `marker: int`
+(same domain as `current_version`), read marker-first. This deletes feature
+16's `adapters/markers.py` workaround (that feature's `routing.py` reads the
+marker off the DTO instead). `GET /v1/weeks/{weekId}/summary` is a
+definitive-only serialization projection of `load_week`'s result (`contract`
+§2 — "no new access pattern"), so it needs no separate use case and shares the
+week marker.
+
 **`backend/core/tests/support/fakes.py`** — `FakeRuleRepository` gains
-`save_rule`/`delete_rule`; add `FakeGenerationQueue`.
+`save_rule`/`delete_rule`; add `FakeGenerationQueue` (reopened 2026-09-06: it
+also gains the discard op — drop the key, missing key = no-op).
 
 **`backend/tests/contract/test_rule_repository_contract.py`** — retarget to the
 new methods (feature 18's marker assertions carry over unchanged); register the
@@ -109,6 +123,20 @@ item.
 The small TOCTOU window between two concurrent per-rule edits is accepted
 (`contract` §7 Q5 consequence i — "acceptable at 2–10 users").
 
+### 3a. Generation discard (`R31`–`R33`, reopened 2026-09-06)
+
+`AP27` (`DELETE /v1/generations/{generationId}`) had no port method — feature
+16's implementer flagged it as feature 27's territory (spec-gap 4). The
+`{generationId}` path segment **is** the `idPeticionIA` (the contract keys
+`AP26`'s `GET` on the same segment), so it maps straight to the port's
+idempotency-key argument with no id translation. `discard(idempotency_key: str)
+-> None` is a sibling of `stored_generation` / `submit`; it is idempotent —
+discarding an absent record is a no-op, matching `HTTP DELETE` semantics and
+DynamoDB `DeleteItem`'s natural behaviour. No `application` use case wraps it:
+feature 16's handler calls `deps.queue.discard(...)` directly, exactly as the
+`AP26` `GET` side already calls `stored_generation` (`routing.py:_get_generation`).
+`generation_submission` is not involved.
+
 ## 4. New application use cases — why they belong in `core`, not the handler
 
 `conventions.md`: the handler is thin, "call **one** application use case".
@@ -146,13 +174,24 @@ keeps the per-item bump feature 18 accepted as correct-but-not-optimal.
   `ADD marcaCambio 1` on that partition's `MARCA` item, and returns the resulting
   value (`R6`) — the same shape `AP4` already uses for the username reservation
   (`data_model.md` §5.1/§5.2). No `ConditionExpression` ever names `marcaCambio`
-  (`R7`); the existing feature-18 scan test extends to the adapters.
+  (`R7`); the existing feature-18 scan test extends to the adapters. Its R12
+  guard (`test_change_marker_is_not_a_write_condition.py`,
+  `test_the_change_marker_stays_inside_its_permitted_modules`) is also relaxed:
+  the permitted set adds the four `application/*_editing.py` read-service modules,
+  which must call `current_version()` in the use case to satisfy `R34`/`R35`.
+  The R7 write-precondition scans (`_expected_version_offenders`, the adapter
+  `ConditionExpression` scan, their self-checks) are untouched — the relaxation
+  is narrow and read-only. Owner-approved 2026-09-06 (reviewer finding F4).
 - `current_version` is a `GetItem` with `ConsistentRead=True` and
   `ProjectionExpression=marcaCambio`, returning `0` before any write (`R8`).
 - `ShoppingListRepository.acquire_lock` compares `ttl` itself rather than relying
   on DynamoDB TTL deletion, which is not prompt (`data_model.md` §5.3).
 - `delete_checked_items` with nothing checked stays a no-op and does **not** bump
   (feature 18's contract assertion carries over to the real adapter, `R4`).
+- `SqsGenerationQueue.discard` (`R32`, `R33`) issues an **unconditional**
+  `DeleteItem` on `PETICIONIA#<hash> / METADATA` — no `ConditionExpression`
+  (`attribute_exists`), so an absent key succeeds silently. `FakeGenerationQueue`
+  drops the key from its dict and treats a missing key as a no-op.
 
 ## 7. Items raised at the spec gate
 
@@ -185,6 +224,9 @@ The real adapter and the `FR-ARCH-02` shopping-list-snapshot item type are
 
 ## 8. Rejected alternatives
 
+*Three from the original design (the `RuleRepository` change); one from the
+2026-09-06 reopening (the read-marker plumbing).*
+
 **Keep `save(RuleSet)`; the api adapter does load-modify-write-whole-set.**
 Matches today's port with no `core` change. Rejected: `contract` §7 Q5 already
 ruled per-rule endpoints, and a whole-set write makes `FR-RT-02` last-write-wins
@@ -204,6 +246,20 @@ Lambda package).** Would make this feature a single package and remove the
 `application/`, and orchestration in the Lambda package would be untestable
 without the transport and unreachable from `lambda_ai`, which needs the same
 week-writing path (`FR-AI-09` constraint, feature 17 acceptance item 5).
+
+**Keep feature 16's `adapters/markers.py` forwarding shim; leave the read use
+cases marker-free.** Smaller diff — no read-DTO change, no feature-16 caller
+churn. Rejected: the shim puts a marker-read concern in the Lambda package that
+the feature-18 guard (`test_change_marker_is_not_a_write_condition.py`) tolerates
+only by a directory accident, and the `contract` §6 "read the marker first"
+ordering has to live wherever the two reads are composed — which is the use
+case, not the transport. Returning the marker from the read service is where it
+belongs. Accepted cost (owner-approved 2026-09-06, reviewer finding F4): the
+feature-18 R12 guard's permitted set gains the four `application/*_editing.py`
+read modules; the R7 write-precondition scans stay as-is. (The parallel choice
+for the discard — handler calls the port directly,
+no `generation_discard` use case — is covered in §3a: the `AP26` `GET` side
+already does exactly that, and there is no orchestration to wrap.)
 
 ## 9. Test strategy (feeds `tasks.md`)
 
@@ -233,3 +289,11 @@ week-writing path (`FR-AI-09` constraint, feature 17 acceptance item 5).
 - **Generation**: `generation_submission` derives the same `idPeticionIA` twice
   for the same input; stored-result hit calls `FakeGenerationQueue` zero times;
   fresh request calls it once (`R25`–`R28`).
+- **Generation discard** (`R31`–`R33`): contract-suite case parametrized over
+  fake + `moto` adapter — `submit` then discard then `stored_generation` returns
+  `None`; discard of a never-submitted key does not raise; a scan confirms the
+  adapter's discard carries no `ConditionExpression`.
+- **Read markers** (`R34`, `R35`): each read service returns `marker` equal to
+  the port's `current_version()`; a spy fake asserts `current_version` is
+  invoked before the payload read; each new frozen result object has its own
+  frozen-instance test (`docs/conventions.md`).

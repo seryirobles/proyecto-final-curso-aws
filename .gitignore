@@ -20,6 +20,7 @@ dist/
 .coverage
 htmlcov/
 .scannerwork/
+.codegraph/
 
 # Harness
 .harness-init.log

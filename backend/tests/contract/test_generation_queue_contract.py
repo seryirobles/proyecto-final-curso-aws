@@ -3,6 +3,7 @@ SQS + PETICIONIA adapter agree on the idempotency-record surface (FR-AI-08)."""
 
 from __future__ import annotations
 
+import inspect
 from collections.abc import Callable
 
 import pytest
@@ -70,3 +71,34 @@ def test_resubmit_never_clobbers_a_stored_result(
     queue.submit("hash-1", REQUEST)
 
     assert queue.stored_generation("hash-1") == StoredGeneration("hash-1", "done", '{"ok": true}')
+
+
+@pytest.mark.parametrize("queue_factory", IMPLEMENTATIONS)
+def test_discard_removes_a_stored_record(
+    queue_factory: Callable[[], GenerationQueue],
+) -> None:
+    """R31/R32 (AP27) — submit then discard leaves no stored record."""
+    queue = queue_factory()
+    queue.submit("hash-1", REQUEST)
+
+    queue.discard("hash-1")
+
+    assert queue.stored_generation("hash-1") is None
+
+
+@pytest.mark.parametrize("queue_factory", IMPLEMENTATIONS)
+def test_discard_of_an_unknown_id_does_not_raise(
+    queue_factory: Callable[[], GenerationQueue],
+) -> None:
+    """R33 — an unconditional DeleteItem; an absent key succeeds silently."""
+    queue_factory().discard("never-stored")
+
+
+def test_the_sqs_discard_passes_no_condition_expression() -> None:
+    """R32/R33 — the adapter's discard is an unconditional DeleteItem, so an
+    absent key succeeds silently."""
+    from planner_api.adapters.sqs import SqsGenerationQueue
+
+    source = inspect.getsource(SqsGenerationQueue.discard)
+    code = "".join(line.split("#", 1)[0] for line in source.splitlines())
+    assert "ConditionExpression" not in code

@@ -40,3 +40,8 @@ class GenerationQueue(Protocol):
         """Hand the request off for processing under this id (AP25 + enqueue).
         Only called when stored_generation returned None."""
         ...
+
+    def discard(self, idempotency_key: str) -> None:
+        """Discard the stored generation record for this id (AP27). A no-op when
+        no record exists — HTTP DELETE idempotency (docs/data_model.md section 4)."""
+        ...

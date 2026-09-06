@@ -79,7 +79,7 @@
       `test_the_expected_version_scan_catches_a_planted_parameter`
       parsing an inline mutant. Covers: R7.
 - [x] T14 — same file:
-      `test_the_change_marker_stays_inside_the_four_port_modules` — regex
+      `test_the_change_marker_stays_inside_its_permitted_modules` — regex
       over every `planner_core/**/*.py` and `lambda_api` / `lambda_ai`
       `src/**/*.py`, assert the only hits are `weeks.py`, `recipes.py`,
       `rules.py`, `shopping_list.py`; plus a pattern self-test

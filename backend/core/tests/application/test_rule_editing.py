@@ -3,6 +3,8 @@ write, unsatisfiable never writes (R15, R16, R17, R29)."""
 
 from __future__ import annotations
 
+import dataclasses
+
 import pytest
 from support.fakes import FakeRuleRepository
 
@@ -52,7 +54,14 @@ def test_delete_rule_writes_and_returns_the_marker() -> None:
     assert repo.get() == RuleSet()
 
 
+def test_rules_view_is_frozen() -> None:
+    """docs/conventions.md: every new frozen dataclass gets this test."""
+    view = rule_editing.RulesView(rule_set=RuleSet(), marker=1)
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        view.__setattr__("marker", 2)
+
+
 def test_read_rules_returns_the_shared_set() -> None:
     repo = FakeRuleRepository()
     rule_editing.save_rule(PIN, rules=repo)
-    assert rule_editing.read_rules(rules=repo) == RuleSet(pins=(PIN,))
+    assert rule_editing.read_rules(rules=repo).rule_set == RuleSet(pins=(PIN,))

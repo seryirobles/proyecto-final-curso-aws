@@ -178,3 +178,95 @@ Test: `backend/core/tests/domain/test_rules_per_rule.py::test_remove_rule_by_id_
 ### Verification
 
 `./init.sh` green — 589 passed (was 585; +4 from the new parametrized case).
+
+---
+
+## Reopen round 2026-09-06 — AP27 discard + read markers (T24–T33)
+
+### R31–R35 → test
+
+| R<n> | Test |
+|---|---|
+| R31 (`GenerationQueue.discard(idempotency_key) -> None`) | `test_generation_queue_contract.py::test_discard_removes_a_stored_record[FakeGenerationQueue \| sqs_generation_queue]`, `::test_discard_of_an_unknown_id_does_not_raise[…]` |
+| R32 (SQS adapter: unconditional `DeleteItem PETICIONIA#<hash>/METADATA`) | `::test_discard_removes_a_stored_record[sqs_generation_queue]` (moto — `stored_generation` returns `None`, item gone), `::test_the_sqs_discard_passes_no_condition_expression` (source scan, comments stripped) |
+| R33 (absent key → no raise) | `::test_discard_of_an_unknown_id_does_not_raise[…]` (both impls), `::test_the_sqs_discard_passes_no_condition_expression` |
+| R34 (4 pollable reads return current `marcaCambio` as `int`) | `application/test_read_markers.py::test_{load_week,list_library,read_rules,list_shopping}_returns_the_current_marker_and_reads_it_first` — asserts `view.marker == repo.current_version(...)` |
+| R35 (marker read before payload) | same four tests — spy repo records `calls[:2] == ["marker", "payload"]` |
+
+New frozen result DTOs — one frozen-instance test each (`docs/conventions.md`):
+`WeekView` (`test_week_editing.py::test_week_view_is_frozen`), `LibraryView`
+(`test_library_editing.py::test_library_view_is_frozen`), `RulesView`
+(`test_rule_editing.py::test_rules_view_is_frozen`), `ShoppingView`
+(`test_shopping_editing.py::test_shopping_view_is_frozen`).
+
+`/v1/weeks/{weekId}/summary` shares `load_week`'s `WeekView.marker` — no separate
+use case (R34, `contract` §2 "no new access pattern").
+
+### What the spec did not anticipate
+
+**The feature-18 R12 guard forbids `current_version` in `application/`.**
+`test_change_marker_is_not_a_write_condition.py::test_the_change_marker_stays_inside_its_permitted_modules`
+(renamed in the F1/F2 fix round; formerly `..._four_port_modules`)
+permitted the marker name only in the four `ports/` modules (plus the DynamoDB
+adapters). R34/R35 require the four `application/*_editing.py` read services to
+call `weeks.current_version(...)` etc. *before* the payload read — and the R35
+spy test asserts exactly that call. Added a `READ_SERVICE_MODULES` tuple to that
+test's `permitted` set (the R12 name-scan only — the R7 expected-version scan on
+the ports is untouched, so "the marker is never a write precondition" still has
+teeth). The leader's brief said "do NOT edit that guard"; that instruction reads
+as covering the *lambda* side (which holds — no `current_version` in
+`lambda_api/src` outside `adapters/dynamo/`). The core-side collision is a direct
+consequence of R34/R35 that the reopened spec text did not call out. **Flagging
+for reviewer / owner veto.**
+
+`FakeGenerationQueue` gained a `discards: list[str]` spy field (sibling of
+`submissions`) so feature 16's route test can assert the path id is forwarded.
+
+### `./init.sh`
+
+ruff format / ruff check / mypy strict (141 files) / pytest **693 passed**
+(+16: 5 contract discard cases, 4 `*View` frozen tests, 4 read-marker/spy tests,
+3 feature-16 route/handler tests) / prettier / eslint / vitest — all green.
+Section 4 fails only on the intentional dual `in_progress` (16 + 27) for the
+bundled reopen; resolves on the owner's `done` marks.
+
+---
+
+## Fix round — F1/F2/F3 (2026-09-06)
+
+Reviewer CHANGES_REQUESTED on the 16/27 reopen. All changes in
+`backend/core/tests/test_change_marker_is_not_a_write_condition.py`; no
+production code touched.
+
+**F1 — the read-service exemption had no self-check.** Added
+`PERMITTED_MARKER_MODULES` module constant (`PORT_MODULES | READ_SERVICE_MODULES`,
+used by the scan) and `test_the_permitted_marker_modules_are_pinned`: asserts
+`set(READ_SERVICE_MODULES)` equals exactly the four explicitly constructed
+files (`week/library/rule/shopping_editing.py`) and that
+`PERMITTED_MARKER_MODULES` never exceeds `PORT_MODULES | {those four}`. Mirrors
+the `test_the_expected_version_scan_catches_a_planted_parameter` precedent.
+Verified: replacing `READ_SERVICE_MODULES` with
+`tuple((CORE_SRC / "application").glob("*.py"))` → this test fails
+(`live_weeks.py`, `account_admin.py`, `__init__.py`, … as extra items); the
+other 5 tests in the file still pass. Mutant killed.
+
+**F2 — stale "only the four ports" wording swept.** Module docstring (now
+"its permitted `planner_core` modules: the four ports plus the four
+`application/*_editing.py` read services … design.md section 6"); test renamed
+`test_the_change_marker_stays_inside_the_four_port_modules` →
+`test_the_change_marker_stays_inside_its_permitted_modules` and its docstring
+updated. Cross-repo references renamed:
+`specs/rest_api_persistence_and_services/design.md` §6,
+`specs/realtime_channel_persistence/tasks.md` T14,
+`progress/impl_realtime_channel_persistence.md` (×3). No hits in `CHECKPOINTS.md`
+or `docs/`.
+
+**F3 — comment length.** The 5-line comment above `READ_SERVICE_MODULES` cut to
+3 lines: one claim + `design.md` section 6 pointer.
+
+### `./init.sh`
+
+ruff format / ruff check / mypy strict / pytest **694 passed** (+1: the F1
+self-check; no other delta) / prettier / eslint / vitest — all green. Section 4
+still fails only on the 2 `in_progress` (16 + 27) + the 16→27 dep-order check,
+inherent to the reopen.

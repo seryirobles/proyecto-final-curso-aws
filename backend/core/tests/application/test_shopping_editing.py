@@ -47,6 +47,13 @@ def test_resync_outcome_is_frozen() -> None:
         outcome.__setattr__("marker", 1)
 
 
+def test_shopping_view_is_frozen() -> None:
+    """docs/conventions.md: every new frozen dataclass gets this test."""
+    view = shopping_editing.ShoppingView(items=(), marker=1)
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        view.__setattr__("marker", 2)
+
+
 def test_resync_appends_the_outstanding_item_and_returns_the_write_marker() -> None:
     weeks = _week_with_rice(500)
     shopping = FakeShoppingListRepository()

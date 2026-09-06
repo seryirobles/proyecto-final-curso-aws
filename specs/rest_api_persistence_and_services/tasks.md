@@ -77,3 +77,34 @@
 - [x] T23 — `progress/impl_rest_api_persistence_and_services.md`: traceability
   table (`R<n>` → test), test result, anything `data_model.md` did not
   anticipate.
+
+## Reopened 2026-09-06 — AP27 discard + read markers
+
+- [x] T24 — `ports/generation_queue.py`: add `discard(idempotency_key: str) ->
+  None` to the `GenerationQueue` `Protocol` (no queue tech in the signature;
+  absent-key discard is a no-op). Covers: R31, R33.
+- [x] T25 — `adapters/sqs.py`: implement `discard` as an unconditional
+  `DeleteItem PETICIONIA#<hash> / METADATA` — no `ConditionExpression`. Covers:
+  R32, R33.
+- [x] T26 — `backend/core/tests/support/fakes.py`: `FakeGenerationQueue` gains
+  `discard` (drop the key; missing key = no-op). Covers: R31, R33.
+- [x] T27 — `backend/tests/contract/test_generation_queue_contract.py`: submit →
+  `discard` → `stored_generation` returns `None`; `discard` of a never-submitted
+  key does not raise; scan asserts no `ConditionExpression` on the `discard`
+  path (parametrized fake + moto adapter). Covers: R31, R32, R33.
+- [x] T28 — `application/week_editing.load_week`: return a frozen result with the
+  slot map and the week `marcaCambio`, marker read first; update callers/tests.
+  Covers: R34, R35.
+- [x] T29 — `application/library_editing.list_library`: return a frozen result
+  with the entries and the library `marcaCambio`, marker first. Covers: R34, R35.
+- [x] T30 — `application/rule_editing.read_rules`: return a frozen result with
+  the `RuleSet` and the rules `marcaCambio`, marker first. Covers: R34, R35.
+- [x] T31 — `application/shopping_editing.list_shopping`: return a frozen result
+  with the items and the shopping-list `marcaCambio`, marker first. Covers: R34,
+  R35.
+- [x] T32 — Read-service tests: returned marker equals the port's
+  `current_version()`; a spy fake asserts `current_version` runs before the
+  payload read; a frozen-instance test per new result object. Covers: R34, R35.
+- [x] T33 — Full test pass per `design.md` §9; `./init.sh` green; update
+  `progress/impl_rest_api_persistence_and_services.md` traceability. Covers: all
+  reopened `R<n>`.

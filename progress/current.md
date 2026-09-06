@@ -3,10 +3,288 @@
 > This file is emptied when each session closes and moved to `history.md`.
 > While you work, **keep it updated in real time**, not at the end.
 
-- **Feature in progress:** 27 `rest_api_persistence_and_services` — **reviewer
-  APPROVED**, awaiting owner `done` + commit
-- **Started:** 2026-08-31
-- **Agent:** _none running_ — feature 16 (`spec_ready`) starts once 27 is closed
+- **Feature in progress:** 16 `rest_api_lambda` — spec already owner-approved,
+  status flipped `spec_ready` -> `in_progress`
+- **Started:** 2026-09-04
+- **Agent:** `implementer` launching on `specs/rest_api_lambda/`
+
+## 2026-09-04 — feature 27 closed, feature 16 opened
+
+Owner committed `600765e` (feature 27 -> `done`). Per the Next-step note left
+2026-09-01, that unblocks feature 16 (`depends_on: [14, 27]`, both `done`).
+Leader flipped feature 16 to `in_progress` and launched `implementer` against
+`specs/rest_api_lambda/{requirements.md, design.md, tasks.md}`.
+
+**Implementer done 2026-09-04.** All tasks ticked. `./init.sh` green (leader
+re-ran independently) — 674 tests (+85), ruff/mypy/frontend clean. Report at
+`progress/impl_rest_api_lambda.md`: R1–R41 -> test traceability table, every
+new frozen dataclass has its own frozen-instance test, 5 spec-gap notes
+(chief: `messages.py` gained 18 new Spanish constants for exceptions that
+previously carried no message string; `DELETE /v1/generations/{id}` (AP27)
+has no route — `GenerationQueue` port exposes no delete method, flagged as
+feature 27's territory, not fixed here). Awaiting `reviewer`.
+
+## Reviewer run 1 — feature 16 — CHANGES_REQUESTED (2026-09-04)
+
+6 findings, **3 mutants survived** (13 planted). Tree restored, `./init.sh`
+re-run green (674 tests).
+
+**Required (fix round):**
+1. **R26/AP27** — `DELETE /v1/generations/{generationId}` is a real contract
+   route (`rest_api_contract.md` §2 L173, `data_model.md` §4 AP27), not one of
+   the R26-exempted APs (only AP3/AP9/AP29 are exempt). Needs a
+   `GenerationQueue.delete` port method + route — **feature 27's territory**,
+   flag for owner rather than implementer inventing a port change. Also:
+   `test_every_contract_endpoint_is_routed_exactly_once`'s `EXPECTED_ROUTES`
+   is hand-copied from `ROUTES` itself, so it can never fail on a missing
+   route — rewrite it to derive from the contract doc/table independently.
+2. **R11 surviving mutant** — `handler.py:71`'s role gate only has a test for
+   USER→admin-route denial; **ADMIN→user-route is untested and the sole
+   enforcement point for FR-AUTH-05** ("admin has no access to any
+   meal-planning feature"). Mutant weakening the gate to one-directional
+   passed the full 674-test suite. Add the missing-direction test.
+3. **R39 surviving mutant** — `reject_keys(..., "id", "author", "añadidoPor")`
+   is only unit-tested on the helper in isolation; no route-level test proves
+   any of the 3 call sites (`routing.py:369,397,497`) actually passes
+   `"author"`. Add a route test: posting a body with `"author"` set ->
+   `400 MALFORMED_REQUEST`.
+4. **R23 surviving mutant** — `test_handler.py:262` uses `_SRC.glob("*.py")`
+   (top-level only); `planner_api/adapters/**` is never scanned for `print`.
+   Switch to `rglob`.
+5. **ETag not RFC 7232-quoted** — `routing.py` emits `etag=str(marker)`,
+   producing `ETag: 41` instead of `ETag: "41"` (contract §6 shows quotes
+   throughout; feature 26 will compare `If-None-Match` against this value,
+   CloudFront sits in front per `architecture.md` §1.2.7). Quote it.
+6. **T9 — `_put_rule` ignores `{ruleId}`** — `routing.py:561-570` never reads
+   `path["ruleId"]`; the rule comes from the body alone, so
+   `PUT /v1/rules/cat#meat` with a mismatched body writes the wrong rule.
+   Either honour the path segment or the implementer must justify body-as-
+   authoritative in the report; add the mismatch test either way.
+
+**Non-blocking (owner ruling wanted, not fixed this round):**
+- `adapters/markers.py` (spec-gap 2) sits inside the directory
+  `test_change_marker_is_not_a_write_condition.py` exempts, but implements no
+  port — the guard's stated exemption is "the DynamoDB adapters"; not a
+  breach (guard untouched, still passes) but a placement precedent worth an
+  explicit owner call.
+- `adapters/markers.py`'s 9-line docstring and `pyproject.toml:45-48`'s
+  4-line comment both exceed the 3-line comment ceiling — point at spec-gap 2
+  instead of restating it.
+- Spec-gaps 1/3/5 (new `messages.py` constants, `pythonpath` reuse, candidate
+  `source`/library-filter assumptions) reviewed as reasonable, not reopened.
+
+- 2026-09-04 — **Fix round 1 done.** All 5 items landed. `./init.sh` green,
+  677 tests (+3). See `progress/impl_rest_api_lambda.md` -> "Fix round 1".
+
+## Verification 1 — feature 16 fix round 1 — CHANGES_REQUESTED (2026-09-04)
+
+R11, R23 mutants confirmed KILLED. ETag quoting (item 4) and T9 `{ruleId}`
+mismatch (item 5) both confirmed genuine. **R39 mutant still survives** —
+`test_a_client_supplied_author_is_rejected_at_the_route_level` is a false
+positive: its body (`source: "manual"`, no `recipe` key) gets rejected by
+`require_field`'s missing-key check regardless of whether `reject_keys` runs,
+so the test passes even under the `("id",)`-only mutant. Fix: send an
+otherwise-*valid* body (decodable `recipe`, no missing fields) so `"author"`
+is the only reason for the 400. Tree restored, `./init.sh` re-run green
+(677 tests).
+
+- 2026-09-04 — **Fix round 2 done.** Rewrote the R39 test with a valid,
+  decodable body; author-only rejection now genuinely proven. `./init.sh`
+  green, 677 tests. See `progress/impl_rest_api_lambda.md` -> "Fix round 2".
+
+## Verification 2 — feature 16 fix round 2 — APPROVED (2026-09-04)
+
+R39 mutant re-applied independently, confirmed KILLED for the right reason
+(`assert 201 == 400`, not a false-positive missing-field 400). Tree restored
+byte-identical, `./init.sh` green (677 tests). **0 findings, 0 mutants
+survived. Feature 16 is ready for the owner.**
+
+Non-blocking observation (reviewer's own words, not a defect in what was
+fixed): the mutant hit 3 `reject_keys` call sites but only the library-recipe
+route (`POST /v1/library/recipes`) has a test proving it. `_add_candidate`
+(`routing.py:375`) and `_edit_candidate` (`:403`) have no equivalent
+author-rejection test — R39 is proven for one route, not all three. Owner
+call whether that's worth closing now or later.
+
+## 2026-09-06 — owner reopened feature 27, bundled 3 changes
+
+Owner ruled on the two items the reviewer routed to them and reopened
+feature 27 to fold three changes into one implementer round. Decision in
+engram `features/16-27-ap27-reopen`.
+
+**Status correction (leader was wrong earlier):** `feature_list.json` has
+feature 27 = `done` (flipped in `600765e`), feature 16 = `in_progress`.
+Reopening feature 27 needs the owner to flip it `done` -> `in_progress` —
+the `done` mark is the owner's alone. Spec files are already updated;
+`./init.sh` still passes with 27 `done`, but the tracking should reflect the
+reopen.
+
+1. **AP27** — implement it. New `GenerationQueue` discard/delete port method
+   (feature 27) + SQS adapter + fake + contract test; then the
+   `DELETE /v1/generations/{generationId}` route in `routing.py` (feature 16).
+   `{generationId}` path param is the `idPeticionIA` (contract keys AP26 on
+   it) → maps straight to the new port arg. `FR-AI-10` is feature 12's —
+   cite, don't add to feature 27 `covers`. No ETag on generation routes
+   (`PETICIONIA#` has no `MarcaCambio`).
+2. **`adapters/markers.py`** — remove the placement question entirely: the
+   four feature-27 read use cases (`week_editing.load_week`,
+   `library_editing.list_library`, `rule_editing.read_rules`,
+   `shopping_editing.list_shopping`) return the current marker in their DTO
+   (sibling of R9). Then delete `planner_api/adapters/markers.py` and rework
+   `routing.py` / `test_markers.py` so nothing outside the real adapters
+   names `current_version`.
+3. **Candidate-route author tests** (non-blocking, folded in) — add route
+   tests for `_add_candidate` (`routing.py:375`) and `_edit_candidate`
+   (`routing.py:403`) proving a body with `"author"` → 400. R39 already
+   exists; test-only.
+
+Flow: `spec_author` (both specs) → relay gate questions → one `implementer`
+run for all three → `reviewer`.
+
+## spec_author reopen pass — DONE (2026-09-06)
+
+Both specs updated + finalized after the owner ruled all 7 gate questions
+(all approved as the leader recommended — see engram
+`features/16-27-ap27-reopen`).
+
+New requirements: **F27 R31** (`discard(idempotency_key: str) -> None` port
+op, AP27), **R32** (SQS adapter: unconditional `DeleteItem
+PETICIONIA#<hash>/METADATA`), **R33** (discard of an absent key doesn't
+raise), **R34** (the 4 pollable reads return current `marcaCambio` as `int`;
+`/summary` is `load_week`'s projection), **R35** (marker read before
+payload). **F16 R42** (route `DELETE /v1/generations/{generationId}` ->
+`GenerationQueue.discard`, `{generationId}` as the key; cites `FR-AI-10`
+only). 204/no-ETag stay design notes. Coverage maps balance, `./init.sh`
+coverage check clean, `feature_list.json` untouched.
+
+## Next step — OWNER, then LEADER
+
+1. **OWNER:** flip feature 27 `done` -> `in_progress` in `feature_list.json`
+   (leader never sets status). Feature 16 already `in_progress`.
+2. **LEADER:** one `implementer` run for all three changes (F27 port +
+   adapter + fakes + contract tests; F16 route + marker-rewire +
+   `adapters/markers.py` deletion; the 2 candidate-route author tests), then
+   `reviewer`.
+
+## Implementer run — reopen round (2026-09-06)
+
+Feature in progress: 16 + 27 (bundled reopen). Plan: F27 T24–T33, F16 T8b /
+T12b / T14 / T15. All ticked.
+
+**Change 1 (AP27 discard):** `GenerationQueue.discard(idempotency_key) -> None`
+on the port; `SqsGenerationQueue.discard` = unconditional `DeleteItem`;
+`FakeGenerationQueue.discard` (+ `discards` spy list); contract-suite cases
+(fake + moto). F16: `DELETE /v1/generations/{generationId}` route →
+`deps.queue.discard(path[...])` direct, 204, no ETag; added to `EXPECTED_ROUTES`.
+
+**Change 2 (marker on the read DTO):** `week/library/rule/shopping_editing`'s
+read services now return `WeekView`/`LibraryView`/`RulesView`/`ShoppingView`
+(frozen, `data + marker: int`, marker read first). `routing.py` reads
+`view.marker`; `adapters/markers.py` **deleted**. `grep current_version
+lambda_api/src` → adapters only.
+
+**Change 3:** candidate-route author-rejection tests for `_add_candidate` /
+`_edit_candidate` (`test_handler.py`), otherwise-valid bodies.
+
+**Spec did not anticipate:** R34/R35 force `current_version` into
+`application/*_editing.py`, which the feature-18 R12 guard
+(`test_change_marker_is_not_a_write_condition.py`) forbade. Added
+`READ_SERVICE_MODULES` to that test's `permitted` set (R12 name-scan only; R7
+port scan untouched). Brief said "do NOT edit that guard" — flagged for
+reviewer/owner. Also: `EXPECTED_ROUTES` is still a hand-maintained literal
+(reviewer's fix-round-1 derive-it ask remains open).
+
+`./init.sh`: gates 5/6 green — ruff, mypy strict (141 files), pytest **693**
+(+16), prettier/eslint/vitest. Section 4 fails only on the intentional dual
+`in_progress` for the bundle. Reports:
+`progress/impl_rest_api_lambda.md` → "Reopen round 2026-09-06",
+`progress/impl_rest_api_persistence_and_services.md` → "Reopen round 2026-09-06".
+Awaiting `reviewer`.
+
+## Reviewer run — reopen round (16 + 27) — CHANGES_REQUESTED (2026-09-06)
+
+`./init.sh`: gates 1–3, 5, 6 green — ruff format/check, mypy strict, pytest
+**693 passed**, prettier/eslint/vitest. Section 4 fails only on the two
+`in_progress` features and the 16→27 dep order — inherent to the bundle,
+resolves on the owner's `done` marks. Tree restored byte-identical after
+mutation testing (`git status --porcelain` matches the pre-review state).
+
+**Mutants killed (6/7):** SQS `discard` + `ConditionExpression` (2 tests);
+`discard` → no-op; `load_week` payload-before-marker (R35 spy is a real
+order check); `list_library` constant marker; `_delete_generation` constant
+id + 200; `reject_keys(body, "id")` at all 3 call sites (all 3 route tests
+fail — the fix-round-2 false-positive lesson holds).
+
+**Mutant SURVIVED (1) — F1, blocking.** Widening `READ_SERVICE_MODULES` in
+`backend/core/tests/test_change_marker_is_not_a_write_condition.py:40-45` to
+`tuple((CORE_SRC / "application").glob("*.py"))` leaves all 693 green. The
+new feature-18 R12 exemption carries no self-check, unlike the `- {"week"}`
+exemption which `test_the_expected_version_scan_catches_a_planted_parameter`
+(same file, L126-143) exists to protect. The guard is otherwise alive — a
+planted `current_version` in `application/live_weeks.py` is still caught.
+
+**F2 (sweep, blocking).** Same file: the module docstring L13-15, the test
+name `test_the_change_marker_stays_inside_the_four_port_modules` (L164) and
+its docstring L165-166 all still state the pre-exemption rule.
+
+**F3 (conventions, blocking).** L35-39 comment is 5 lines; ceiling is 3
+(`docs/conventions.md` § *Keep them short*), and it reproduces reasoning
+that belongs in `specs/rest_api_persistence_and_services/design.md`.
+
+**F4 (spec, blocking).** The guard widening appears only in the impl report
+("flagging for reviewer / owner veto"); `design.md` §6 still says the
+feature-18 scan only "extends to the adapters". **Owner call: does the
+R12 guard get this exemption?**
+
+**F5 (carried forward, non-blocking).** `EXPECTED_ROUTES` is still a
+hand-maintained literal. It is independent of `ROUTES` (a deleted route is
+caught) but not derived from `docs/rest_api_contract.md` — which is exactly
+how AP27 went missing for a whole round. Disclosed by the implementer.
+
+## Fix round F1–F4 — dispatched (2026-09-06)
+
+- **F4 — owner APPROVED** the feature-18 R12 guard relaxation. `spec_author`
+  recorded it in `specs/rest_api_persistence_and_services/design.md` §6
+  (the relaxation, narrow + read-only, R7 scans untouched) and §8 (accepted
+  cost on the `markers.py`-shim rejected-alternative entry).
+- **F1/F2/F3 — `implementer` launched**, single file
+  `backend/core/tests/test_change_marker_is_not_a_write_condition.py`: add
+  the exemption self-check (pins `READ_SERVICE_MODULES` to exactly 4 files,
+  kills a `glob('*.py')` mutant); sweep the stale "four port modules"
+  docstring + test name + docstring; trim the 5-line comment. Then a cheap
+  verification run. Expected count 693 → 694.
+- **F5 — needs a backlog home (owner).** Not folded into this round per the
+  reviewer. Turning `EXPECTED_ROUTES` into a contract-derived check is real
+  feature-16-adjacent hardening; an unchecked task in
+  `specs/rest_api_lambda/tasks.md` would block feature 16's `done`, so it
+  wants either its own small backlog feature or an explicit deferral the
+  owner signs off. Flagged, not actioned.
+
+## Verification — F1/F2/F3 fix round — APPROVED (2026-09-06)
+
+0 findings, 0 mutants survived. F1 mutant (`READ_SERVICE_MODULES` →
+`glob('*.py')`) re-applied by file copy, confirmed KILLED by
+`test_the_permitted_marker_modules_are_pinned` (exact set equality, not
+vacuous). F2 sweep complete — no "four port modules" phrasing left in the
+guard; rename propagated; the `realtime_channel_persistence` reference edits
+are mechanical (a done feature's records semantically untouched). F3 comment
+is 3 lines. `./init.sh` §5 green — **694 passed** (+1). §4 fails only on the
+intentional dual `in_progress`.
+
+**The reopen round is complete and APPROVED.** Non-blocking, recorded only:
+guard `:180` can't catch a `PORT_MODULES` widening (covered elsewhere);
+feature 18's own `design.md`/`tasks.md` still say "four port modules" —
+left as historical record by design.
+
+## Next step — OWNER
+
+1. **Commit** the reopen work — 47 uncommitted entries (feature 16's
+   first-ever commit + feature 27's reopen delta). Leader does not commit;
+   the 2026-09-01 one-time exception does not carry forward.
+2. **Status:** feature 27 `in_progress` -> `done` (re-close); feature 16
+   stays `in_progress` until you give it its first `done`.
+3. **F5** — pick a home: its own small backlog feature, or a signed-off
+   deferral. Not urgent; feature 16 can close without it.
 
 ## Plan
 
@@ -276,3 +554,17 @@ flip is a separate edit for you.
 On your "done": feature 16 `rest_api_lambda` (`spec_ready`, already
 owner-approved) flips to `in_progress` — `implementer` then `reviewer`, the
 Lambda shell that calls this substrate.
+
+## Implementer run — feature 16 (2026-09-04)
+
+- Feature in progress: 16 `rest_api_lambda`.
+- Plan: tasks T1..T15 from `specs/rest_api_lambda/tasks.md`.
+- **Done.** All T1..T15 ticked. `./init.sh` green — 674 tests (+91), ruff/mypy/
+  frontend clean. Report at `progress/impl_rest_api_lambda.md` — R1..R41 -> test
+  table, 5 spec-gap notes (chief two: (1) `messages.py` needed 18 new es-ES
+  constants for exceptions R16 requires a `detail` for but no earlier feature
+  gave one; (2) R28's `ETag` emission collided with a feature-18 mechanical
+  guard banning `current_version` outside the four port modules — resolved
+  with a new one-line-forwards file inside the already-exempted
+  `planner_api/adapters/`, no edit to `backend/core/` or feature 27's services).
+  Awaiting `reviewer`.

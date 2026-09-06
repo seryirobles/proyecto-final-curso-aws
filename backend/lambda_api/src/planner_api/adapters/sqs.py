@@ -91,3 +91,8 @@ class SqsGenerationQueue:
                 }
             ),
         )
+
+    def discard(self, idempotency_key: str) -> None:
+        # Unconditional DeleteItem on PETICIONIA#<hash>/METADATA (R32, AP27):
+        # unconditional, so an absent key succeeds silently (R33).
+        _table.table().delete_item(Key={"PK": _pk(idempotency_key), "SK": _METADATA_SK})

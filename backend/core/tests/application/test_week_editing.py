@@ -36,6 +36,13 @@ def test_add_candidate_outcome_is_frozen() -> None:
         outcome.__setattr__("marker", 2)
 
 
+def test_week_view_is_frozen() -> None:
+    """docs/conventions.md: every new frozen dataclass gets this test."""
+    view = week_editing.WeekView(slots={}, marker=1)
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        view.__setattr__("marker", 2)
+
+
 def test_add_candidate_returns_marker_and_duplicate_warning() -> None:
     repo = FakeWeekRepository()
 
@@ -67,7 +74,7 @@ def test_load_week_and_load_candidate_read_without_writing() -> None:
     repo = FakeWeekRepository()
     week_editing.add_slot_candidate(WEEK, SLOT, _candidate("c1"), weeks=repo)
 
-    assert set(week_editing.load_week(WEEK, weeks=repo)) == {SLOT}
+    assert set(week_editing.load_week(WEEK, weeks=repo).slots) == {SLOT}
     found = week_editing.load_candidate(WEEK, SLOT, "c1", weeks=repo)
     assert found is not None and found.id == "c1"
     assert week_editing.load_candidate(WEEK, SLOT, "nope", weeks=repo) is None

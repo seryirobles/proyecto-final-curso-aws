@@ -273,6 +273,52 @@ A `planner_core.application` use case SHALL accept only ports and plain values
 as arguments, holding no HTTP, event or AWS type in its signature
 (`docs/architecture.md` §3.1 rule 2).
 
+## Generation discard (`AP27`) — reopened 2026-09-06
+
+## R31
+Implements: FR-AI-10
+
+The system SHALL expose on the `GenerationQueue` port a `discard(idempotency_key:
+str) -> None` operation that discards the stored generation record for the given
+idempotency key (`AP27` — "Discards a preview and its idempotency record",
+`docs/rest_api_contract.md` §2).
+
+## R32
+Implements: FR-AI-10
+
+WHEN the SQS-backed `GenerationQueue` adapter runs `discard`, it SHALL issue a
+`DeleteItem` on `PETICIONIA#<hash> / METADATA` for that idempotency key
+(`docs/data_model.md` §4 `AP27`; sibling of `R26`).
+
+## R33
+Implements: FR-AI-10
+
+IF no stored record exists for the given idempotency key, THEN `discard` SHALL
+return without raising (`HTTP DELETE` idempotency; `docs/data_model.md` §4 —
+`AP27` is an unconditional `DeleteItem`).
+
+## Read markers — reopened 2026-09-06
+
+## R34
+Implements: FR-RT-01
+
+WHEN an application read use case serves a pollable resource —
+`week_editing.load_week` (also the source of `GET /v1/weeks/{weekId}/summary`),
+`library_editing.list_library`, `rule_editing.read_rules` or
+`shopping_editing.list_shopping` — it SHALL return that resource's current
+`marcaCambio` (an `int`, the same value `current_version` reports) alongside the
+resource data (`docs/rest_api_contract.md` §6 — feature 16 surfaces it as the
+`ETag`; `GET /v1/weeks/{weekId}/summary` is a definitive-only projection of
+`load_week`'s result and shares the week marker).
+
+## R35
+Implements: FR-RT-01
+
+WHEN an application read use case serves a pollable resource, it SHALL read the
+`marcaCambio` before it reads the resource payload (`docs/rest_api_contract.md`
+§6, `docs/data_model.md` §5.5 — "read the marker first … the reverse returns a
+marker newer than the body delivered").
+
 ---
 
 ## Coverage map
@@ -282,7 +328,7 @@ as arguments, holding no HTTP, event or AWS type in its signature
 | Requirement | Covered by |
 |---|---|
 | `NFR-BKP-01` | R1, R2, R3, R4, R5, R29, R30 |
-| `FR-RT-01` | R6, R7, R8, R9, R10, R11, R12, R13, R14, R29 |
+| `FR-RT-01` | R6, R7, R8, R9, R10, R11, R12, R13, R14, R29, R34, R35 |
 | `FR-RULE-07` | R15, R16, R17, R18, R19 |
 | `FR-SHOP-06` | R20, R21, R22, R23, R24 |
 | `FR-AI-08` | R25, R26, R27, R28 |
@@ -292,6 +338,13 @@ does not `cover`, the way `realtime_channel_persistence` cited `FR-RT-02`):
 
 - `FR-RULE-04` (R14) — the rule-type catalogue is feature 6 `rules_model`. R14
   only makes an existing rule type individually addressable.
+- `FR-AI-10` (R31, R32, R33) — the "accept, discard, or regenerate" preview
+  lifecycle is feature 12 `generation_output_and_preview` (`covers: FR-AI-10,
+  FR-AI-12, FR-LIB-05`). R31–R33 only add the discard operation that the
+  `DELETE /v1/generations/{generationId}` route (feature 16 `R42`) calls; not
+  added to this feature's `covers`. R31–R33 cite only this owned-elsewhere id —
+  no id from this feature's `covers` fits the discard (`FR-AI-08` is
+  idempotency-preservation, which a discard undoes). Owner-approved 2026-09-06.
 - `FR-SHOP-10` (R23, R24) — the lock is feature 8 `shopping_list_state`. R23/R24
   only preserve its serialization guarantee at the new use-case boundary.
 - `NFR-BKP-01` is used here the way feature 14 `persistence_ports` used it: it
@@ -306,9 +359,9 @@ does not `cover`, the way `realtime_channel_persistence` cited `FR-RT-02`):
 |---|---|
 | 1 — real DynamoDB adapter per `api`-side port, Spanish attributes mapped at the boundary | R1, R2, R3, R5 |
 | 2 — the adapters pass the existing contract suites alongside the fakes | R4 |
-| 3 — `marcaCambio` bumped inside the write's transaction, never a `ConditionExpression`, `current_version` strongly consistent and marker-only | R6, R7, R8, R9 |
+| 3 — `marcaCambio` bumped inside the write's transaction, never a `ConditionExpression`, `current_version` strongly consistent and marker-only; read use cases return the marker, marker read first | R6, R7, R8, R9, R34, R35 |
 | 4 — `RuleRepository` gains `save_rule`/`delete_rule`, loses `save(RuleSet)`; deterministic natural-key rule ids; `DisabledDay` value object | R10, R11, R12, R13, R14 |
 | 5 — whole-set satisfiability on each per-rule write; unsatisfiable never commits; the pin cascade on library delete | R15, R16, R17, R18, R19 |
 | 6 — re-sync composition calls `AP9` internally, is purely additive and never touches a checked item, serialized by the `FR-SHOP-10` lock | R20, R21, R22, R23, R24 |
-| 7 — `GenerationQueue` port + SQS adapter; idempotent submission returns the stored result without enqueuing | R25, R26, R27, R28 |
+| 7 — `GenerationQueue` port + SQS adapter; idempotent submission returns the stored result without enqueuing; discard operation for `AP27` | R25, R26, R27, R28, R31, R32, R33 |
 | 8 — the new use cases live in `planner_core/application/`, ports and plain values only | R29, R30 |

@@ -331,6 +331,7 @@ class FakeGenerationQueue:
 
     stored: dict[str, StoredGeneration] = field(default_factory=dict)
     submissions: list[tuple[str, GenerationRequest]] = field(default_factory=list)
+    discards: list[str] = field(default_factory=list)
 
     def stored_generation(self, idempotency_key: str) -> StoredGeneration | None:
         return self.stored.get(idempotency_key)
@@ -341,3 +342,8 @@ class FakeGenerationQueue:
         self.stored.setdefault(
             idempotency_key, StoredGeneration(idempotency_key=idempotency_key, status="pending")
         )
+
+    def discard(self, idempotency_key: str) -> None:
+        # AP27: drop the record; a missing key is a no-op (HTTP DELETE idempotency).
+        self.discards.append(idempotency_key)
+        self.stored.pop(idempotency_key, None)

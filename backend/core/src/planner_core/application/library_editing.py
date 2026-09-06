@@ -28,9 +28,19 @@ class DeleteRecipeOutcome:
     removed_pins: tuple[PinRule, ...]
 
 
-def list_library(*, recipes: RecipeRepository) -> tuple[LibraryRecipe, ...]:
-    """AP14."""
-    return recipes.list_all()
+@dataclass(frozen=True)
+class LibraryView:
+    """AP14 read: the library entries plus the library change marker (R34),
+    marker read before the payload (R35)."""
+
+    entries: tuple[LibraryRecipe, ...]
+    marker: int
+
+
+def list_library(*, recipes: RecipeRepository) -> LibraryView:
+    """AP14 — the library entries and its marker, marker read first."""
+    marker = recipes.current_version()  # marker before payload (R35)
+    return LibraryView(entries=recipes.list_all(), marker=marker)
 
 
 def save_recipe(entry: LibraryRecipe, *, recipes: RecipeRepository) -> SaveRecipeOutcome:

@@ -35,7 +35,7 @@ All `R<n>` cite `FR-RT-01`.
 | R9 | `delete_checked_items` with nothing checked leaves the marker unchanged | `tests/ports/test_shopping_list.py::test_delete_checked_items_with_nothing_checked_returns_the_marker_without_advancing` (runs it twice — Level 4 idempotency); contract `test_shopping_list_repository_contract.py::test_delete_checked_items_with_nothing_checked_does_not_advance_the_marker` |
 | R10 | in-memory impl of each port maintains the marker as an incrementing counter | `tests/ports/test_*` marker tests all run against `Fake*Repository`; `test_fake_*_satisfies_the_*_port` (×4); contract suites parametrized over `IMPLEMENTATIONS = [Fake*Repository]` |
 | R11 | composed single-item ops advance the marker once per op | contract `::test_two_successive_writes_both_apply_and_advance_the_marker_twice` (×4, asserts `(1, 2)`); contract shopping `::test_every_mutating_method_advances_...` walks save→save→delete→delete_checked as `1,2,3,4` |
-| R12 | marker not referenced outside `planner_core.ports` + test fakes | `tests/test_change_marker_is_not_a_write_condition.py::test_the_change_marker_stays_inside_the_four_port_modules`, `::test_the_marker_name_pattern_detects_what_it_claims_to` (pattern self-test) |
+| R12 | marker not referenced outside `planner_core.ports` + test fakes | `tests/test_change_marker_is_not_a_write_condition.py::test_the_change_marker_stays_inside_its_permitted_modules`, `::test_the_marker_name_pattern_detects_what_it_claims_to` (pattern self-test) |
 
 ## test → R (reverse)
 
@@ -72,7 +72,7 @@ All `R<n>` cite `FR-RT-01`.
 | `backend/core/tests/test_change_marker_is_not_a_write_condition.py` | `test_the_expected_version_scan_catches_a_planted_parameter` | R7 (self-test) |
 | | `test_no_mutating_port_method_accepts_an_expected_version` | R7 |
 | | `test_the_marker_name_pattern_detects_what_it_claims_to` | R12 (self-test) |
-| | `test_the_change_marker_stays_inside_the_four_port_modules` | R12 |
+| | `test_the_change_marker_stays_inside_its_permitted_modules` | R12 |
 | `backend/tests/contract/test_week_repository_contract.py` | `test_every_mutating_method_advances_the_marker_and_returns_the_new_value` | R4, R5 |
 | | `test_reads_leave_the_marker_unchanged` | R2 |
 | | `test_two_successive_writes_both_apply_and_advance_the_marker_twice` | R8, R11 |
@@ -115,7 +115,7 @@ both directions with no gap.
 | Widen the R7 denylist / drop a real port's expected-version guard | `tests/test_change_marker_is_not_a_write_condition.py::test_no_mutating_port_method_accepts_an_expected_version` + the `mutant` fixture in `::test_the_expected_version_scan_catches_a_planted_parameter` |
 | Delete `current_version` from a port Protocol (fake keeps it — `pytest` and `mypy` both stay green otherwise) | `tests/ports/test_<port>.py::test_the_<port>_repository_protocol_pins_the_marker_surface` — asserts `"current_version" in <Protocol>.__dict__` (fix pass, 2026-08-30) |
 | Revert a mutating method's `-> int` to `-> None` on a port Protocol | same `::test_the_<port>_repository_protocol_pins_the_marker_surface` — asserts `get_type_hints(<Protocol>.<method>)["return"] is int` (fix pass, 2026-08-30) |
-| Reference the marker outside the four port modules | `tests/test_change_marker_is_not_a_write_condition.py::test_the_change_marker_stays_inside_the_four_port_modules` |
+| Reference the marker outside the four port modules | `tests/test_change_marker_is_not_a_write_condition.py::test_the_change_marker_stays_inside_its_permitted_modules` |
 
 ## Notes — what the spec did not anticipate
 

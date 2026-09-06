@@ -4,6 +4,8 @@ docs/rest_api_contract.md section 7 Q5 consequence i)."""
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from planner_core.domain.rules import (
     CategoryCountRule,
     DisabledDay,
@@ -43,9 +45,19 @@ def _existing_conflicts(current: RuleSet, attempted: Rule) -> tuple[Rule, ...]:
     return (*kept_counts, *kept_disabled)
 
 
-def read_rules(*, rules: RuleRepository) -> RuleSet:
-    """AP22 — the shared rule set."""
-    return rules.get()
+@dataclass(frozen=True)
+class RulesView:
+    """AP22 read: the shared rule set plus its change marker (R34), marker read
+    before the payload (R35)."""
+
+    rule_set: RuleSet
+    marker: int
+
+
+def read_rules(*, rules: RuleRepository) -> RulesView:
+    """AP22 — the shared rule set and its marker, marker read first."""
+    marker = rules.current_version()  # marker before payload (R35)
+    return RulesView(rule_set=rules.get(), marker=marker)
 
 
 def save_rule(rule: Rule, *, rules: RuleRepository) -> int:

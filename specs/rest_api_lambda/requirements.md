@@ -342,6 +342,19 @@ Implements: FR-MENU-08, NFR-OBS-01
 WHEN the no-op `ArchiveRepository` receives an `ArchivedWeek`, it SHALL log the
 discarded record through the standard-library `logging` module.
 
+## R42
+Implements: FR-AI-10
+
+The api Lambda SHALL map `DELETE /v1/generations/{generationId}` to
+`GenerationQueue.discard`, passing the `{generationId}` path segment as the
+idempotency key (`AP27`; `docs/rest_api_contract.md` §2, `docs/data_model.md` §4
+— `AP27` keys on `idPeticionIA`, and `AP26`'s `GET` on the same segment fixes
+the mapping). *(`R26` already requires this route to exist; `R42` is the
+explicit routing statement, parallel to `R31`. `GenerationQueue.discard` is
+feature 27 `R31`. The route emits no `ETag` — `PETICIONIA#` has no `MarcaCambio`
+(`contract` §2, §6) — and returns `204 No Content`; both are design notes, not
+requirements.)*
+
 ---
 
 ## Coverage map
@@ -358,7 +371,7 @@ discarded record through the standard-library `logging` module.
 | `FR-MENU-08` | R32, R33, R34, R40, R41 |
 | `FR-AI-08` | R35, R36, R37 |
 
-Two citation notes:
+Three citation notes:
 
 - **`R38` (camelCase) cites `FR-UX-03`, not `FR-AUTH-09`.** `FR-UX-03` reserves
   es-ES for user-facing *strings*; English identifiers on the wire are the
@@ -367,13 +380,19 @@ Two citation notes:
 - **`FR-RULE-07` is no longer cited by this feature.** The whole-set
   satisfiability check moved to feature 27; what remains here (`R21`) is the
   error-format mapping, which is `FR-UX-03`.
+- **`FR-AI-10` (R42) is owned by feature 12 `generation_output_and_preview`**
+  (`covers: FR-AI-10, FR-AI-12, FR-LIB-05`) — cited here, not added to this
+  feature's `covers`. `R42` routes the `AP27` discard (feature 27 `R31`) and so
+  implements only `FR-AI-10`, the "accept, discard, or regenerate" preview verb;
+  it does not touch idempotency-preservation (`FR-AI-08`). Owner-approved
+  2026-09-06.
 
 ### `feature_list.json` acceptance criterion → `R<n>`
 
 | Acceptance item | Covered by |
 |---|---|
 | 1 — `/v1` base path, camelCase JSON, RFC 9457 with `code` + verbatim `detail`, 400 vs 422 | R14, R15, R16, R17, R18, R19, R38 |
-| 2 — every `contract` §2 pattern routed; `AP3`/`AP9`/`AP29`/rollover have none; no `GET` route writes | R2, R26, R27, R33 |
+| 2 — every `contract` §2 pattern routed; `AP3`/`AP9`/`AP29`/rollover have none; no `GET` route writes | R2, R26, R27, R33, R42 |
 | 3 — `ETag` emission on pollable `200` and on mutations; `Cache-Control: no-store`; `If-None-Match`/`304` is feature 26 | R28, R29, R30 |
 | 4 — REQUEST authorizer on the cookie, TTL 0, `userId`/`role`/`passwordResetRequired` in context, gated without a second `AP2` read | R6, R7, R8, R9, R10, R11, R12, R13 |
 | 5 — `PUT`/`DELETE /v1/rules/{ruleId}` routed to the single-rule ops; `422 UNSATISFIABLE_RULE_SET` mapping | R31, R21 |

@@ -31,9 +31,20 @@ class AddCandidateOutcome:
     duplicate_warning: bool
 
 
-def load_week(week: IsoWeek, *, weeks: WeekRepository) -> Mapping[SlotRef, SlotContents]:
-    """AP8 — the whole week's slot contents."""
-    return weeks.get_week(week)
+@dataclass(frozen=True)
+class WeekView:
+    """AP8 read: the week's slot contents plus its change marker (R34). The
+    marker is read before the payload (R35). GET /v1/weeks/{weekId}/summary is
+    a projection of this and shares the marker."""
+
+    slots: Mapping[SlotRef, SlotContents]
+    marker: int
+
+
+def load_week(week: IsoWeek, *, weeks: WeekRepository) -> WeekView:
+    """AP8 — the whole week's slot contents and its marker, marker read first."""
+    marker = weeks.current_version(week)  # marker before payload (R35)
+    return WeekView(slots=weeks.get_week(week), marker=marker)
 
 
 def load_candidate(
