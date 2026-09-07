@@ -4,11 +4,13 @@ SQS + PETICIONIA adapter agree on the idempotency-record surface (FR-AI-08)."""
 from __future__ import annotations
 
 import inspect
-from collections.abc import Callable
+import json
+from collections.abc import Callable, Mapping
 
 import pytest
 from planner_core.domain.calendar import IsoWeek
 from planner_core.domain.generation import GenerationMode, GenerationRequest
+from planner_core.domain.rules import RuleSet
 from planner_core.ports.generation_queue import GenerationQueue, StoredGeneration
 from support.fakes import FakeGenerationQueue
 
@@ -50,7 +52,7 @@ def test_submit_creates_a_readable_record(
 ) -> None:
     queue = queue_factory()
 
-    queue.submit("hash-1", REQUEST)
+    queue.submit("hash-1", REQUEST, effective_rules=RuleSet())
 
     stored = queue.stored_generation("hash-1")
     assert stored is not None
@@ -65,10 +67,10 @@ def test_resubmit_never_clobbers_a_stored_result(
     """FR-AI-08 / docs/data_model.md section 4.6 — losing the payload means
     paying for a result that then exists nowhere; submit is create-if-absent."""
     queue = queue_factory()
-    queue.submit("hash-1", REQUEST)
+    queue.submit("hash-1", REQUEST, effective_rules=RuleSet())
     _force_done(queue, "hash-1", '{"ok": true}')
 
-    queue.submit("hash-1", REQUEST)
+    queue.submit("hash-1", REQUEST, effective_rules=RuleSet())
 
     assert queue.stored_generation("hash-1") == StoredGeneration("hash-1", "done", '{"ok": true}')
 
@@ -79,7 +81,7 @@ def test_discard_removes_a_stored_record(
 ) -> None:
     """R31/R32 (AP27) — submit then discard leaves no stored record."""
     queue = queue_factory()
-    queue.submit("hash-1", REQUEST)
+    queue.submit("hash-1", REQUEST, effective_rules=RuleSet())
 
     queue.discard("hash-1")
 
@@ -102,3 +104,70 @@ def test_the_sqs_discard_passes_no_condition_expression() -> None:
     source = inspect.getsource(SqsGenerationQueue.discard)
     code = "".join(line.split("#", 1)[0] for line in source.splitlines())
     assert "ConditionExpression" not in code
+
+
+# --- R36-R39: claim / record_result -----------------------------------------
+
+_PER_SLOT: list[Mapping[str, object]] = [
+    {"day": 1, "slot": 1, "status": "completed", "message": None}
+]
+
+
+@pytest.mark.parametrize("queue_factory", IMPLEMENTATIONS)
+def test_the_first_claim_after_submit_wins_and_a_redelivery_loses(
+    queue_factory: Callable[[], GenerationQueue],
+) -> None:
+    """R36/R37 — pending -> running is applied once; a redelivered message finds
+    it already claimed."""
+    queue = queue_factory()
+    queue.submit("hash-1", REQUEST, effective_rules=RuleSet())
+
+    assert queue.claim("hash-1") is True
+    assert queue.claim("hash-1") is False
+
+
+@pytest.mark.parametrize("queue_factory", IMPLEMENTATIONS)
+def test_claim_of_an_absent_record_returns_false(
+    queue_factory: Callable[[], GenerationQueue],
+) -> None:
+    """R37 — an already-claimed or absent record is not claimable."""
+    assert queue_factory().claim("never-submitted") is False
+
+
+@pytest.mark.parametrize("queue_factory", IMPLEMENTATIONS)
+def test_record_result_writes_the_terminal_status_and_per_slot_payload(
+    queue_factory: Callable[[], GenerationQueue],
+) -> None:
+    """R38 — a later stored_generation reports the recorded estado + resultado."""
+    queue = queue_factory()
+    queue.submit("hash-1", REQUEST, effective_rules=RuleSet())
+    queue.claim("hash-1")
+
+    queue.record_result("hash-1", "completed", _PER_SLOT)
+
+    stored = queue.stored_generation("hash-1")
+    assert stored is not None
+    assert stored.status == "completed"
+    assert stored.result is not None and json.loads(stored.result) == _PER_SLOT
+
+
+def _statement_lines(source: str) -> str:
+    """Drop full-line comments; keep code (DynamoDB `#alias` names have a `#`)."""
+    return "\n".join(line for line in source.splitlines() if not line.lstrip().startswith("#"))
+
+
+def test_the_sqs_record_result_passes_no_condition_expression() -> None:
+    """R39 — record_result is unconditional; the preceding claim owns the item."""
+    from planner_api.adapters.sqs import SqsGenerationQueue
+
+    code = _statement_lines(inspect.getsource(SqsGenerationQueue.record_result))
+    assert "ConditionExpression" not in code
+
+
+def test_the_sqs_claim_conditions_only_on_estado_never_the_marker() -> None:
+    """R37 / design.md section 9 — claim's one write-precondition is on estado."""
+    from planner_api.adapters.sqs import SqsGenerationQueue
+
+    code = _statement_lines(inspect.getsource(SqsGenerationQueue.claim))
+    assert 'ConditionExpression="#estado = :pending"' in code
+    assert "marca" not in code.lower()

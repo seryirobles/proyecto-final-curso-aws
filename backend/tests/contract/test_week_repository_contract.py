@@ -14,9 +14,13 @@ from planner_core.domain.recipe import MealSnapshot
 from planner_core.ports.weeks import WeekRepository
 from support.fakes import FakeWeekRepository
 
-from tests.contract.dynamo_contract import dynamo_week_repository
+from tests.contract.dynamo_contract import ai_dynamo_week_repository, dynamo_week_repository
 
-IMPLEMENTATIONS: list[Callable[[], WeekRepository]] = [FakeWeekRepository, dynamo_week_repository]
+IMPLEMENTATIONS: list[Callable[[], WeekRepository]] = [
+    FakeWeekRepository,
+    dynamo_week_repository,
+    ai_dynamo_week_repository,  # the planner_ai copy — drift between the two fails here (T21)
+]
 
 WEEK = IsoWeek(2026, 30)
 MONDAY = SlotRef(date(2026, 7, 20), MealSlot.LUNCH)
@@ -99,3 +103,17 @@ def test_two_successive_writes_both_apply_and_advance_the_marker_twice(
     second = repo.save_slot(WEEK, MONDAY, _CONTENTS)  # no raise: last-write-wins (R8)
 
     assert (first, second) == (1, 2)  # R11 — one bump per call
+
+
+def test_the_two_dynamo_copies_read_each_other_back_over_the_same_table() -> None:
+    """T21 — a key-format or attribute-name drift between the planner_api and
+    planner_ai copies is only visible when one writes and the other reads."""
+    api_repo, ai_repo = dynamo_week_repository(), ai_dynamo_week_repository()
+    contents = SlotContents(candidates=(Candidate(id="c1", meal=_meal(), author="u1"),))
+    other = SlotRef(date(2026, 7, 21), MealSlot.DINNER)
+
+    api_repo.save_slot(WEEK, MONDAY, contents)
+    assert ai_repo.get_week(WEEK) == {MONDAY: contents}
+
+    ai_repo.save_slot(WEEK, other, contents)
+    assert api_repo.get_week(WEEK) == {MONDAY: contents, other: contents}

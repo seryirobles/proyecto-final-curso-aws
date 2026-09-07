@@ -16,6 +16,9 @@ AI_GENERATION_INSUFFICIENT_LIBRARY_RECIPES = (
 AI_GENERATION_UNAVAILABLE = (
     "La generación con IA no está disponible en este momento. Puedes intentarlo más tarde."
 )
+UNKNOWN_PROMPT_VERSION = (
+    "La generación con IA no está disponible en este momento. Inténtalo de nuevo más tarde."
+)
 
 FORBIDDEN = "No tienes permiso para realizar esta operación."
 INVALID_CREDENTIALS = "El nombre de usuario o la contraseña no son correctos."

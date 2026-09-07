@@ -12,7 +12,8 @@ from typing import Any
 import boto3
 from botocore.exceptions import ClientError
 from planner_core.domain.generation import GenerationRequest, RuleOverride
-from planner_core.ports.generation_queue import StoredGeneration
+from planner_core.domain.rules import RuleSet
+from planner_core.ports.generation_queue import PerSlotResult, StoredGeneration
 
 from planner_api.adapters.dynamo import _table
 
@@ -41,6 +42,20 @@ def _override_payload(override: RuleOverride | None) -> dict[str, Any] | None:
     }
 
 
+def _rule_set_payload(rules: RuleSet) -> dict[str, Any]:
+    # R40: the resolved effective rules travel on the message so the worker
+    # generates against exactly what idPeticionIA was hashed from (design.md section 8).
+    return {
+        "categoryCounts": [
+            {"category": r.category.value, "count": r.count} for r in rules.category_counts
+        ],
+        "pins": [
+            {"day": p.day, "slot": int(p.slot.value), "recipeId": p.recipe_id} for p in rules.pins
+        ],
+        "disabledDays": list(rules.disabled_days),
+    }
+
+
 class SqsGenerationQueue:
     """queue_url comes from configuration (feature 16's wiring passes it in)."""
 
@@ -63,7 +78,15 @@ class SqsGenerationQueue:
             result=None if result is None else str(result),
         )
 
-    def submit(self, idempotency_key: str, request: GenerationRequest) -> None:
+    def submit(
+        self,
+        idempotency_key: str,
+        request: GenerationRequest,
+        *,
+        effective_rules: RuleSet,
+        prompt_version_id: str | None = None,
+        author: str | None = None,
+    ) -> None:
         # Create-if-absent, mirroring FakeGenerationQueue's setdefault: a concurrent
         # resubmit must never clobber a stored result (docs/data_model.md section 4.6).
         try:
@@ -88,6 +111,9 @@ class SqsGenerationQueue:
                     "weekId": request.week.week_id,
                     "mode": request.mode.value,
                     "ruleOverride": _override_payload(request.rule_override),
+                    "effectiveRules": _rule_set_payload(effective_rules),
+                    "promptVersionId": prompt_version_id,
+                    "authorUserId": author,
                 }
             ),
         )
@@ -96,3 +122,31 @@ class SqsGenerationQueue:
         # Unconditional DeleteItem on PETICIONIA#<hash>/METADATA (R32, AP27):
         # unconditional, so an absent key succeeds silently (R33).
         _table.table().delete_item(Key={"PK": _pk(idempotency_key), "SK": _METADATA_SK})
+
+    def claim(self, idempotency_key: str) -> bool:
+        # R36/R37: conditional pending -> running; ConditionalCheckFailed -> False.
+        # Alias every non-key name (docs/data_model.md L240-242, fix-round-4 precedent).
+        try:
+            _table.table().update_item(
+                Key={"PK": _pk(idempotency_key), "SK": _METADATA_SK},
+                UpdateExpression="SET #estado = :running",
+                ConditionExpression="#estado = :pending",
+                ExpressionAttributeNames={"#estado": "estado"},
+                ExpressionAttributeValues={":running": "running", ":pending": "pending"},
+            )
+        except ClientError as error:
+            if error.response["Error"]["Code"] == "ConditionalCheckFailedException":
+                return False
+            raise
+        return True
+
+    def record_result(
+        self, idempotency_key: str, status: str, per_slot: list[PerSlotResult]
+    ) -> None:
+        # R38/R39: unconditional UpdateItem — the preceding claim established ownership.
+        _table.table().update_item(
+            Key={"PK": _pk(idempotency_key), "SK": _METADATA_SK},
+            UpdateExpression="SET #estado = :estado, #resultado = :resultado",
+            ExpressionAttributeNames={"#estado": "estado", "#resultado": "resultado"},
+            ExpressionAttributeValues={":estado": status, ":resultado": json.dumps(per_slot)},
+        )

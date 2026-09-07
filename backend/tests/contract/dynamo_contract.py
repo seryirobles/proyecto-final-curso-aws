@@ -12,7 +12,8 @@ import os
 from collections.abc import Iterator
 
 from planner_core.ports.accounts import AccountRepository
-from planner_core.ports.generation_queue import GenerationQueue
+from planner_core.ports.generation_gate import GenerationGate
+from planner_core.ports.generation_queue import GenerationQueue, GenerationResultSink
 from planner_core.ports.recipes import RecipeRepository
 from planner_core.ports.rules import RuleRepository
 from planner_core.ports.shopping_list import ShoppingListRepository
@@ -75,3 +76,36 @@ def sqs_generation_queue() -> GenerationQueue:
     from planner_api.adapters.sqs import SqsGenerationQueue
 
     return SqsGenerationQueue()
+
+
+def ai_dynamo_week_repository() -> WeekRepository:
+    """The planner_ai copy of the DynamoDB week adapter — parametrized alongside
+    the planner_api one so drift between the two copies fails the suite (owner,
+    2026-09-06; specs/ai_lambda/design.md section 7)."""
+    from planner_ai.adapters.dynamo.weeks import DynamoWeekRepository
+
+    return DynamoWeekRepository()
+
+
+def ai_generation_records() -> GenerationResultSink:
+    """The planner_ai `GenerationResultSink` — the worker's claim/record_result
+    write-back to PETICIONIA# (specs/ai_lambda/design.md section 6)."""
+    from planner_ai.adapters.dynamo.generations import DynamoGenerationRecords
+
+    return DynamoGenerationRecords()
+
+
+def seed_ssm_parameter(name: str, value: str) -> None:
+    """Put an SSM String parameter into the moto-mocked backend so the
+    SsmGenerationGate contract case has something to read."""
+    import boto3
+
+    boto3.client("ssm", region_name=os.environ["AWS_DEFAULT_REGION"]).put_parameter(
+        Name=name, Value=value, Type="String", Overwrite=True
+    )
+
+
+def ssm_generation_gate(env: str = "dev") -> GenerationGate:
+    from planner_ai.adapters.ssm import SsmGenerationGate
+
+    return SsmGenerationGate(env=env, ttl_seconds=0.0)

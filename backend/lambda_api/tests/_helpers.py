@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from planner_core.domain.ai_prompt import PROMPT_VERSION_CONFIG_KEY
 from planner_core.domain.role import Role
 from planner_core.ports.accounts import AccountRecord, AccountRepository
 from planner_core.ports.archive import ArchiveRepository
@@ -62,7 +63,7 @@ def make_deps(
         hasher=hasher if hasher is not None else FakePasswordHasher(),
         signer=signer if signer is not None else HmacTokenSigner(SECRET),
         clock=clock if clock is not None else FakeClock.at("2026-08-17T10:00:00+00:00"),
-        config=config if config is not None else FakeConfig(),
+        config=config if config is not None else FakeConfig({PROMPT_VERSION_CONFIG_KEY: "v1"}),
     )
 
 

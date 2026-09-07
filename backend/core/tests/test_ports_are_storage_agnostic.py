@@ -28,6 +28,8 @@ PORT_MODULES = (
     CORE_SRC / "ports" / "shopping_list.py",
     CORE_SRC / "ports" / "archive.py",
     CORE_SRC / "ports" / "generation_queue.py",
+    CORE_SRC / "ports" / "ai_provider.py",
+    CORE_SRC / "ports" / "generation_gate.py",
 )
 FAKES_MODULE = TESTS_ROOT / "support" / "fakes.py"
 

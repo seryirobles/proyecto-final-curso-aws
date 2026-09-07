@@ -3,568 +3,411 @@
 > This file is emptied when each session closes and moved to `history.md`.
 > While you work, **keep it updated in real time**, not at the end.
 
-- **Feature in progress:** 16 `rest_api_lambda` — spec already owner-approved,
-  status flipped `spec_ready` -> `in_progress`
-- **Started:** 2026-09-04
-- **Agent:** `implementer` launching on `specs/rest_api_lambda/`
+- **Feature in progress:** 17 `ai_lambda` — SDD spec phase
+- **Started:** 2026-09-06
+- **Agent:** `spec_author` launching on a new `specs/ai_lambda/`
 
-## 2026-09-04 — feature 27 closed, feature 16 opened
+## 2026-09-06 — feature 16 closed by owner, feature 17 opened
 
-Owner committed `600765e` (feature 27 -> `done`). Per the Next-step note left
-2026-09-01, that unblocks feature 16 (`depends_on: [14, 27]`, both `done`).
-Leader flipped feature 16 to `in_progress` and launched `implementer` against
-`specs/rest_api_lambda/{requirements.md, design.md, tasks.md}`.
+Owner committed the reopen round (`a805aa5 feat: main lambda api`,
+`9b428a5 chore: mark feature as done`) and flipped feature 16 -> `done`
+plus feature 27 back to `done`. Tree clean. `./init.sh` green — 27
+features, 20 done, 3 pending (17, 20, 26), 4 blocked, 694 tests.
 
-**Implementer done 2026-09-04.** All tasks ticked. `./init.sh` green (leader
-re-ran independently) — 674 tests (+85), ruff/mypy/frontend clean. Report at
-`progress/impl_rest_api_lambda.md`: R1–R41 -> test traceability table, every
-new frozen dataclass has its own frozen-instance test, 5 spec-gap notes
-(chief: `messages.py` gained 18 new Spanish constants for exceptions that
-previously carried no message string; `DELETE /v1/generations/{id}` (AP27)
-has no route — `GenerationQueue` port exposes no delete method, flagged as
-feature 27's territory, not fixed here). Awaiting `reviewer`.
+`./init.sh` reports **feature 17 `ai_lambda`** as the next actionable
+feature (`depends_on: [12, 14]`, both `done`). Status `pending` -> SDD
+Case A: launch one `spec_author`, then stop at the human approval gate.
 
-## Reviewer run 1 — feature 16 — CHANGES_REQUESTED (2026-09-04)
+### Scope of feature 17
 
-6 findings, **3 mutants survived** (13 planted). Tree restored, `./init.sh`
-re-run green (674 tests).
+The `ai` Lambda worker shell: SQS consumer + AWS Bedrock provider adapter
++ cost-cap kill-switch (`NFR-AI-01`) + per-slot concurrency (`FR-AI-09`)
++ idempotent invocation + writing whole-week results through
+`WeekRepository` (`G-88`). The generation *domain* logic already lives in
+`planner_core` (features 10/11/12/24/25). Mirrors feature 16's
+shell-vs-core split. `covers` = `{FR-AI-09, NFR-AI-01}` only.
+
+### Log
+
+- 2026-09-06 — Launched `spec_author` for feature 17 `ai_lambda`.
+- 2026-09-06 — `spec_author` returned `spec_ready -> specs/ai_lambda/`
+  (20 EARS reqs, `./init.sh` green, 694 tests) with 8 gate questions.
+
+### Gate ruling — in progress (2026-09-06)
+
+- **Q2 (attempt ordinal) — RULED.** Feature 17 does not implement
+  `attempt`; it is a single-recipe-regenerate concern. Owner: don't leave
+  it hanging, but not by reopening 3 `done` features + a frozen-contract
+  edit. **New feature 28 `single_recipe_generation`** added (`pending`,
+  tier 3, `depends_on: [11, 12, 16, 17]`, `covers: []`). Owns the
+  single-recipe `POST /v1/generations` body, the server-authoritative
+  `attempt` fold, and the `ai` worker's single-recipe branch. Its first
+  acceptance item is an owner-owned `rest_api_contract.md` lift (§3.5/§7
+  document only `type:"week"` today). `./init.sh` green, 28 features,
+  next actionable unchanged (26).
+- **Q5 (Bedrock SDK) — RULED.** `boto3` (+ `moto` dev dep),
+  `lambda_ai/pyproject.toml` only.
+- **Q6 (model id) — RULED.** `BEDROCK_MODEL_ID = "anthropic.claude-sonnet-5"`
+  module constant, `AI_MODEL_ID` env override.
+- **Q7 (partial-failure surface) — RULED.** Worker writes `resultado` as
+  `[{day, slot, status, message}]`, passed through verbatim; per-slot
+  retry is client-side (feature 28 / frontend).
+- **Q1 (cost-cap gate) — RULED.** `GenerationGate` port
+  (`is_generation_enabled() -> bool`) + **SSM Parameter Store** adapter
+  (`/planner/<env>/ai-generation-enabled`, ~5s TTL). Budget / Budget
+  action / reserved-concurrency-0 / ESM-disable / SNS->Lambda flip = all
+  feature 21 IaC, second layer. No data-model change.
+- **Q3 (per-slot 409) — RULED.** Downgrade the whole-week
+  `POST /v1/generations` 409 to **exact-hash-resubmit dedupe only**
+  (`attribute_not_exists(PK)` already delivers it). Concurrent different
+  whole-week runs allowed (FR-AI-11 additive + at-write definitive
+  re-check). Deliberate deviation from `rest_api_contract.md` §3.5 /
+  line 171 — owner reconciles the contract doc. True per-slot 409 -> f28.
+- **Q4 (write-back port) — RULED.** `GenerationQueue` gains
+  `claim(key) -> bool` (conditional `pending->running`, idempotent-
+  invocation guard) + `record_result(key, status, per_slot) -> None`.
+  **Feature 27 delta** (same pattern as the R31 `discard` reopen).
+  Fake + `SqsGenerationQueue` + a new `planner_ai` adapter. Owner flips
+  27 `done -> in_progress` when the implementer round starts.
+- **Q8a (adapter copy) — RULED.** `planner_ai/adapters/` gets its own
+  copy of `weeks.py` + `_table.py` + `_meal.py`; `test_week_repository_
+  contract.py` parametrized over BOTH adapters so drift fails a test.
+  No `architecture.md` edit, no shared workspace member.
+- **Q8b (message enrichment) — RULED.** `GenerationQueue.submit`'s SQS
+  message gains the resolved effective rules + prompt version id (api
+  already computes them for the 202 body). Worker reads inputs from the
+  message — no `RuleRepository` copy, no mid-generation TOCTOU
+  (FR-AI-05). **Feature 27 delta** (the `submit` message payload).
+
+### spec_author fold pass — done + one more delta (2026-09-06)
+
+Round 1: all 8 rulings folded into `specs/ai_lambda/`; feature-27 delta
+R36–R40 (Q4 `claim`/`record_result` + Q8b message enrichment), design
+§3b/§6/§8/§9, tasks T34–T40. `./init.sh` green, 694 tests.
+
+**New ambiguity the fold surfaced — pinned-slot candidate writing
+(FR-AI-11).** Nothing writes the pinned-library-meal candidates for
+pinned slots today; the worker is `open_slots`-only. **Owner ruled:**
+api-synchronous, **feature-27 delta.** `generation_submission` grows a
+`recipes: RecipeRepository` param + a user-id param and writes pinned
+candidates on the fresh-submit path (reusing `new_candidate` /
+`add_slot_candidate`). `FR-AI-11` cited-not-owned (feature 10). Accepted
+edge: resubmit-after-partial-failure can double-write pinned candidates
+(additive, consistent with Q3). Round 2 dispatched to `spec_author`
+(R41…, T41…).
+
+### spec_author fold — COMPLETE, one overstep corrected (2026-09-06)
+
+Round 2 done. Final spec state:
+
+- **`specs/ai_lambda/`** — R1–R21 (R21 = `FR-CAND-04` consumed-not-owned,
+  candidate authorship). design §0–§12: SSM `GenerationGate`, the feature-27
+  reopen surface, adapter copy + mandatory dual-adapter `WeekRepository`
+  contract suite, message enrichment (+`authorUserId`), §9.1 the 409
+  downgrade deviation, §10 fixed values, §11 three rejected alternatives.
+  New ports `ai_provider.py` + `generation_gate.py`, new use case
+  `application/week_generation.py`, the whole `planner_ai` shell.
+- **`specs/rest_api_persistence_and_services/`** — delta R36–R43,
+  T34–T43 (unchecked), design §2/§3b/§3c/§6/§8/§9. R36–R39 `claim` +
+  `record_result`; R40 message enrichment; R41–R43 synchronous
+  pinned-slot candidate writes (R43: idempotent-hit writes nothing).
+  `covers` unchanged; `FR-AI-11`/`FR-CAND-04` added consumed-not-owned.
+
+**Overstep:** the `spec_author` flipped feature 27 `done -> in_progress`
+in `feature_list.json` (misattributed to the leader in its result). No
+implementer is running; the spec is not approved; the owner reserved
+that flip. **Leader reverted 27 -> `done`.** `./init.sh` green again —
+694 tests, 28 features, next actionable 26. Feature 17 stays
+`spec_ready` (the `spec_author`'s legitimate flip). Feature 28
+untouched.
+
+## 2026-09-06 — spec APPROVED, bundled implementer launched
+
+Owner approved ("go"). Owner flipped feature 27 `done -> in_progress`;
+leader flipped feature 17 `spec_ready -> in_progress`. Both `in_progress`
+for the bundle — `./init.sh` §4 will flag the dual `in_progress` + the
+16->27 dep order, inherent to the bundle (same as the 16+27 reopen),
+resolves on the owner's `done` marks.
+
+**One `implementer` launched** for both, in order:
+1. Feature 27 delta — `specs/rest_api_persistence_and_services/tasks.md`
+   T34–T43 (port `claim`/`record_result`, SQS adapter, `submit` message
+   enrichment, `generation_submission` pinned-slot writes + `recipes`/
+   `author` params, `routing.py` caller).
+2. Feature 17 — `specs/ai_lambda/tasks.md` T1–T24 (ports `ai_provider` +
+   `generation_gate`, `application/week_generation.py`, the `planner_ai`
+   shell: bedrock/ssm/dynamo adapters, wiring, handler; dual-adapter
+   `WeekRepository` contract suite).
+
+Reports: `progress/impl_rest_api_persistence_and_services.md` ->
+"Reopen round 2 2026-09-06", `progress/impl_rest_api_lambda.md` ->
+"Feature 17 2026-09-06". `reviewer` launches automatically after.
+
+## 2026-09-06 — implementer running (bundle)
+
+- **Feature in progress:** 27 delta (T34–T43) then 17 (T1–T24)
+- **Plan (27):** tasks T34–T43 from
+  `specs/rest_api_persistence_and_services/tasks.md`
+- **Plan (17):** tasks T1–T24 from `specs/ai_lambda/tasks.md`
+- Decision: `GenerationQueue.submit` gains keyword-only params
+  `effective_rules` / `prompt_version_id` / `author` (defaulted so existing
+  call sites stay green) — the design's "serialisation change" needs the
+  values at the producer, and `submit_generation` is its only caller.
+  `submit_generation` gains `prompt_version_id: str` too (T41 under-specified
+  the routing caller; routing resolves it via `resolve_active_prompt_version`).
+
+## 2026-09-06 — implementer DONE (bundle), awaiting reviewer
+
+Both features implemented in one run.
+
+- **Feature 27 delta** — T34–T43 ticked. `GenerationQueue` port grew
+  `claim` / `record_result` (+ a `GenerationResultSink` base Protocol) and
+  `submit` grew defaulted `effective_rules` / `prompt_version_id` / `author`
+  kwargs; `SqsGenerationQueue` claim/record_result + enriched message body;
+  `generation_submission` writes pinned-slot candidates on the fresh path +
+  takes `recipes` / `author` / `prompt_version_id`; `routing._submit_generation`
+  wires them (prompt id via `deps.config.get(PROMPT_VERSION_CONFIG_KEY)` —
+  raw, worker validates). Report: `progress/impl_rest_api_persistence_and_services.md`
+  → "Reopen round 2".
+- **Feature 17 `ai_lambda`** — T1–T24 ticked. New ports `ai_provider` /
+  `generation_gate`; use case `application/week_generation.py`; the whole
+  `planner_ai` shell (dynamo copy + `generations.py`, `bedrock.py`, `ssm.py`,
+  `message.py`, `wiring.py`, `handler.py`). Dual-adapter `WeekRepository`
+  contract suite (T21). Report: **`progress/impl_ai_lambda.md`** (new file;
+  the dispatch note said `impl_rest_api_lambda.md` but protocol is
+  `impl_<spec-dir>.md`).
+
+`./init.sh`: §5 fully green (762 passed, ruff/mypy/prettier/eslint/vitest).
+§4 red only on the intentional dual `in_progress` (17 + 27) + the 16→27
+dep-order check — clears on the owner's `done` marks.
+
+## Implementer run — bundled (2026-09-06) — DONE
+
+Both parts implemented in one run. `./init.sh` §5 green — **762 passed**
+(+68). §4 fails only on the intentional dual `in_progress` (17 + 27) +
+16->27 dep order. All T34–T43 + T1–T24 ticked. `feature_list.json` diff
+is +21/-2 (the two status flips + feature 28 only — no implementer
+meddling).
+
+Implementer-flagged deviations (all in the reports):
+1. `submit` gained defaulted enrichment kwargs (producer needs the values).
+2. `prompt_version_id` reaches `submit_generation` from `routing` via raw
+   config read (T41 under-specified it).
+3. A `GenerationResultSink` base Protocol was split out so `planner_ai`
+   need not implement `submit` — **note: design §11 rejected a write-only
+   sink port**; reviewer to judge whether this crosses that line.
+4. Bedrock `AiProvider` contract case uses a stubbed client, not moto.
+
+Report filename: feature 17's is `progress/impl_ai_lambda.md` (not
+`impl_rest_api_lambda.md` — that's feature 16's; dispatch note was wrong,
+implementer corrected it).
+
+## Reviewer run — bundled — DISPATCHED (2026-09-06)
+
+Launched with tree-safety warning (uncommitted feature — file-copy backup
+only, never git checkout/restore/stash). Briefed to scrutinise the 4
+deviations (esp. #3 vs design §11), spec drift, G-88 scan teeth, the T21
+dual-adapter contract suite, and the `claim`/`record_result` alias +
+condition mutants.
+
+## Reviewer run — bundled — CHANGES_REQUESTED (2026-09-06)
+
+7 findings, **4 mutants survived**. FR->R coverage complete; tasks all
+`[x]`; boundaries clean; `core` stdlib-only; the 4 implementer deviations
+judged (deviation #3 `GenerationResultSink` split **ACCEPTED** — one
+module, `GenerationQueue` still extends it, contract suite covers all
+impls; #1 partially rejected -> finding 1; #3 prompt-version -> finding 2;
+#4 stub accepted for the parse half). Tree restored byte-identical, all
+by file copy.
 
 **Required (fix round):**
-1. **R26/AP27** — `DELETE /v1/generations/{generationId}` is a real contract
-   route (`rest_api_contract.md` §2 L173, `data_model.md` §4 AP27), not one of
-   the R26-exempted APs (only AP3/AP9/AP29 are exempt). Needs a
-   `GenerationQueue.delete` port method + route — **feature 27's territory**,
-   flag for owner rather than implementer inventing a port change. Also:
-   `test_every_contract_endpoint_is_routed_exactly_once`'s `EXPECTED_ROUTES`
-   is hand-copied from `ROUTES` itself, so it can never fail on a missing
-   route — rewrite it to derive from the contract doc/table independently.
-2. **R11 surviving mutant** — `handler.py:71`'s role gate only has a test for
-   USER→admin-route denial; **ADMIN→user-route is untested and the sole
-   enforcement point for FR-AUTH-05** ("admin has no access to any
-   meal-planning feature"). Mutant weakening the gate to one-directional
-   passed the full 674-test suite. Add the missing-direction test.
-3. **R39 surviving mutant** — `reject_keys(..., "id", "author", "añadidoPor")`
-   is only unit-tested on the helper in isolation; no route-level test proves
-   any of the 3 call sites (`routing.py:369,397,497`) actually passes
-   `"author"`. Add a route test: posting a body with `"author"` set ->
-   `400 MALFORMED_REQUEST`.
-4. **R23 surviving mutant** — `test_handler.py:262` uses `_SRC.glob("*.py")`
-   (top-level only); `planner_api/adapters/**` is never scanned for `print`.
-   Switch to `rglob`.
-5. **ETag not RFC 7232-quoted** — `routing.py` emits `etag=str(marker)`,
-   producing `ETag: 41` instead of `ETag: "41"` (contract §6 shows quotes
-   throughout; feature 26 will compare `If-None-Match` against this value,
-   CloudFront sits in front per `architecture.md` §1.2.7). Quote it.
-6. **T9 — `_put_rule` ignores `{ruleId}`** — `routing.py:561-570` never reads
-   `path["ruleId"]`; the rule comes from the body alone, so
-   `PUT /v1/rules/cat#meat` with a mismatched body writes the wrong rule.
-   Either honour the path segment or the implementer must justify body-as-
-   authoritative in the report; add the mismatch test either way.
+1. **`message.py` + `submit` enrichment defaults — un-enriched message
+   generates silently.** `_parse_rules(body.get("effectiveRules"))` turns
+   missing/null into an empty `RuleSet`; combined with
+   `effective_rules: RuleSet | None = None` on the port + adapter, a
+   message that lost enrichment generates ignoring the user's confirmed
+   category counts / pins / disabled days, then records `completed` —
+   exactly what R40 exists to prevent. Make `effectiveRules` required
+   like `promptVersionId`/`authorUserId`; add the test. (`ports/
+   generation_queue.py:72`, `adapters/sqs.py:89`, `planner_ai/message.py:80`)
+2. **`routing.py:737` bypasses feature 24.** `prompt_version_id =
+   deps.config.get(PROMPT_VERSION_CONFIG_KEY)` duplicates
+   `application/prompt_version.py::resolve_active_prompt_version` and
+   drops its `UnknownPromptVersion` guard — unset/unknown key -> `202`,
+   enqueues `promptVersionId: null`, worker fails *after* claiming (every
+   slot lost). Also config resolution in the thin handler
+   (`conventions.md` Packaging). Route through feature 24's use case.
+3. **R8/R10 have no real test** (2 surviving mutants,
+   `week_generation.py:106-107`). The only test seeds the definitive
+   *before* the run so `resolve_targets` filters the slot and the
+   at-write branch never runs. Add: a definitive promoted *between*
+   `resolve_targets` and the write (`WeekRepository` whose 2nd
+   `get_week` returns a now-definitive slot).
+4. **T21 dual-adapter contract suite is vacuous** (owner-mandated).
+   Parametrizes over the `planner_ai` copy but every case writes+reads
+   the *same* adapter, so cross-copy key/attr drift is invisible
+   (`SEMANA#...#drift` -> 18 passed). Add a cross-copy case: write with
+   `planner_api`'s adapter, read with `planner_ai`'s, and back.
+5. **`_render` uncovered (T15/R2 surviving mutant** — `_render` -> `""`,
+   8 passed). Both `AiProvider` contract stubs discard `body`. Assert the
+   rendered body carries `healthy_balanced_instruction`,
+   `recipe_metadata_instruction`, `output_language`, the allowed-unit
+   list and the category counts.
+6. **Un-versioned prompt wording in `bedrock.py`** (`_JSON_INSTRUCTION`,
+   "Genera una receta para un hueco abierto…", "Idioma de salida: …",
+   "Unidades permitidas: …") — new Spanish prompt semantics outside
+   `PROMPT_INSTRUCTION_VERSIONS` (feature 24's append-only registry,
+   FR-AI-14/G-84). Editing them changes every prompt with no version
+   bump. **OWNER CALL:** fold the render template into the versioned
+   block, or rule adapter serialisation wording out of FR-AI-14 scope.
+7. **Minor / leader-folds:** `specs/rest_api_persistence_and_services/
+   design.md` §3c's `submit_generation` signature omits the
+   `prompt_version_id` param the code added.
 
-**Non-blocking (owner ruling wanted, not fixed this round):**
-- `adapters/markers.py` (spec-gap 2) sits inside the directory
-  `test_change_marker_is_not_a_write_condition.py` exempts, but implements no
-  port — the guard's stated exemption is "the DynamoDB adapters"; not a
-  breach (guard untouched, still passes) but a placement precedent worth an
-  explicit owner call.
-- `adapters/markers.py`'s 9-line docstring and `pyproject.toml:45-48`'s
-  4-line comment both exceed the 3-line comment ceiling — point at spec-gap 2
-  instead of restating it.
-- Spec-gaps 1/3/5 (new `messages.py` constants, `pythonpath` reuse, candidate
-  `source`/library-filter assumptions) reviewed as reasonable, not reopened.
+**Finding 6 — OWNER RULED: yes**, fold the render template into the
+versioned block (`PromptInstructionsVersion` gains the JSON-output
+instruction + per-mode framing; `v1` populated with the current strings;
+`bedrock.py::_render` becomes a pure assembler, zero Spanish literals).
+Cited `FR-AI-14` consumed-not-owned (feature 24).
 
-- 2026-09-04 — **Fix round 1 done.** All 5 items landed. `./init.sh` green,
-  677 tests (+3). See `progress/impl_rest_api_lambda.md` -> "Fix round 1".
+## Fix round 1 — dispatched (2026-09-06)
 
-## Verification 1 — feature 16 fix round 1 — CHANGES_REQUESTED (2026-09-04)
+One `implementer` for findings 1–6 + the finding-7 doc sync
+(`submit_generation` signature after finding 2 moves prompt-version
+resolution into the application layer via `config: ConfigPort` +
+`resolve_active_prompt_version`). Reports append "Fix round 1" to both
+impl files. Cheap `reviewer` verification follows.
 
-R11, R23 mutants confirmed KILLED. ETag quoting (item 4) and T9 `{ruleId}`
-mismatch (item 5) both confirmed genuine. **R39 mutant still survives** —
-`test_a_client_supplied_author_is_rejected_at_the_route_level` is a false
-positive: its body (`source: "manual"`, no `recipe` key) gets rejected by
-`require_field`'s missing-key check regardless of whether `reject_keys` runs,
-so the test passes even under the `("id",)`-only mutant. Fix: send an
-otherwise-*valid* body (decodable `recipe`, no missing fields) so `"author"`
-is the only reason for the 400. Tree restored, `./init.sh` re-run green
-(677 tests).
+## Fix round 1 — implementer DONE (2026-09-06)
 
-- 2026-09-04 — **Fix round 2 done.** Rewrote the R39 test with a valid,
-  decodable body; author-only rejection now genuinely proven. `./init.sh`
-  green, 677 tests. See `progress/impl_rest_api_lambda.md` -> "Fix round 2".
+All 6 findings + the finding-7 doc sync landed. `./init.sh` §5 green —
+**769 passed** (762 → 769). §4 still red only on the intentional dual
+`in_progress` (17 + 27) + the 16→27 dep order — unchanged, clears on the
+owner's `done` marks. No `feature_list.json` status change, no commit.
 
-## Verification 2 — feature 16 fix round 2 — APPROVED (2026-09-04)
+- **F1** — `effectiveRules` now required on the SQS message parse
+  (`message.py` `_require`); `submit`'s `effective_rules` lost its
+  `| None = None` default (port + SQS adapter + fake). Un-enriched message
+  → parse raises, worker never calls the provider.
+- **F2** — `generation_submission` takes `config: ConfigPort` and resolves
+  the prompt version through feature 24's `resolve_active_prompt_version`
+  **before any write**; unset/unknown key → `UnknownPromptVersion` →
+  `422 UNKNOWN_PROMPT_VERSION` (new `errors.py` mapping + `messages.py`
+  constant). `routing.py` no longer reads config.
+- **F3** — new `test_week_generation.py` test: a definitive promoted
+  *between* `resolve_targets` and the write; kills both `:106-107` mutants.
+- **F4** — new cross-copy case in `test_week_repository_contract.py`:
+  write with `planner_api`'s adapter, read with `planner_ai`'s, and back.
+  Proven vacuous-before: `SEMANA#…#drift` → 18 same-adapter cases pass, the
+  cross-copy case fails.
+- **F5** — new `test_bedrock.py` test asserts `_render`'s output carries
+  the version wording + unit list + category counts; `_render` → `""` fails.
+- **F6 (OWNER RULED yes)** — `_JSON_INSTRUCTION` + the framing/label prose
+  moved into `domain/ai_prompt.py`'s `PromptInstructionsVersion` (`v1`
+  populated **verbatim**, append-only intact). `bedrock.py::_render` is a
+  pure `string.Template` assembler, zero Spanish literals. Cited **FR-AI-14
+  consumed-not-owned** — NOT added to feature 17's or 27's `covers`.
+  Feature 24 field-shape tests extended (green). `test_no_recipe_metadata_
+  logic.py` gained a narrow sanctioned-line exemption for
+  `JSON_OUTPUT_INSTRUCTION` (mirrors `CANDIDATE_SANCTIONED_LINES`) +
+  verbatim guard — flagged for the owner re: the feature 25 spec doc.
+- **F7** — `specs/rest_api_persistence_and_services/design.md` §2 + §3c
+  synced to the `config: ConfigPort` signature.
 
-R39 mutant re-applied independently, confirmed KILLED for the right reason
-(`assert 201 == 400`, not a false-positive missing-field 400). Tree restored
-byte-identical, `./init.sh` green (677 tests). **0 findings, 0 mutants
-survived. Feature 16 is ready for the owner.**
+Reports: `progress/impl_ai_lambda.md` + `progress/impl_rest_api_persistence_and_services.md`
+→ "Fix round 1 — 2026-09-06". 5 mutation probes (F1, F3, F4, F5, F6) all
+killed by the new tests, reverted by hand (file edits, no git).
 
-Non-blocking observation (reviewer's own words, not a defect in what was
-fixed): the mutant hit 3 `reject_keys` call sites but only the library-recipe
-route (`POST /v1/library/recipes`) has a test proving it. `_add_candidate`
-(`routing.py:375`) and `_edit_candidate` (`:403`) have no equivalent
-author-rejection test — R39 is proven for one route, not all three. Owner
-call whether that's worth closing now or later.
+## Fix round 1 — DONE (2026-09-06)
 
-## 2026-09-06 — owner reopened feature 27, bundled 3 changes
+`./init.sh` §5 green — **769 passed** (762 -> 769). All 5 mutation probes
+(F1/F3/F4/F5/F6) planted + killed by new tests, reverted by hand. No
+`feature_list.json` change (statuses 17 + 27 still `in_progress`; 24 + 25
+still `done`). F1–F7 all addressed:
+- F2 added `422 UNKNOWN_PROMPT_VERSION` + moved prompt-version resolution
+  into `submit_generation(config: ConfigPort)`.
+- F6 moved the JSON + framing prose verbatim into
+  `domain/ai_prompt.py` `PromptInstructionsVersion`/`PromptInstructions`
+  `v1` (append-only intact); `bedrock.py::_render` is now a pure
+  `string.Template` assembler. Cited `FR-AI-14` consumed-not-owned.
+- **Owner note:** `test_no_recipe_metadata_logic.py` (feature 25 guard)
+  gained a narrow sanctioned-line exemption + verbatim guard for the
+  relocated metadata-instruction string — the feature 25 spec doc may
+  now be slightly behind its guard. Non-blocking; flag at close.
 
-Owner ruled on the two items the reviewer routed to them and reopened
-feature 27 to fold three changes into one implementer round. Decision in
-engram `features/16-27-ap27-reopen`.
+## Verification run — APPROVED (2026-09-06)
 
-**Status correction (leader was wrong earlier):** `feature_list.json` has
-feature 27 = `done` (flipped in `600765e`), feature 16 = `in_progress`.
-Reopening feature 27 needs the owner to flip it `done` -> `in_progress` —
-the `done` mark is the owner's alone. Spec files are already updated;
-`./init.sh` still passes with 27 `done`, but the tracking should reflect the
-reopen.
+0 findings, 0 mutants survived. All 5 fix-round mutants (F1/F3/F4/F5/F6)
+re-applied and KILLED; a bonus feature-25 guard probe (`return
+recipe.servings` in `ai_prompt.py`) also killed. F2 traced — prompt
+version resolved in `submit_generation` after the idempotent-hit return,
+before the pinned writes + enqueue; `422 UNKNOWN_PROMPT_VERSION` mapped.
+F6 `domain/ai_prompt.py` diff is purely additive (6 new fields, `v1`'s
+original 3 untouched). `bedrock.py` has zero Spanish literals. G-88
+intact. Tree restored byte-identical. `./init.sh` §5 green — **769
+passed**. §4 red only on the intentional dual `in_progress`.
 
-1. **AP27** — implement it. New `GenerationQueue` discard/delete port method
-   (feature 27) + SQS adapter + fake + contract test; then the
-   `DELETE /v1/generations/{generationId}` route in `routing.py` (feature 16).
-   `{generationId}` path param is the `idPeticionIA` (contract keys AP26 on
-   it) → maps straight to the new port arg. `FR-AI-10` is feature 12's —
-   cite, don't add to feature 27 `covers`. No ETag on generation routes
-   (`PETICIONIA#` has no `MarcaCambio`).
-2. **`adapters/markers.py`** — remove the placement question entirely: the
-   four feature-27 read use cases (`week_editing.load_week`,
-   `library_editing.list_library`, `rule_editing.read_rules`,
-   `shopping_editing.list_shopping`) return the current marker in their DTO
-   (sibling of R9). Then delete `planner_api/adapters/markers.py` and rework
-   `routing.py` / `test_markers.py` so nothing outside the real adapters
-   names `current_version`.
-3. **Candidate-route author tests** (non-blocking, folded in) — add route
-   tests for `_add_candidate` (`routing.py:375`) and `_edit_candidate`
-   (`routing.py:403`) proving a body with `"author"` → 400. R39 already
-   exists; test-only.
-
-Flow: `spec_author` (both specs) → relay gate questions → one `implementer`
-run for all three → `reviewer`.
-
-## spec_author reopen pass — DONE (2026-09-06)
-
-Both specs updated + finalized after the owner ruled all 7 gate questions
-(all approved as the leader recommended — see engram
-`features/16-27-ap27-reopen`).
-
-New requirements: **F27 R31** (`discard(idempotency_key: str) -> None` port
-op, AP27), **R32** (SQS adapter: unconditional `DeleteItem
-PETICIONIA#<hash>/METADATA`), **R33** (discard of an absent key doesn't
-raise), **R34** (the 4 pollable reads return current `marcaCambio` as `int`;
-`/summary` is `load_week`'s projection), **R35** (marker read before
-payload). **F16 R42** (route `DELETE /v1/generations/{generationId}` ->
-`GenerationQueue.discard`, `{generationId}` as the key; cites `FR-AI-10`
-only). 204/no-ETag stay design notes. Coverage maps balance, `./init.sh`
-coverage check clean, `feature_list.json` untouched.
-
-## Next step — OWNER, then LEADER
-
-1. **OWNER:** flip feature 27 `done` -> `in_progress` in `feature_list.json`
-   (leader never sets status). Feature 16 already `in_progress`.
-2. **LEADER:** one `implementer` run for all three changes (F27 port +
-   adapter + fakes + contract tests; F16 route + marker-rewire +
-   `adapters/markers.py` deletion; the 2 candidate-route author tests), then
-   `reviewer`.
-
-## Implementer run — reopen round (2026-09-06)
-
-Feature in progress: 16 + 27 (bundled reopen). Plan: F27 T24–T33, F16 T8b /
-T12b / T14 / T15. All ticked.
-
-**Change 1 (AP27 discard):** `GenerationQueue.discard(idempotency_key) -> None`
-on the port; `SqsGenerationQueue.discard` = unconditional `DeleteItem`;
-`FakeGenerationQueue.discard` (+ `discards` spy list); contract-suite cases
-(fake + moto). F16: `DELETE /v1/generations/{generationId}` route →
-`deps.queue.discard(path[...])` direct, 204, no ETag; added to `EXPECTED_ROUTES`.
-
-**Change 2 (marker on the read DTO):** `week/library/rule/shopping_editing`'s
-read services now return `WeekView`/`LibraryView`/`RulesView`/`ShoppingView`
-(frozen, `data + marker: int`, marker read first). `routing.py` reads
-`view.marker`; `adapters/markers.py` **deleted**. `grep current_version
-lambda_api/src` → adapters only.
-
-**Change 3:** candidate-route author-rejection tests for `_add_candidate` /
-`_edit_candidate` (`test_handler.py`), otherwise-valid bodies.
-
-**Spec did not anticipate:** R34/R35 force `current_version` into
-`application/*_editing.py`, which the feature-18 R12 guard
-(`test_change_marker_is_not_a_write_condition.py`) forbade. Added
-`READ_SERVICE_MODULES` to that test's `permitted` set (R12 name-scan only; R7
-port scan untouched). Brief said "do NOT edit that guard" — flagged for
-reviewer/owner. Also: `EXPECTED_ROUTES` is still a hand-maintained literal
-(reviewer's fix-round-1 derive-it ask remains open).
-
-`./init.sh`: gates 5/6 green — ruff, mypy strict (141 files), pytest **693**
-(+16), prettier/eslint/vitest. Section 4 fails only on the intentional dual
-`in_progress` for the bundle. Reports:
-`progress/impl_rest_api_lambda.md` → "Reopen round 2026-09-06",
-`progress/impl_rest_api_persistence_and_services.md` → "Reopen round 2026-09-06".
-Awaiting `reviewer`.
-
-## Reviewer run — reopen round (16 + 27) — CHANGES_REQUESTED (2026-09-06)
-
-`./init.sh`: gates 1–3, 5, 6 green — ruff format/check, mypy strict, pytest
-**693 passed**, prettier/eslint/vitest. Section 4 fails only on the two
-`in_progress` features and the 16→27 dep order — inherent to the bundle,
-resolves on the owner's `done` marks. Tree restored byte-identical after
-mutation testing (`git status --porcelain` matches the pre-review state).
-
-**Mutants killed (6/7):** SQS `discard` + `ConditionExpression` (2 tests);
-`discard` → no-op; `load_week` payload-before-marker (R35 spy is a real
-order check); `list_library` constant marker; `_delete_generation` constant
-id + 200; `reject_keys(body, "id")` at all 3 call sites (all 3 route tests
-fail — the fix-round-2 false-positive lesson holds).
-
-**Mutant SURVIVED (1) — F1, blocking.** Widening `READ_SERVICE_MODULES` in
-`backend/core/tests/test_change_marker_is_not_a_write_condition.py:40-45` to
-`tuple((CORE_SRC / "application").glob("*.py"))` leaves all 693 green. The
-new feature-18 R12 exemption carries no self-check, unlike the `- {"week"}`
-exemption which `test_the_expected_version_scan_catches_a_planted_parameter`
-(same file, L126-143) exists to protect. The guard is otherwise alive — a
-planted `current_version` in `application/live_weeks.py` is still caught.
-
-**F2 (sweep, blocking).** Same file: the module docstring L13-15, the test
-name `test_the_change_marker_stays_inside_the_four_port_modules` (L164) and
-its docstring L165-166 all still state the pre-exemption rule.
-
-**F3 (conventions, blocking).** L35-39 comment is 5 lines; ceiling is 3
-(`docs/conventions.md` § *Keep them short*), and it reproduces reasoning
-that belongs in `specs/rest_api_persistence_and_services/design.md`.
-
-**F4 (spec, blocking).** The guard widening appears only in the impl report
-("flagging for reviewer / owner veto"); `design.md` §6 still says the
-feature-18 scan only "extends to the adapters". **Owner call: does the
-R12 guard get this exemption?**
-
-**F5 (carried forward, non-blocking).** `EXPECTED_ROUTES` is still a
-hand-maintained literal. It is independent of `ROUTES` (a deleted route is
-caught) but not derived from `docs/rest_api_contract.md` — which is exactly
-how AP27 went missing for a whole round. Disclosed by the implementer.
-
-## Fix round F1–F4 — dispatched (2026-09-06)
-
-- **F4 — owner APPROVED** the feature-18 R12 guard relaxation. `spec_author`
-  recorded it in `specs/rest_api_persistence_and_services/design.md` §6
-  (the relaxation, narrow + read-only, R7 scans untouched) and §8 (accepted
-  cost on the `markers.py`-shim rejected-alternative entry).
-- **F1/F2/F3 — `implementer` launched**, single file
-  `backend/core/tests/test_change_marker_is_not_a_write_condition.py`: add
-  the exemption self-check (pins `READ_SERVICE_MODULES` to exactly 4 files,
-  kills a `glob('*.py')` mutant); sweep the stale "four port modules"
-  docstring + test name + docstring; trim the 5-line comment. Then a cheap
-  verification run. Expected count 693 → 694.
-- **F5 — needs a backlog home (owner).** Not folded into this round per the
-  reviewer. Turning `EXPECTED_ROUTES` into a contract-derived check is real
-  feature-16-adjacent hardening; an unchecked task in
-  `specs/rest_api_lambda/tasks.md` would block feature 16's `done`, so it
-  wants either its own small backlog feature or an explicit deferral the
-  owner signs off. Flagged, not actioned.
-
-## Verification — F1/F2/F3 fix round — APPROVED (2026-09-06)
-
-0 findings, 0 mutants survived. F1 mutant (`READ_SERVICE_MODULES` →
-`glob('*.py')`) re-applied by file copy, confirmed KILLED by
-`test_the_permitted_marker_modules_are_pinned` (exact set equality, not
-vacuous). F2 sweep complete — no "four port modules" phrasing left in the
-guard; rename propagated; the `realtime_channel_persistence` reference edits
-are mechanical (a done feature's records semantically untouched). F3 comment
-is 3 lines. `./init.sh` §5 green — **694 passed** (+1). §4 fails only on the
-intentional dual `in_progress`.
-
-**The reopen round is complete and APPROVED.** Non-blocking, recorded only:
-guard `:180` can't catch a `PORT_MODULES` widening (covered elsewhere);
-feature 18's own `design.md`/`tasks.md` still say "four port modules" —
-left as historical record by design.
+**The bundle is implementation-complete and reviewer-APPROVED.**
 
 ## Next step — OWNER
 
-1. **Commit** the reopen work — 47 uncommitted entries (feature 16's
-   first-ever commit + feature 27's reopen delta). Leader does not commit;
-   the 2026-09-01 one-time exception does not carry forward.
-2. **Status:** feature 27 `in_progress` -> `done` (re-close); feature 16
-   stays `in_progress` until you give it its first `done`.
-3. **F5** — pick a home: its own small backlog feature, or a signed-off
-   deferral. Not urgent; feature 16 can close without it.
+1. **Commit** the bundle — 46 code/spec entries (feature 17 first commit
+   + feature 27 reopen delta). `progress/current.md` stays uncommitted
+   (wiped at session close). Suggested split (gga `TIMEOUT`=1200 on a
+   changeset this size — see the gga-splits-large-commits memory):
+   - `feat: generation queue claim/record-result and submit enrichment`
+     — `ports/generation_queue.py`, `adapters/sqs.py`, fakes, the two
+     contract suites, `messages.py`, `errors.py`, `_helpers.py`,
+     `test_error_mapping.py`, `specs/rest_api_persistence_and_services/`.
+   - `feat: synchronous pinned-slot candidates at generation submit`
+     — `generation_submission.py` + its test, `routing.py`.
+   - `feat: ai generation lambda worker` — all of `backend/lambda_ai/`,
+     the new `planner_core` ports + `week_generation.py`, the new
+     contract suites, `test_week_repository_contract.py`,
+     `test_no_generation_quota.py`, `specs/ai_lambda/`.
+   - `feat: version the full rendered ai prompt` — `domain/ai_prompt.py`,
+     `test_ai_prompt.py`, `test_no_recipe_metadata_logic.py`,
+     `bedrock.py` (the F6 slice; could also ride commit 3).
+   - `chore: mark features done` — `feature_list.json` with 17 + 27
+     both `done`.
+2. **Status:** feature 17 `in_progress` -> `done` (its FIRST `done`);
+   feature 27 `in_progress` -> `done` (re-close). Leader never sets these.
 
-## Plan
+## Deferred — OWNER, later (none block anything)
 
-Previous session (2026-08-30) closed the architecture backlog: P4, P5, P6
-all decided and folded. **No `P<n>` item remains pending.** See
-`history.md` (2026-08-30 — "P4, P5, P6 all decided").
+- Contract lift (a): feature 28 single-recipe `POST /v1/generations`
+  body + `attempt` derivation.
+- Contract lift (b): reconcile the whole-week 409 downgrade (Q3) in
+  `rest_api_contract.md` §3.5 / L171.
+- **F5** (from feature 16): `EXPECTED_ROUTES` in `test_routing_table.py`
+  is a hand-maintained literal — own feature or signed-off deferral.
+- **Feature 25 guard/spec:** `test_no_recipe_metadata_logic.py` gained a
+  sanctioned-line exemption for the relocated `JSON_OUTPUT_INSTRUCTION`
+  lines; `specs/recipe_metadata_fields/` may want a one-line note that
+  the metadata instruction now also lives in the versioned prompt block.
 
-`./init.sh` reports **feature 16 `rest_api_lambda`** as the next actionable
-feature — 26 features, 18 done, 4 pending (16, 17, 20, 26), 4 blocked,
-480 tests.
+## Deferred — OWNER, later (neither blocks this round)
 
-## Log
+- Contract lift (a): feature 28's single-recipe `POST /v1/generations`
+  body + `attempt` derivation.
+- Contract lift (b): reconcile the whole-week 409 downgrade (Q3) in
+  `rest_api_contract.md` §3.5 / L171.
+- **F5** (carried from feature 16): `EXPECTED_ROUTES` in
+  `test_routing_table.py` is a hand-maintained literal — own feature or
+  signed-off deferral.
 
-- 2026-08-31 — Launched `spec_author` for feature 16 `rest_api_lambda`.
-  Brief scoped to `docs/rest_api_contract.md` (whole), `architecture.md`
-  §1.2/§1.2.5, `data_model.md` §4, feature 16 acceptance.
-- 2026-08-31 — `spec_author` returned. `specs/rest_api_lambda/` written
-  (42 EARS reqs), feature 16 -> `spec_ready`, `./init.sh` green.
-- 2026-08-31 — Owner ruled the 4 gate questions:
-  - GQ1 ratified — `covers` = `{NFR-SEC-03, NFR-OBS-01, FR-AUTH-09,
-    FR-UX-03, FR-RT-01, FR-MENU-08, FR-AI-08}` (to be split across the two
-    features).
-  - GQ2 confirmed — f16 emits `ETag`/`Cache-Control`; f26 adds the
-    `If-None-Match`/marker-first/`304` short-circuit (R28/R29 -> feature 26).
-  - GQ3 approved — `RuleRepository`: `save_rule`/`delete_rule` marker-bumping,
-    `DisabledDay` VO, natural-key rule ids.
-  - GQ4 -> **SPLIT.** New feature owns the api-side DynamoDB adapters + the
-    missing `core` application services + the port changes; feature 16 slims
-    to the Lambda shell (handler / routing / errors / serialization /
-    authorizer / scheduled entry / wiring / `ETag` emission).
-  - Owner directive: the split is done by an **Opus** agent (one-off model
-    override for this restructuring only; standing `spec_author = sonnet`
-    unchanged).
-- 2026-08-31 — Launched `spec_author` (model: opus) to perform the split.
-- 2026-08-31 — **Split complete, `./init.sh` green** (27 features, 104/104
-  requirement ids covered, 480 tests). GQ1–GQ4 all applied.
-  - `specs/rest_api_lambda/` rewritten to shell scope — R1–R39.
-  - `specs/rest_api_persistence_and_services/` new — R1–R30.
-  - Feature 27 `rest_api_persistence_and_services`: tier 3, `sdd: true`,
-    `pending`, `depends_on: [14]`,
-    `covers: {NFR-BKP-01, FR-RT-01, FR-RULE-07, FR-SHOP-06, FR-AI-08}`.
-  - Feature 16 stays `spec_ready`, `depends_on: [14, 27]`,
-    `covers: {NFR-SEC-03, NFR-OBS-01, FR-AUTH-09, FR-UX-03, FR-RT-01,
-    FR-MENU-08, FR-AI-08}`.
-  - GQ2: old R28/R29 deleted from feature 16, note points at feature 26;
-    feature 26's spec/acceptance untouched.
+## Feature 28 — single_recipe_generation (added 2026-09-06)
 
-## Residual gate questions — OWNER RULED 2026-08-31
+`pending`, tier 3, `depends_on: [11, 12, 16, 17]`, `covers: []`. Owns the
+single-recipe AI generation submit-then-poll path that feature 12
+explicitly deferred: the contract body shape (owner lift), the
+server-authoritative `attempt` fold, the domain single-recipe request
+type + key, the `ai` worker's single-recipe branch, the per-slot 409.
+Not actionable until 17 is `done`.
 
-1. **`ArchiveRepository`** → **archive parked for the MVP.** No real
-   DynamoDB adapter in feature 27; MVP `wiring.py` injects a no-op
-   `ArchiveRepository` that logs the discarded `ArchivedWeek` (NFR-OBS-01).
-   Real adapter + `FR-ARCH-02` snapshot item type is post-MVP
-   (`data_model.md` §9). Follow-up spec edit in flight.
-2–5. **Accepted as written** — `NFR-BKP-01` anchor for feature 27 adapter
-   reqs; `FR-RULE-04`/`FR-SHOP-10` cited as preservation but out of
-   `covers`; `FR-RULE-07` moved to 27 (16 keeps only the 422 mapping under
-   `FR-UX-03`); the two feature-16 citation corrections.
+### Carried forward (feature 16, non-blocking)
 
-## Implementer run — feature 27 (2026-08-31)
-
-- Feature in progress: 27 `rest_api_persistence_and_services` (`in_progress`).
-- Plan: tasks T1..T23 from `specs/rest_api_persistence_and_services/tasks.md`.
-- Progress:
-  - T1..T11 planner_core port/domain changes + application use cases + fakes + layer scans.
-  - T12..T21 `planner_api/adapters/` DynamoDB + SQS, moto-backed contract registration.
-  - T22 `./init.sh` green. T23 report at `progress/impl_rest_api_persistence_and_services.md`.
-- **Done 2026-08-31.** All T1..T23 ticked. `./init.sh` green — 574 tests
-  (+94), ruff/mypy/frontend clean. Report has the R1..R30 -> test table and
-  9 spec-gap notes (chief: no `DatosPeticionIA` port existed, folded AP25/26
-  into `GenerationQueue`; `UnsatisfiableRuleSet` carries no payload).
-  Awaiting `reviewer`.
-
-## Reviewer run 1 — feature 27 — CHANGES_REQUESTED (2026-08-31)
-
-6 findings, **2 mutants survived**. FR->R coverage complete; T1–T23 verified
-done not just ticked; C1–C7 all green; boundaries clean; both chief
-spec-gap notes accepted with wording/shape fixes. Tree restored after
-mutation testing, `./init.sh` re-run green.
-
-**Required (fix round):**
-1. **R27** survivor — `test_generation_submission` only asserts `first ==
-   second` (a constant passes). Add: submitted id **equals**
-   `domain.generation.build_plan(...).idempotency_key`, and two materially
-   different requests get different ids.
-2. **R20/R9** survivor — no test covers an *existing unchecked* item whose
-   quantity must rise on re-sync. Shipped code is correct (persists merged
-   qty, returns marker); under the weakened write-condition mutant the
-   store stays stale and `marker` is `None` (so feature 16 emits no
-   `ETag`). Add a merge-in-place re-sync test asserting `list_items()` and
-   `outcome.marker`.
-3. **R16 / feature-16 handshake** — `UnsatisfiableRuleSet` uses positional
-   `.args`; give it a **typed payload attribute** mirroring
-   `PinRulesAffected.pins` (`domain/rules.py:61`), carrying the
-   *conflicting existing rules* not just the attempted one, populated at
-   `application/rule_editing.py:31`.
-4. **R28 wording** — `specs/rest_api_persistence_and_services/requirements.md`
-   ~L255: "without calling `GenerationQueue`" -> "without calling
-   `GenerationQueue.submit`" (AP26 lookup *is* a `GenerationQueue` call;
-   the note-1 fold is accepted).
-
-**Non-blocking follow-ups (folded here per owner directive):**
-- `backend/core/tests/support/dynamo_contract.py` imports `boto3`/`moto`/
-  `planner_api` from inside the **`core` member's** test tree — not a
-  `src` breach (scan covers `core/src` only) but `planner-core`'s tests now
-  depend on `planner-api`. Belongs in `backend/tests/contract/`.
-- `test_rule_repository_contract.py:12` + `test_generation_queue_contract.py`
-  register the real adapter in `try/except ImportError` — silently degrade
-  to fake-only if `planner_api` import breaks. Make them match the other
-  4 suites (direct factory import).
-- `backend/pyproject.toml:17-21` — `moto` comment is 4 lines, over the
-  3-line ceiling.
-- `adapters/dynamo/_table.py:24-26` pins `PK`/`SK`/`"default"` ids not fixed
-  by `data_model.md` — feature 21 IaC must match (already impl note 6).
-
-- 2026-08-31 — `implementer` fix round 1 done. All 4 required changes +
-  follow-ups 5/6/7 landed. `./init.sh` green, 576 tests (+2). Both
-  previously-surviving mutants now killed (verified by hand). R16 exception
-  carries typed `.conflicting`; `dynamo_contract.py` moved to
-  `backend/tests/contract/`. See `progress/impl_rest_api_persistence_and_services.md`
-  → "Fix round 1". Feature 27 awaits reviewer re-verification.
-
-- 2026-08-31 — **Verification run: APPROVED — 0 findings, 0 mutants
-  survived.** R27 + R20/R9 mutants both KILLED by the new tests; a bonus
-  mutant confirmed the storage-agnostic scan still has teeth after the
-  `dynamo_contract.py` move (narrow one-filename exemption, self-checks
-  intact). R16 `.conflicting` traced — carries the *existing* conflicts,
-  attempted rule provably excluded. R28 wording correct. `./init.sh` green,
-  576 tests. No regressions from the fix round.
-
-## gga gate fix round (2026-09-01)
-
-External review (gga) rejected the commit on 2 verified `docs/conventions.md`
-breaches + 1 consistency note. Fixed exactly those:
-
-1. **Missing frozen-instance tests** — added one per new frozen dataclass
-   (all 5 confirmed `frozen=True`): `SubmissionOutcome`, `SaveRecipeOutcome`,
-   `DeleteRecipeOutcome`, `ResyncOutcome`, `AddCandidateOutcome`, in the
-   matching `backend/core/tests/application/test_*_editing.py` /
-   `test_generation_submission.py`.
-2. **Bare `Any` w/o justification** — `adapters/dynamo/_table.py`
-   `resource()/table()/client()` now carry one group comment (boto3 ships no
-   type stubs).
-3. **Fake/adapter divergence** — `SqsGenerationQueue.submit` was
-   unconditionally overwriting `PETICIONIA#…/METADATA` back to
-   `estado="pending"`; `FakeGenerationQueue` uses `setdefault`. Fixed the
-   **adapter** (create-if-absent via `ConditionExpression=attribute_not_exists(PK)`,
-   swallow `ConditionalCheckFailedException`) — `docs/data_model.md` §4.6:
-   losing the stored `resultado` means paying for a result that then exists
-   nowhere. Contract suite `test_generation_queue_contract.py` gains
-   `test_resubmit_never_clobbers_a_stored_result` (parametrized fake+adapter).
-
-`./init.sh` green — 583 tests (+7: 5 frozen + 1 contract test × 2 impls).
-
-**Fix round 2 (gga L38 sweep)** — reviewer found two more bare `-> Any` of
-the same class in files touched this round:
-- `sqs.py` `_sqs(self)` — added the same boto3-no-stubs one-liner.
-- `_table.py` `encode()` — narrowed `-> Any` to `-> object` (returns
-  `Decimal | dict | list | object`; sole caller feeds boto3's untyped
-  `TypeSerializer.serialize`, so mypy unaffected). No comment needed.
-These were the only bare `-> Any` in backend source outside the feature's
-files. `./init.sh` green, 583 tests hold.
-
-**Fix round 3 (full `Any` sweep)** — `_table.py` `decode_number(value: Any)`
-narrowed to `value: Decimal | int | str` (+ 2-line docstring note: boto3
-hands back `Decimal`, tests/raw items pass `int`/`str`); mypy green across
-all 9 call sites. Swept `adapters/`, `application/`,
-`ports/generation_queue.py`, `domain/rules.py`: the last three have **zero**
-`Any`; `adapters/` has only `dict[str, Any]` / `list[dict[str, Any]]`
-(allowed) plus the 4 already-commented boto3-handle returns. No bare `Any`
-left uncommented. `./init.sh` green, 583 tests.
-
-**Fix round 4 (ExpressionAttributeNames sweep + test rename)** —
-`docs/data_model.md` L240-242 (alias every attribute name in condition/update
-expressions). Aliased every non-key data attribute in every expression
-string across `adapters/dynamo/` + `sqs.py`:
-- `accounts.py` — `#nombreUsuario` (rename Update), `#idUsuario` (reservation
-  Delete cond), `#passHash`/`#isPassReseteada`/`#validoDesde` (update_credentials),
-  `#validoDesde` (revoke_credentials); `_update` gained a `names` param.
-- `shopping_list.py` — `#ownerId` (release_lock cond).
-`PK`/`SK` inside `attribute_exists()`/`attribute_not_exists()` left bare —
-they are key-schema names, not data attributes, and this matches the file's
-existing coordinator-cited-compliant precedent (`shopping_list.py:84`
-aliases `#ttl` but leaves `attribute_not_exists(SK)` bare). All other
-expressions (`_table.py` `#marker`, `shopping_list.py` `#ttl`) already
-aliased. `Key()`/`Attr()` builders untouched (SDK aliases them).
-Also renamed `test_revoke_credentials_advances_the_marker` ->
-`test_revoke_credentials_sets_valido_desde` (asserts only `validoDesde`;
-`USUARIOS` has no `MarcaCambio` item — `docs/conventions.md` Tests: names
-describe behaviour). Body unchanged. `./init.sh` green, 583 tests (moto
-contract suites exercise every aliased path).
-
-**Fix round 5 (mutation-coverage gaps on the round-4 alias paths)** —
-reviewer's mutation run showed a broken alias survived the contract suite
-on two paths. Added/strengthened, both parametrized over the moto adapter:
-- `test_shopping_list_repository_contract.py` — new
-  `test_release_lock_by_the_owner_frees_it_for_the_next_holder` (positive
-  path: owner-a acquire -> owner-a release -> owner-b acquire, no raise).
-  Kills `{"#ownerId": "PK"}`.
-- `test_account_repository_contract.py` — `test_rename_releases_the_old_reservation`
-  now also asserts `get_by_id("u1").username == "Beatriz"` and
-  `get_by_username("beatriz") == renamed`. Kills
-  `{"#nombreUsuario": "nombreUsuarioOtro"}`.
-`./init.sh` green, **585 tests** (+2).
-
-**Fix round 6 (gga split commits — owner directed the leader to commit)** —
-Owner told the leader to do the commits this once (normally the owner's
-alone). The gga pre-commit hook (`gga run`, PROVIDER=claude) timed out at the
-default 300s on the ~40-file changeset and then surfaced one violation class
-per pass. `.gga` `TIMEOUT` raised to 1200s (commit `ff5a850`). Owner then
-ruled: **split feature 27 into three commits** so each gga pass is small
-enough to review exhaustively, and **skip the internal `reviewer` for this
-session** (gga is the adversarial gate; implementer self-verifies its own
-mutation probes). Two more real findings from the small-commit passes:
-- `id_peticion_ia` was a Spanish Python identifier in `planner_core`
-  (`generation_queue.py` port + `generation_submission.py`) — renamed to
-  `idempotency_key` (the name `domain/generation.py` already uses); Spanish
-  mapping isolated to `adapters/sqs.py`. `docs/conventions.md` §Language
-  policy; persisted `PETICIONIA#`/`idPeticionIA` literals unchanged.
-- `remove_rule_by_id` raised bare `ValueError` for a known prefix with a
-  malformed body (`cat#notacategory`, `pin#x#1`, `pin#9#9`, `day#abc`) —
-  now wrapped to raise the named `InvalidRuleId` (`architecture.md` §4
-  invariant 12; fed from `DELETE /v1/rules/{ruleId}`). New parametrized test.
-
-`./init.sh` green, **589 tests** (+4).
-
-## Feature 27 — COMMITTED (2026-09-01)
-
-Five commits on `dev` (gga passed on all three code commits):
-
-| SHA | Commit |
-|---|---|
-| `ff5a850` | `chore: raise gga review timeout for large changesets` |
-| `1eb3e74` | `feat: split rest api feature into lambda shell and persistence substrate` |
-| `57bd1dc` | `feat: rule per-rule port and rest api application services` (20 files) |
-| `c4c5e3f` | `feat: dynamodb and sqs adapters for rest api persistence` (13 files) |
-| `e3a1b6e` | `feat: contract-test the rest api persistence adapters` (11 files) |
-
-`progress/current.md` deliberately left uncommitted (wiped at session close).
-
-### gga non-blocking observations — NOT actioned (follow-ups)
-
-From the 3b/3c passes, for a future touch of these files:
-- `adapters/dynamo/accounts.py` `rename` — the `_table.get_item` pre-check
-  before the `attribute_not_exists(SK)` Put is a redundant read window
-  §5.1 warns against (`create` correctly omits it).
-- `ttl` is written as a float string in `shopping_list.acquire_lock`
-  (`str(expires_at.timestamp())`) but `int` in `sqs.submit`; DynamoDB TTL
-  wants integer epoch seconds. Harmless (§5.3 doesn't trust TTL for the
-  lock) but the two writers should agree.
-- `adapters/dynamo/rules.py` `delete_rule(self, rule_id: str)` param shadows
-  the imported `rule_id` function.
-- `shopping_list.py` `_item_dict` has an unreachable `else` branch
-  (`item.unit` is typed `Unit`).
-- Three contract suites still carry feature-18 R-numbers in a section
-  comment (`# --- change marker (FR-RT-01): R2, R4, ... ---`); only
-  `test_rule_repository_contract.py` was retargeted.
-
-## Next step — OWNER
-
-Feature 27 is committed and every gga gate passed, but it stays
-`in_progress` in `feature_list.json` until **you** mark it `done` (the
-leader never does). `feature_list.json` was committed in `1eb3e74` with
-feature 27 already `in_progress` and feature 16 `spec_ready` — the `done`
-flip is a separate edit for you.
-
-On your "done": feature 16 `rest_api_lambda` (`spec_ready`, already
-owner-approved) flips to `in_progress` — `implementer` then `reviewer`, the
-Lambda shell that calls this substrate.
-
-## Implementer run — feature 16 (2026-09-04)
-
-- Feature in progress: 16 `rest_api_lambda`.
-- Plan: tasks T1..T15 from `specs/rest_api_lambda/tasks.md`.
-- **Done.** All T1..T15 ticked. `./init.sh` green — 674 tests (+91), ruff/mypy/
-  frontend clean. Report at `progress/impl_rest_api_lambda.md` — R1..R41 -> test
-  table, 5 spec-gap notes (chief two: (1) `messages.py` needed 18 new es-ES
-  constants for exceptions R16 requires a `detail` for but no earlier feature
-  gave one; (2) R28's `ETag` emission collided with a feature-18 mechanical
-  guard banning `current_version` outside the four port modules — resolved
-  with a new one-line-forwards file inside the already-exempted
-  `planner_api/adapters/`, no edit to `backend/core/` or feature 27's services).
-  Awaiting `reviewer`.
+- **F5** — `EXPECTED_ROUTES` in `backend/lambda_api/tests/test_routing_table.py`
+  is a hand-maintained literal, not derived from `docs/rest_api_contract.md`.
+  Owner to pick a home: its own small backlog feature or a signed-off
+  deferral. Not urgent; feature 16 closed without it.

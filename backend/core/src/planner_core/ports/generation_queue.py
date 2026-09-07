@@ -7,10 +7,15 @@ may back it with SQS plus a DynamoDB idempotency record, or anything else
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
 from planner_core.domain.generation import GenerationRequest
+from planner_core.domain.rules import RuleSet
+
+PerSlotResult = Mapping[str, object]
+"""One entry of record_result's per_slot payload: {day, slot, status, message}."""
 
 
 @dataclass(frozen=True)
@@ -27,7 +32,30 @@ class StoredGeneration:
 
 
 @runtime_checkable
-class GenerationQueue(Protocol):
+class GenerationResultSink(Protocol):
+    """The subset the asynchronous `ai` worker needs: claim the message, then
+    record the run's result (specs/ai_lambda/design.md section 3). Its own
+    DynamoDB adapter lives in `planner_ai`; `GenerationQueue` is also one."""
+
+    def claim(self, idempotency_key: str) -> bool:
+        """Atomically move the stored record pending -> running; return whether
+        this call applied that transition (R36). Conditional on estado=pending,
+        so a redelivered request finds it already claimed and returns False
+        (R37) — the idempotent-consumer guard (docs/data_model.md section 4.6)."""
+        ...
+
+    def record_result(
+        self, idempotency_key: str, status: str, per_slot: list[PerSlotResult]
+    ) -> None:
+        """Write the run's terminal estado and its per-slot resultado payload
+        (R38). Unconditional — the preceding claim established ownership (R39).
+        per_slot is a list of {day, slot, status, message} dicts, surfaced
+        verbatim by GET /v1/generations/{id} (docs/data_model.md section 4.6)."""
+        ...
+
+
+@runtime_checkable
+class GenerationQueue(GenerationResultSink, Protocol):
     """Hands a generation request off for asynchronous processing, keyed by a
     caller-derived idempotency id (docs/data_model.md section 2 — the id is not
     re-derived here)."""
@@ -36,9 +64,20 @@ class GenerationQueue(Protocol):
         """The record already stored for this id, or None (AP26). No side effects."""
         ...
 
-    def submit(self, idempotency_key: str, request: GenerationRequest) -> None:
+    def submit(
+        self,
+        idempotency_key: str,
+        request: GenerationRequest,
+        *,
+        effective_rules: RuleSet,
+        prompt_version_id: str | None = None,
+        author: str | None = None,
+    ) -> None:
         """Hand the request off for processing under this id (AP25 + enqueue).
-        Only called when stored_generation returned None."""
+        Only called when stored_generation returned None. The enrichment args
+        travel on the hand-off so the worker holds no RuleRepository/ConfigPort
+        (R40, specs/ai_lambda/design.md section 8). effective_rules is required —
+        an un-enriched message must never generate against empty rules (finding 1)."""
         ...
 
     def discard(self, idempotency_key: str) -> None:

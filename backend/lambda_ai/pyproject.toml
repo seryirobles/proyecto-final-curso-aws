@@ -5,6 +5,16 @@ description = "AI generation Lambda: handler, wiring and adapters for single-rec
 requires-python = ">=3.13, <3.14"
 dependencies = [
     "planner-core",
+    # The ai adapter closure: Bedrock-runtime + DynamoDB + SSM are all boto3
+    # clients, no separate package (specs/ai_lambda/design.md section 1, section 11).
+    "boto3>=1.35",
+]
+
+[dependency-groups]
+dev = [
+    # Test-only: moto backs the DynamoDB / SSM adapter contract suites in the
+    # default gate (specs/ai_lambda/design.md section 12).
+    "moto[dynamodb]>=5.2",
 ]
 
 [build-system]

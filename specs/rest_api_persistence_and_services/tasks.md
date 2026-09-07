@@ -108,3 +108,40 @@
 - [x] T33 — Full test pass per `design.md` §9; `./init.sh` green; update
   `progress/impl_rest_api_persistence_and_services.md` traceability. Covers: all
   reopened `R<n>`.
+
+## Reopened 2026-09-06 — generation claim / record_result + message enrichment + pinned-slot writes (feature 17 spec gate)
+
+- [x] T34 — `ports/generation_queue.py`: add `claim(idempotency_key: str) ->
+  bool` and `record_result(idempotency_key: str, status: str, per_slot: list) ->
+  None` to the `Protocol`, with docstrings stating the conditional/unconditional
+  contract (`design.md` §3b). Covers: R36, R38.
+- [x] T35 — `backend/core/tests/support/fakes.py`: `FakeGenerationQueue` gains
+  `claim` (first call per key `True` + flips in-memory `estado`, later `False`;
+  absent key `False`) and `record_result` (store `status` + `per_slot`;
+  `stored_generation` reflects them). Covers: R36, R38.
+- [x] T36 — `adapters/sqs.py`: `claim` = conditional `UpdateItem`
+  (`ConditionExpression: estado = :pending`), `False` on
+  `ConditionalCheckFailedException`; `record_result` = unconditional `UpdateItem`
+  setting `estado` + `resultado`. Covers: R37, R39.
+- [x] T37 — `application/generation_submission.py` + `adapters/sqs.py` `submit`:
+  put the resolved `effective_rules` and the active prompt-version id into the
+  enqueued message body. Covers: R40.
+- [x] T38 — `backend/tests/contract/test_generation_queue_contract.py`: add the
+  `claim` / `record_result` cases (fake + `moto`), plus the `ConditionExpression`
+  scans (`design.md` §9). Covers: R37, R39.
+- [x] T39 — `generation_submission` test: the `submit` payload carries
+  `effectiveRules` = `build_plan`'s `effective_rules` and the configured
+  `promptVersionId`. Covers: R40.
+- [x] T40 — `application/generation_submission.py`: add `recipes:
+  RecipeRepository` and `author: str` params; on the `stored is None` path,
+  before `queue.submit`, write a candidate into each `plan.targets.pinned_slots`
+  entry (`recipes` read → `snapshot` → `new_candidate` → `add_slot_candidate`).
+  Covers: R41, R42.
+- [x] T41 — `backend/lambda_api/src/planner_api/routing.py`: `_submit_generation`
+  passes `recipes=deps.recipes`, `author=auth.user_id`. Covers: R41, R42.
+- [x] T42 — `generation_submission` tests: fresh submit with a pin rule leaves a
+  submitter-authored, library-decoupled candidate in the pinned slot; idempotent
+  hit makes zero `save_slot` calls. Covers: R41, R42, R43.
+- [x] T43 — Full test pass; `./init.sh` green; update
+  `progress/impl_rest_api_persistence_and_services.md` traceability. Covers: all
+  reopened `R<n>`.

@@ -377,7 +377,7 @@
         "CONSTRAINT (recorded 2026-08-27, G-88): whole-week AI generation must write candidates through the same WeekRepository port every other write path uses (save_slot/save_week per feature 14/18), never a separate write path - MarcaCambio's marker bump lives inside that port's methods (docs/data_model.md section 4.7), so any write that bypasses the port silently produces candidates other clients' polling never detects."
       ],
       "sdd": true,
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": 18,
@@ -550,6 +550,25 @@
       ],
       "sdd": true,
       "status": "done"
+    },
+    {
+      "id": 28,
+      "name": "single_recipe_generation",
+      "tier": 3,
+      "title": "Single-recipe AI generation submit-then-poll path",
+      "description": "The end-to-end submit path for single-recipe AI generation (FR-AI-01/-02), the piece feature 12 (ai_output_validation) explicitly deferred to a later feature: the POST /v1/generations single-recipe request body, the server-authoritative attempt ordinal folded into idPeticionIA so an FR-AI-10 regenerate gets past FR-AI-08 idempotency (rest_api_contract.md section 7 Q3), and the ai Lambda branch that builds the prompt (feature 11), invokes the provider under the cost gate (feature 17), runs validate_and_preview (feature 12) and writes the preview into the PETICIONIA# result via GenerationQueue write-back - never through WeekRepository, since a single-recipe result persists nothing until the user saves it as a candidate or library recipe (rest_api_contract.md section 3.1). Split out on 2026-09-06 rather than widening feature 17 (owner). Needs a contract-doc lift: section 3.5 / section 7 today document only the type:\"week\" body.",
+      "covers": [],
+      "depends_on": [11, 12, 16, 17],
+      "acceptance": [
+        "OWNER-OWNED PRECURSOR: rest_api_contract.md gains the single-recipe POST /v1/generations request body (discriminated - ingredients + tools per FR-AI-01, or a reference library recipeId plus extra specifications per FR-AI-02; carrying the target day/slot) and the attempt derivation, added the way section 7's gate rulings were. The spec_author proposes the shape at the spec gate; the owner edits the contract before implementation begins",
+        "attempt is server-authoritative (rest_api_contract.md section 7 Q3): the count of COMPLETED generations for the target slot, never a client field, folded into idPeticionIA so a retry dedupes and a regenerate misses, and two fast clicks compute the same value (FR-AI-08, FR-AI-10)",
+        "domain/generation.py (or a sibling module) gains a single-recipe request type and an idempotency key that includes attempt; the existing whole-week key is untouched",
+        "The ai Lambda gains a single-recipe branch: prompt build (feature 11 build_specification_prompt / build_reference_prompt), provider invocation and cost gate (feature 17), validate_and_preview (feature 12), then write estado / resultado onto the PETICIONIA# item via the GenerationQueue write-back method - no WeekRepository call, no MarcaCambio bump",
+        "GET /v1/generations/{id} returns the single-recipe preview in result and DELETE discards it - both already built in feature 16; this feature adds no route handler beyond the _submit_generation branch",
+        "Per-slot concurrency for single-recipe (FR-AI-09): a submit for a slot that already holds a pending / running single-recipe generation follows feature 17's resolution of its own per-slot-concurrency gate question (a per-slot marker item type, or exact-hash-resubmit dedupe only)"
+      ],
+      "sdd": true,
+      "status": "pending"
     }
   ]
 }

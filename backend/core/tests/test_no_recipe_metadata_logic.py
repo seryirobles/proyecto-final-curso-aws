@@ -41,6 +41,14 @@ CANDIDATE_SANCTIONED_LINES = (
     re.compile(r"\s*estimated_time=meal\.estimated_time,"),
 )
 
+# ai_prompt.py's JSON_OUTPUT_INSTRUCTION names the model's output-schema keys as
+# versioned prompt text, not domain logic (FR-AI-14 / G-84; fix round 1 finding
+# 6). A reword must land as a new prompt version, so these exact lines are pinned.
+AI_PROMPT_SANCTIONED_LINES = (
+    re.compile(r'\s*"procedure \(lista de str\), category \(str\), servings \(int\|null\), "'),
+    re.compile(r'\s*"estimated_time \(str\|null\)\. Sin texto adicional\."'),
+)
+
 INFORMATIONAL_METADATA = re.compile(r"\bservings\b|\bestimated_time\b")
 
 
@@ -86,6 +94,10 @@ def _offenders(sources: list[Path]) -> list[str]:
                 p.fullmatch(line) for p in CANDIDATE_SANCTIONED_LINES
             ):
                 continue
+            if source == AI_PROMPT_SOURCE and any(
+                p.fullmatch(line) for p in AI_PROMPT_SANCTIONED_LINES
+            ):
+                continue
             found = INFORMATIONAL_METADATA.search(line)
             if found:
                 offences.append(f"{source}:{number}: {found.group(0)}")
@@ -105,6 +117,16 @@ def test_the_candidate_sanctioned_lines_exist_verbatim() -> None:
     lines = CANDIDATE_SOURCE.read_text(encoding="utf-8").splitlines()
 
     for pattern in CANDIDATE_SANCTIONED_LINES:
+        matching = [line for line in lines if pattern.fullmatch(line)]
+        assert len(matching) == 1, (pattern.pattern, matching)
+
+
+def test_the_ai_prompt_sanctioned_lines_exist_verbatim() -> None:
+    """finding 6: the exemption tracks the JSON_OUTPUT_INSTRUCTION wording exactly,
+    so a reword fails here and forces a prompt-version bump (FR-AI-14 / G-84)."""
+    lines = AI_PROMPT_SOURCE.read_text(encoding="utf-8").splitlines()
+
+    for pattern in AI_PROMPT_SANCTIONED_LINES:
         matching = [line for line in lines if pattern.fullmatch(line)]
         assert len(matching) == 1, (pattern.pattern, matching)
 

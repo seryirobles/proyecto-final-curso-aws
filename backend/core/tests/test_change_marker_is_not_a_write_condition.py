@@ -52,8 +52,12 @@ LAMBDA_SRC_ROOTS = (
 )
 
 # The DynamoDB adapters legitimately name the marker — they implement it
-# (feature 27). Everything else on the Lambda side still may not.
-ADAPTERS_ROOT = BACKEND_ROOT / "lambda_api" / "src" / "planner_api" / "adapters"
+# (feature 27; the planner_ai week-adapter copy, feature 17). Everything else on
+# the Lambda side still may not.
+ADAPTERS_ROOTS = (
+    BACKEND_ROOT / "lambda_api" / "src" / "planner_api" / "adapters",
+    BACKEND_ROOT / "lambda_ai" / "src" / "planner_ai" / "adapters",
+)
 
 # design.md section 6: the marker bump is `ADD marcaCambio 1`, never a write
 # precondition. Captures the string body of any ConditionExpression=.
@@ -190,11 +194,13 @@ def test_the_change_marker_stays_inside_its_permitted_modules() -> None:
         scanned += sorted(root.rglob("*.py"))
 
     assert CORE_SRC / "application" / "live_weeks.py" in scanned
-    assert ADAPTERS_ROOT.is_dir(), ADAPTERS_ROOT
+    for root in ADAPTERS_ROOTS:
+        assert root.is_dir(), root
     offenders = [
         detail
         for path, detail in _marker_hits(scanned)
-        if path not in PERMITTED_MARKER_MODULES and ADAPTERS_ROOT not in path.parents
+        if path not in PERMITTED_MARKER_MODULES
+        and not any(root in path.parents for root in ADAPTERS_ROOTS)
     ]
     assert offenders == []
 
@@ -202,8 +208,8 @@ def test_the_change_marker_stays_inside_its_permitted_modules() -> None:
 def test_no_adapter_conditions_a_write_on_the_change_marker() -> None:
     """R7 (feature 27): the adapters bump `marcaCambio` with `ADD`, never inside
     a `ConditionExpression` (docs/data_model.md section 1.1)."""
-    adapter_sources = sorted(ADAPTERS_ROOT.rglob("*.py"))
-    assert adapter_sources, ADAPTERS_ROOT
+    adapter_sources = [p for root in ADAPTERS_ROOTS for p in sorted(root.rglob("*.py"))]
+    assert adapter_sources, ADAPTERS_ROOTS
 
     # self-check: the pattern catches a planted violation and clears a clean line
     assert CONDITION_EXPRESSION.search('ConditionExpression="attribute_not_exists(SK)"')

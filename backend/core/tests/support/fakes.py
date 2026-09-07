@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from planner_core.domain.ai_output import RawIngredient, RawRecipeOutput
 from planner_core.domain.calendar import IsoWeek, SlotRef
 from planner_core.domain.candidate import SlotContents
 from planner_core.domain.generation import GenerationRequest
@@ -22,7 +24,8 @@ from planner_core.domain.shopping import ShoppingItem, ShoppingItemNotFound
 from planner_core.domain.text import normalize
 from planner_core.domain.username_policy import UsernameAlreadyTaken
 from planner_core.ports.accounts import AccountNotFound, AccountRecord
-from planner_core.ports.generation_queue import StoredGeneration
+from planner_core.ports.ai_provider import AiPrompt
+from planner_core.ports.generation_queue import PerSlotResult, StoredGeneration
 from planner_core.ports.recipes import LibraryRecipe, RecipeNotFound
 from planner_core.ports.shopping_list import ShoppingListLockHeld
 
@@ -323,22 +326,50 @@ class FakeArchiveRepository:
 
 
 @dataclass
+class SubmittedGeneration:
+    """One hand-off recorded by FakeGenerationQueue; R40 asserts the enrichment."""
+
+    idempotency_key: str
+    request: GenerationRequest
+    effective_rules: RuleSet
+    prompt_version_id: str | None
+    author: str | None
+
+
+@dataclass
 class FakeGenerationQueue:
     """A `GenerationQueue` over a dict of stored records and a list of submissions.
 
     `submissions` lets a test assert an idempotent hit enqueued nothing while a
-    fresh request enqueued exactly once (design.md section 9)."""
+    fresh request enqueued exactly once (design.md section 9); `submitted` keeps
+    the enriched hand-off for R40."""
 
     stored: dict[str, StoredGeneration] = field(default_factory=dict)
     submissions: list[tuple[str, GenerationRequest]] = field(default_factory=list)
+    submitted: list[SubmittedGeneration] = field(default_factory=list)
     discards: list[str] = field(default_factory=list)
+    claims: list[str] = field(default_factory=list)
+    results: dict[str, list[PerSlotResult]] = field(default_factory=dict)
 
     def stored_generation(self, idempotency_key: str) -> StoredGeneration | None:
         return self.stored.get(idempotency_key)
 
-    def submit(self, idempotency_key: str, request: GenerationRequest) -> None:
+    def submit(
+        self,
+        idempotency_key: str,
+        request: GenerationRequest,
+        *,
+        effective_rules: RuleSet,
+        prompt_version_id: str | None = None,
+        author: str | None = None,
+    ) -> None:
         # AP25: the hand-off writes a pending record, mirroring the SQS adapter.
         self.submissions.append((idempotency_key, request))
+        self.submitted.append(
+            SubmittedGeneration(
+                idempotency_key, request, effective_rules, prompt_version_id, author
+            )
+        )
         self.stored.setdefault(
             idempotency_key, StoredGeneration(idempotency_key=idempotency_key, status="pending")
         )
@@ -347,3 +378,63 @@ class FakeGenerationQueue:
         # AP27: drop the record; a missing key is a no-op (HTTP DELETE idempotency).
         self.discards.append(idempotency_key)
         self.stored.pop(idempotency_key, None)
+
+    def claim(self, idempotency_key: str) -> bool:
+        # R36/R37: conditional pending -> running; only the first claim per key wins.
+        record = self.stored.get(idempotency_key)
+        if record is None or record.status != "pending":
+            return False
+        self.stored[idempotency_key] = StoredGeneration(idempotency_key, "running", record.result)
+        self.claims.append(idempotency_key)
+        return True
+
+    def record_result(
+        self, idempotency_key: str, status: str, per_slot: list[PerSlotResult]
+    ) -> None:
+        # R38/R39: unconditional; stored_generation then reports estado + resultado.
+        self.results[idempotency_key] = list(per_slot)
+        self.stored[idempotency_key] = StoredGeneration(
+            idempotency_key, status, json.dumps(per_slot)
+        )
+
+
+def _default_ai_output() -> RawRecipeOutput:
+    return RawRecipeOutput(
+        name="Ensalada templada de lentejas",
+        ingredients=(RawIngredient(name="lentejas", quantity=200.0, unit="g"),),
+        tools=(),
+        procedure=("Cocer las lentejas y servir templadas.",),
+        category="legume",
+    )
+
+
+@dataclass
+class FakeAiProvider:
+    """An `AiProvider` returning `default_output` per call. `responses`, if set,
+    is consumed first — each entry a RawRecipeOutput or an exception to raise.
+    `calls` counts invocations so a disabled-gate test can assert zero."""
+
+    default_output: RawRecipeOutput = field(default_factory=_default_ai_output)
+    responses: list[RawRecipeOutput | Exception] = field(default_factory=list)
+    calls: int = 0
+
+    def generate(self, prompt: AiPrompt) -> RawRecipeOutput:
+        self.calls += 1
+        if self.responses:
+            nxt = self.responses.pop(0)
+            if isinstance(nxt, Exception):
+                raise nxt
+            return nxt
+        return self.default_output
+
+
+@dataclass
+class FakeGenerationGate:
+    """A `GenerationGate` returning a fixed boolean; `reads` counts the checks."""
+
+    enabled: bool = True
+    reads: int = 0
+
+    def is_generation_enabled(self) -> bool:
+        self.reads += 1
+        return self.enabled

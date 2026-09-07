@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import Any  # untyped JSON in/out is the wire boundary itself (conventions.md)
 
 from planner_core import messages
+from planner_core.domain.ai_prompt import UnknownPromptVersion
 from planner_core.domain.authentication_guards import PasswordResetPending
 from planner_core.domain.authorization import Forbidden
 from planner_core.domain.calendar import InvalidIsoWeek
@@ -92,6 +93,11 @@ _TABLE: dict[type[Exception], _ErrorSpec] = {
         422, "UNSATISFIABLE_RULE_SET", messages.UNSATISFIABLE_RULE_SET, _unsatisfiable_details
     ),
     InvalidIsoWeek: _ErrorSpec(422, "INVALID_ISO_WEEK", messages.INVALID_ISO_WEEK),
+    # Unset/unknown AI_PROMPT_VERSION_ID: a config fault, surfaced as domain-rejected
+    # so the submit fails fast instead of enqueuing a doomed run (finding 2).
+    UnknownPromptVersion: _ErrorSpec(
+        422, "UNKNOWN_PROMPT_VERSION", messages.UNKNOWN_PROMPT_VERSION
+    ),
     # InvalidRuleId only ever originates from the {ruleId} path segment in this
     # contract (design.md section 4 — origin known at the parse site).
     InvalidRuleId: _ErrorSpec(400, "INVALID_RULE_ID", messages.INVALID_RULE_ID),

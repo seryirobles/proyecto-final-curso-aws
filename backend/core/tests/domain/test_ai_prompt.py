@@ -13,10 +13,16 @@ import pytest
 
 from planner_core.domain.ai_prompt import (
     ALLOWED_UNITS,
+    ALLOWED_UNITS_TEMPLATE,
+    CATEGORY_FRAMING_TEMPLATE,
     HEALTHY_BALANCED_INSTRUCTION,
+    JSON_OUTPUT_INSTRUCTION,
     OUTPUT_LANGUAGE,
+    OUTPUT_LANGUAGE_TEMPLATE,
     PROMPT_INSTRUCTION_VERSIONS,
     RECIPE_METADATA_INSTRUCTION,
+    REFERENCE_FRAMING_TEMPLATE,
+    SPECIFICATION_FRAMING_TEMPLATE,
     CategoryPrompt,
     PromptInstructions,
     PromptInstructionsVersion,
@@ -84,6 +90,12 @@ def test_prompt_instructions_fields_are_exactly_the_fixed_shape() -> None:
         "healthy_balanced_instruction",
         "recipe_metadata_instruction",
         "allowed_units",
+        "json_output_instruction",
+        "output_language_template",
+        "allowed_units_template",
+        "category_framing_template",
+        "specification_framing_template",
+        "reference_framing_template",
     }
 
 
@@ -103,6 +115,12 @@ def test_build_instructions_matches_the_module_constants() -> None:
     assert instructions.healthy_balanced_instruction == HEALTHY_BALANCED_INSTRUCTION
     assert instructions.recipe_metadata_instruction == RECIPE_METADATA_INSTRUCTION
     assert instructions.allowed_units == ALLOWED_UNITS
+    assert instructions.json_output_instruction == JSON_OUTPUT_INSTRUCTION
+    assert instructions.output_language_template == OUTPUT_LANGUAGE_TEMPLATE
+    assert instructions.allowed_units_template == ALLOWED_UNITS_TEMPLATE
+    assert instructions.category_framing_template == CATEGORY_FRAMING_TEMPLATE
+    assert instructions.specification_framing_template == SPECIFICATION_FRAMING_TEMPLATE
+    assert instructions.reference_framing_template == REFERENCE_FRAMING_TEMPLATE
 
 
 def test_build_instructions_sources_content_from_the_named_version() -> None:
@@ -114,6 +132,12 @@ def test_build_instructions_sources_content_from_the_named_version() -> None:
         output_language="fr-FR",
         healthy_balanced_instruction="Otra instruccion.",
         recipe_metadata_instruction="Otra instruccion de metadatos.",
+        json_output_instruction="Otra instruccion JSON.",
+        output_language_template="Langue: ${language}.",
+        allowed_units_template="Unites: ${units}.",
+        category_framing_template="Besoins: ${needs}.",
+        specification_framing_template="Ingredients: ${ingredients}. Outils: ${tools}.",
+        reference_framing_template="Reference: ${recipe}. Specs: ${specifications}.",
     )
     PROMPT_INSTRUCTION_VERSIONS[other_version.version_id] = other_version
     try:
@@ -125,6 +149,8 @@ def test_build_instructions_sources_content_from_the_named_version() -> None:
     assert instructions.healthy_balanced_instruction == "Otra instruccion."
     assert instructions.recipe_metadata_instruction == "Otra instruccion de metadatos."
     assert instructions.allowed_units == ALLOWED_UNITS
+    assert instructions.json_output_instruction == "Otra instruccion JSON."
+    assert instructions.category_framing_template == "Besoins: ${needs}."
 
 
 def test_build_instructions_raises_unknown_prompt_version_for_unregistered_id() -> None:
@@ -167,6 +193,12 @@ def test_prompt_instructions_version_fields_are_exactly_the_fixed_shape() -> Non
         "output_language",
         "healthy_balanced_instruction",
         "recipe_metadata_instruction",
+        "json_output_instruction",
+        "output_language_template",
+        "allowed_units_template",
+        "category_framing_template",
+        "specification_framing_template",
+        "reference_framing_template",
     }
 
 

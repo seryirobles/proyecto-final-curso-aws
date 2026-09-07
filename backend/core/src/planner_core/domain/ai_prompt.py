@@ -33,6 +33,28 @@ quantity scaling off the stated count - specs/recipe_metadata_fields/design.md s
 ALLOWED_UNITS: Final[tuple[Unit, ...]] = tuple(Unit)
 """FR-LIB-05 (consumed): the fixed unit vocabulary, reused from units.py, never redeclared."""
 
+JSON_OUTPUT_INSTRUCTION: Final[str] = (
+    "Responde EXCLUSIVAMENTE con un objeto JSON con las claves: name (str), "
+    "ingredients (lista de {name, quantity, unit}), tools (lista de str), "
+    "procedure (lista de str), category (str), servings (int|null), "
+    "estimated_time (str|null). Sin texto adicional."
+)
+"""FR-AI-14 (G-84): the model-output contract line, versioned here so an edit
+bumps the version key instead of silently changing every prompt. Consumed by
+planner_ai's Bedrock adapter (specs/ai_lambda/design.md finding 6)."""
+
+OUTPUT_LANGUAGE_TEMPLATE: Final[str] = "Idioma de salida: ${language}."
+ALLOWED_UNITS_TEMPLATE: Final[str] = "Unidades permitidas: ${units}."
+CATEGORY_FRAMING_TEMPLATE: Final[str] = (
+    "Genera una receta para un hueco abierto. Necesidades de la semana: ${needs}."
+)
+SPECIFICATION_FRAMING_TEMPLATE: Final[str] = "Ingredientes: ${ingredients}.\nUtensilios: ${tools}."
+REFERENCE_FRAMING_TEMPLATE: Final[str] = (
+    "Receta de referencia: ${recipe}.\nEspecificaciones: ${specifications}."
+)
+"""FR-AI-14: the adapter's connective/framing wording, versioned (finding 6).
+`string.Template` placeholders — the assembler interpolates, holds no Spanish."""
+
 
 @dataclass(frozen=True)
 class PromptInstructionsVersion:
@@ -46,6 +68,12 @@ class PromptInstructionsVersion:
     output_language: str
     healthy_balanced_instruction: str
     recipe_metadata_instruction: str
+    json_output_instruction: str
+    output_language_template: str
+    allowed_units_template: str
+    category_framing_template: str
+    specification_framing_template: str
+    reference_framing_template: str
 
 
 PROMPT_INSTRUCTION_VERSIONS: Final[dict[str, PromptInstructionsVersion]] = {
@@ -54,6 +82,12 @@ PROMPT_INSTRUCTION_VERSIONS: Final[dict[str, PromptInstructionsVersion]] = {
         output_language=OUTPUT_LANGUAGE,
         healthy_balanced_instruction=HEALTHY_BALANCED_INSTRUCTION,
         recipe_metadata_instruction=RECIPE_METADATA_INSTRUCTION,
+        json_output_instruction=JSON_OUTPUT_INSTRUCTION,
+        output_language_template=OUTPUT_LANGUAGE_TEMPLATE,
+        allowed_units_template=ALLOWED_UNITS_TEMPLATE,
+        category_framing_template=CATEGORY_FRAMING_TEMPLATE,
+        specification_framing_template=SPECIFICATION_FRAMING_TEMPLATE,
+        reference_framing_template=REFERENCE_FRAMING_TEMPLATE,
     ),
 }
 """Append-only (R2, G-84): a version is added here when wording changes; an
@@ -87,6 +121,12 @@ class PromptInstructions:
     healthy_balanced_instruction: str
     recipe_metadata_instruction: str
     allowed_units: tuple[Unit, ...]
+    json_output_instruction: str
+    output_language_template: str
+    allowed_units_template: str
+    category_framing_template: str
+    specification_framing_template: str
+    reference_framing_template: str
 
 
 @dataclass(frozen=True)
@@ -129,6 +169,12 @@ def build_instructions(version_id: str) -> PromptInstructions:
         healthy_balanced_instruction=version.healthy_balanced_instruction,
         recipe_metadata_instruction=version.recipe_metadata_instruction,
         allowed_units=ALLOWED_UNITS,
+        json_output_instruction=version.json_output_instruction,
+        output_language_template=version.output_language_template,
+        allowed_units_template=version.allowed_units_template,
+        category_framing_template=version.category_framing_template,
+        specification_framing_template=version.specification_framing_template,
+        reference_framing_template=version.reference_framing_template,
     )
 
 

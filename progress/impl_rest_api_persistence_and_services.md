@@ -270,3 +270,89 @@ ruff format / ruff check / mypy strict / pytest **694 passed** (+1: the F1
 self-check; no other delta) / prettier / eslint / vitest — all green. Section 4
 still fails only on the 2 `in_progress` (16 + 27) + the 16→27 dep-order check,
 inherent to the reopen.
+
+---
+
+## Reopen round 2 — 2026-09-06 (feature 17 spec gate: claim / record_result + message enrichment + pinned-slot writes)
+
+Tasks T34–T43. Delta only; T1–T33 untouched.
+
+### Traceability — R36–R43 → test
+
+| R | SHALL | Tests |
+|---|---|---|
+| R36 | `GenerationQueue.claim(key) -> bool`, pending→running once | `tests/contract/test_generation_queue_contract.py::test_the_first_claim_after_submit_wins_and_a_redelivery_loses` (fake+moto); `core/tests/ports/test_generation_queue.py::test_the_port_names_no_queue_technology` |
+| R37 | SQS adapter `claim` = conditional `UpdateItem` on `estado = :pending`, `False` on `ConditionalCheckFailedException` | contract `..._wins_and_a_redelivery_loses`, `test_claim_of_an_absent_record_returns_false` (fake+moto); `test_the_sqs_claim_conditions_only_on_estado_never_the_marker` |
+| R38 | `record_result(key, status, per_slot)` writes terminal `estado` + `resultado` | contract `test_record_result_writes_the_terminal_status_and_per_slot_payload` (fake+moto) |
+| R39 | SQS adapter `record_result` = unconditional `UpdateItem`, no `ConditionExpression` | `test_the_sqs_record_result_passes_no_condition_expression` |
+| R40 | `submit` message carries resolved effective rules + prompt-version id + submitter id | `core/tests/application/test_generation_submission.py::test_submit_payload_enrichment` |
+| R41 | fresh whole-week submit persists a candidate into every `plan.targets.pinned_slots` entry via the add-candidate path | `test_a_fresh_submit_writes_the_pinned_slot_candidate_authored_by_the_submitter` |
+| R42 | pinned-slot candidate attributed to the submitting user | same test (`candidate.author == "u-7"`) |
+| R43 | idempotent hit writes no candidate | `test_an_idempotent_hit_writes_no_pinned_candidate` (week marker unchanged, no definitive) |
+
+Frozen-id chain unchanged: R36–R40, R43 → `FR-AI-08`; R41 → `FR-AI-11` (cited,
+owned by feature 10); R42 → `FR-AI-11` + `FR-CAND-04` (cited). `covers` array
+unchanged, per the coverage map.
+
+### Changes
+
+- `planner_core/ports/generation_queue.py` — `claim`, `record_result` added to
+  the `Protocol`; `PerSlotResult = Mapping[str, object]` alias. `submit` gained
+  keyword-only `effective_rules` / `prompt_version_id` / `author` (all
+  defaulted `None` — backward compatible; the design's "serialisation change"
+  needs the values at the producer and `submit_generation` is its only caller).
+- `planner_api/adapters/sqs.py` — `claim` (aliased `#estado`, per the
+  fix-round-4 precedent), `record_result`, `_rule_set_payload`, and the three
+  new message-body keys `effectiveRules` / `promptVersionId` / `authorUserId`.
+- `planner_core/application/generation_submission.py` — `recipes:
+  RecipeRepository`, `author: str`, `prompt_version_id: str | None` params;
+  writes the pinned-slot candidates (`recipes.get` → `snapshot` →
+  `new_candidate` → `week_editing.add_slot_candidate`) before `queue.submit`
+  on the `stored is None` path only; passes the enrichment to `queue.submit`.
+- `planner_api/routing.py` — `_submit_generation` passes `recipes=deps.recipes`,
+  `author=auth.user_id`, `prompt_version_id=deps.config.get(PROMPT_VERSION_CONFIG_KEY)`.
+- `core/tests/support/fakes.py` — `FakeGenerationQueue` gains `claim` /
+  `record_result` / `submitted` (records `SubmittedGeneration`) / `claims` /
+  `results`; `submit` gains the enrichment kwargs.
+
+### Spec did not anticipate
+
+- **T41 under-specified the prompt-version wiring.** The design says
+  `generation_submission` "already resolves the … version" — it does not.
+  Routing now reads the raw configured id (`AI_PROMPT_VERSION_ID`) and hands
+  it through as `prompt_version_id`; the feature-17 worker validates it
+  (`build_instructions` raises `UnknownPromptVersion`). No new error mapping in
+  `errors.py`, no `FakeConfig` seeding needed (`None` flows through cleanly).
+- **`submit` signature change vs. "do not change submit".** Reconciled as: the
+  idempotency contract (`attribute_not_exists(PK)` create-if-absent,
+  `stored_generation` / `discard`) is untouched; the enrichment kwargs are
+  additive and defaulted. T37 mandates the message-body change, which is
+  impossible without the producer receiving the values.
+
+### `./init.sh`
+
+§5 green — ruff format / ruff check / mypy strict / **pytest 705 passed**
+(+11 over the 694 baseline) / prettier / eslint / vitest. §4 fails only on the
+intentional dual `in_progress` (17 + 27) and the 16→27 dep-order check —
+expected for this bundle, resolves on the owner's `done` marks.
+
+### Bundle note
+
+Feature 17 `ai_lambda` was implemented in the same run, immediately after
+this delta (`progress/impl_ai_lambda.md`). Final bundle gate: **pytest 762
+passed** (694 baseline -> 705 this delta -> 762 with feature 17).
+
+## Fix round 1 — 2026-09-06
+
+Reviewer findings 2 and 7 (finding 1's port/adapter half is shared — see
+`progress/impl_ai_lambda.md`). `./init.sh` §5 green — **769 passed**.
+
+| Finding | Files | Tests |
+|---|---|---|
+| 1 (shared) — `submit`'s `effective_rules` is now required (no `\| None = None`) | `core/ports/generation_queue.py`, `planner_api/adapters/sqs.py` (`_rule_set_payload` no longer null-tolerant), `core/tests/support/fakes.py` | `tests/contract/test_generation_queue_contract.py`, `core/tests/ports/test_generation_queue.py` — all `submit` calls pass `effective_rules=RuleSet()` |
+| 2 — prompt-version resolution moved into the application layer | `core/application/generation_submission.py` (`prompt_version_id: str \| None` param → `config: ConfigPort`; calls `resolve_active_prompt_version(config)` **before** any write, enqueues `version.version_id`); `planner_api/routing.py` (`config=deps.config`, `PROMPT_VERSION_CONFIG_KEY` import dropped); `planner_api/errors.py` (`UnknownPromptVersion` → `422 UNKNOWN_PROMPT_VERSION`); `core/messages.py` (`UNKNOWN_PROMPT_VERSION`); `lambda_api/tests/_helpers.py` (`make_deps` default config seeds `AI_PROMPT_VERSION_ID=v1`) | `core/tests/application/test_generation_submission.py::test_an_unset_prompt_version_key_raises_and_enqueues_nothing` (raises + `submissions == [] and submitted == []`); `test_submit_payload_enrichment` (resolved id rides the message); `lambda_api/tests/test_error_mapping.py` (`UnknownPromptVersion` → 422 case); `test_every_mapped_detail_is_a_messages_module_constant` |
+| 7 — doc sync | `specs/rest_api_persistence_and_services/design.md` §2 + §3c: `submit_generation` gains `config: ConfigPort`; caller-adjustment prose adds `config=deps.config`; one added sentence on the `resolve_active_prompt_version` fail-fast | n/a |
+
+Note: the earlier deviation "T41 under-specified the prompt-version wiring —
+routing reads the raw configured id" is **superseded** by finding 2. Routing no
+longer touches config; the application layer owns the resolution + the guard.

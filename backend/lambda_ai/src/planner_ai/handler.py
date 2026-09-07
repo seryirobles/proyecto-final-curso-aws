@@ -1,0 +1,55 @@
+"""The `ai` worker's SQS entry point (docs/conventions.md — thin: parse the
+event, call one use case per record, map nothing). Each record is processed
+independently so one failure does not abort the batch (R1, R4)."""
+
+from __future__ import annotations
+
+import json
+import logging
+from typing import Any
+
+from planner_core.application.week_generation import run_week_generation
+from planner_core.domain.calendar import civil_date
+
+from planner_ai.message import parse_message
+from planner_ai.wiring import Dependencies, build_dependencies
+
+logger = logging.getLogger("planner_ai")
+
+
+def _process_record(record: dict[str, Any], deps: Dependencies) -> None:
+    message = parse_message(json.loads(record["body"]))
+    first_day = civil_date(deps.clock.now())
+    outcome = run_week_generation(
+        message.idempotency_key,
+        message.request,
+        message.effective_rules,
+        message.prompt_version_id,
+        message.author,
+        first_day,
+        provider=deps.provider,
+        weeks=deps.weeks,
+        queue=deps.records,
+        gate=deps.gate,
+    )
+    logger.info(
+        "Processed generation request",
+        extra={
+            "idPeticionIA": message.idempotency_key,
+            "claimed": outcome.claimed,
+            "slots": len(outcome.per_slot),
+        },
+    )
+
+
+def handle(event: dict[str, Any], deps: Dependencies | None = None) -> None:
+    """`deps` is injected by tests; a deployed function resolves the real stack."""
+    resolved = deps or build_dependencies()
+    for record in event.get("Records", []):
+        try:
+            _process_record(record, resolved)
+        except Exception:  # per-record isolation — one bad message never blocks the rest (R4)
+            logger.exception("Failed to process SQS record")
+
+
+lambda_handler = handle

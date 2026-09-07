@@ -722,10 +722,18 @@ def _submit_generation(
     week = ser.parse_week_id(str(ser.require_field(body, "weekId")))
     mode = ser.parse_generation_mode(str(ser.require_field(body, "mode")))
     override = ser.decode_rule_override(body.get("ruleOverride"))
+    assert auth is not None
     request = GenerationRequest(week=week, mode=mode, rule_override=override)
     first_day = civil_date(deps.clock.now())
     outcome = generation_submission.submit_generation(
-        request, first_day, weeks=deps.weeks, rules=deps.rules, queue=deps.queue
+        request,
+        first_day,
+        weeks=deps.weeks,
+        rules=deps.rules,
+        queue=deps.queue,
+        recipes=deps.recipes,
+        author=auth.user_id,
+        config=deps.config,  # feature 24's guard resolves the prompt version (finding 2)
     )
     if outcome.stored is not None:
         return RouteResult(

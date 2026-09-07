@@ -18,7 +18,9 @@ from pathlib import Path
 
 CORE_SRC = Path(__file__).resolve().parent.parent / "src" / "planner_core"
 
-BANNED_IMPORT = re.compile(r"\bboto3\b|\bbotocore\b|\bplanner_api\b|\bplanner_ai\b")
+BANNED_IMPORT = re.compile(
+    r"\bboto3\b|\bbotocore\b|\bplanner_api\b|\bplanner_ai\b|\bbedrock\b|\banthropic\b"
+)
 
 USE_CASE_MODULES = (
     "planner_core.application.week_editing",
@@ -26,6 +28,7 @@ USE_CASE_MODULES = (
     "planner_core.application.shopping_editing",
     "planner_core.application.rule_editing",
     "planner_core.application.generation_submission",
+    "planner_core.application.week_generation",
 )
 
 # Top-level modules a use-case signature may draw a type from: planner_core
@@ -51,9 +54,13 @@ def test_the_banned_import_pattern_detects_what_it_claims_to() -> None:
         "import boto3",
         "from botocore.exceptions import X",
         "import planner_api.wiring",
+        "import planner_ai.adapters.bedrock",
+        "from anthropic import Anthropic",
+        "import bedrock",
     ):
         assert BANNED_IMPORT.search(banned), banned
     assert not BANNED_IMPORT.search("from planner_core.ports.weeks import WeekRepository")
+    assert not BANNED_IMPORT.search("from planner_core.ports.ai_provider import AiProvider")
 
 
 def test_planner_core_imports_no_aws_sdk_and_no_lambda_package() -> None:

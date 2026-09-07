@@ -435,11 +435,23 @@ name = "planner-ai"
 version = "0.1.0"
 source = { editable = "lambda_ai" }
 dependencies = [
+    { name = "boto3" },
     { name = "planner-core" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "moto", extra = ["dynamodb"] },
+]
+
 [package.metadata]
-requires-dist = [{ name = "planner-core", editable = "core" }]
+requires-dist = [
+    { name = "boto3", specifier = ">=1.35" },
+    { name = "planner-core", editable = "core" },
+]
+
+[package.metadata.requires-dev]
+dev = [{ name = "moto", extras = ["dynamodb"], specifier = ">=5.2" }]
 
 [[package]]
 name = "planner-api"

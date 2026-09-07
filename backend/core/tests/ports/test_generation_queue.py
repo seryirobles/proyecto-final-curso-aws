@@ -9,6 +9,7 @@ from support.fakes import FakeGenerationQueue
 
 from planner_core.domain.calendar import IsoWeek
 from planner_core.domain.generation import GenerationMode, GenerationRequest
+from planner_core.domain.rules import RuleSet
 from planner_core.ports.generation_queue import GenerationQueue, StoredGeneration
 
 REQUEST = GenerationRequest(week=IsoWeek(2026, 34), mode=GenerationMode.MIX)
@@ -28,7 +29,7 @@ def test_stored_generation_lookup_and_submit_round_trip() -> None:
     queue = FakeGenerationQueue()
     assert queue.stored_generation("h1") is None
 
-    queue.submit("h1", REQUEST)
+    queue.submit("h1", REQUEST, effective_rules=RuleSet())
     assert queue.submissions == [("h1", REQUEST)]
 
     queue.stored["h1"] = StoredGeneration(idempotency_key="h1", status="pending")
@@ -41,7 +42,7 @@ def test_the_port_names_no_queue_technology() -> None:
 
     signatures = "".join(
         str(inspect.signature(getattr(GenerationQueue, name)))
-        for name in ("stored_generation", "submit")
+        for name in ("stored_generation", "submit", "discard", "claim", "record_result")
     )
     for banned in ("sqs", "kinesis", "sns", "kafka", "queue_url", "boto", "Message"):
         assert banned not in signatures

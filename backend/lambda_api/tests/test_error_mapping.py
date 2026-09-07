@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 from planner_core import messages
+from planner_core.domain.ai_prompt import UnknownPromptVersion
 from planner_core.domain.authorization import Forbidden
 from planner_core.domain.calendar import MealSlot
 from planner_core.domain.role import Role
@@ -27,6 +28,12 @@ from planner_api.serialization import MalformedRequest
         (Forbidden(Role.USER), 403, "FORBIDDEN", messages.FORBIDDEN),
         (AccountNotFound("u-1"), 404, "ACCOUNT_NOT_FOUND", messages.ACCOUNT_NOT_FOUND),
         (MalformedRequest(), 400, "MALFORMED_REQUEST", messages.MALFORMED_REQUEST),
+        (
+            UnknownPromptVersion("AI_PROMPT_VERSION_ID"),
+            422,
+            "UNKNOWN_PROMPT_VERSION",
+            messages.UNKNOWN_PROMPT_VERSION,
+        ),
     ],
 )
 def test_known_domain_exceptions_map_to_the_contract_status_and_code(
