@@ -31,8 +31,8 @@ def _model_id() -> str:
 
 
 def _render(prompt: AiPrompt) -> str:
-    # Pure assembler: every Spanish string lives in the versioned prompt registry
-    # (domain/ai_prompt.py), so editing wording bumps a version key (finding 6).
+    # Pure assembler: every instruction string lives in the versioned prompt
+    # registry (domain/ai_prompt.py), so editing wording bumps a version key (finding 6).
     ins = prompt.instructions
     lines = [
         ins.healthy_balanced_instruction,

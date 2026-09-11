@@ -14,15 +14,23 @@ import pytest
 from planner_core.domain.ai_prompt import (
     ALLOWED_UNITS,
     ALLOWED_UNITS_TEMPLATE,
+    ALLOWED_UNITS_TEMPLATE_V2,
     CATEGORY_FRAMING_TEMPLATE,
+    CATEGORY_FRAMING_TEMPLATE_V2,
     HEALTHY_BALANCED_INSTRUCTION,
+    HEALTHY_BALANCED_INSTRUCTION_V2,
     JSON_OUTPUT_INSTRUCTION,
+    JSON_OUTPUT_INSTRUCTION_V2,
     OUTPUT_LANGUAGE,
     OUTPUT_LANGUAGE_TEMPLATE,
+    OUTPUT_LANGUAGE_TEMPLATE_V2,
     PROMPT_INSTRUCTION_VERSIONS,
     RECIPE_METADATA_INSTRUCTION,
+    RECIPE_METADATA_INSTRUCTION_V2,
     REFERENCE_FRAMING_TEMPLATE,
+    REFERENCE_FRAMING_TEMPLATE_V2,
     SPECIFICATION_FRAMING_TEMPLATE,
+    SPECIFICATION_FRAMING_TEMPLATE_V2,
     CategoryPrompt,
     PromptInstructions,
     PromptInstructionsVersion,
@@ -159,9 +167,30 @@ def test_build_instructions_raises_unknown_prompt_version_for_unregistered_id() 
         build_instructions("does-not-exist")
 
 
+def test_healthy_balanced_instruction_v2_is_the_approved_english_wording() -> None:
+    """2026-09-11 owner correction: literal content, not a self-comparison against
+    the same constant (R1), so a blanked constant fails this test."""
+    assert HEALTHY_BALANCED_INSTRUCTION_V2 == (
+        "Generate a healthy, balanced menu, varying the protein sources across "
+        "dishes. This instruction is for household meal-planning purposes only "
+        "and does not constitute medical advice."
+    )
+
+
+def test_recipe_metadata_instruction_v2_is_the_approved_english_wording() -> None:
+    """2026-09-11 owner correction: literal content, not a self-comparison against
+    the same constant (R1), so a blanked constant fails this test."""
+    assert RECIPE_METADATA_INSTRUCTION_V2 == (
+        "Also state the number of diners it serves and an estimated preparation "
+        "and cooking time for each generated recipe. These are purely "
+        "informational: do not adjust the ingredient quantities based on them."
+    )
+
+
 def test_resolve_prompt_version_registry_carries_every_expected_version() -> None:
-    """FR-AI-14, R1, R2, R6: v1 carries feature 11's/feature 25's already-approved constants."""
-    assert set(PROMPT_INSTRUCTION_VERSIONS) == {"v1"}
+    """FR-AI-14, R1, R2, R6: v1 carries feature 11's/feature 25's already-approved
+    constants; v2 (2026-09-11 owner correction) adds the English instruction wording."""
+    assert set(PROMPT_INSTRUCTION_VERSIONS) == {"v1", "v2"}
 
     version = resolve_prompt_version("v1")
 
@@ -169,6 +198,33 @@ def test_resolve_prompt_version_registry_carries_every_expected_version() -> Non
     assert version.output_language == OUTPUT_LANGUAGE
     assert version.healthy_balanced_instruction == HEALTHY_BALANCED_INSTRUCTION
     assert version.recipe_metadata_instruction == RECIPE_METADATA_INSTRUCTION
+
+
+def test_resolve_prompt_version_v2_carries_the_english_wording() -> None:
+    """R2, R6: v2 is retained and retrievable, English wording, same es-ES output."""
+    version = resolve_prompt_version("v2")
+
+    assert version.version_id == "v2"
+    assert version.output_language == OUTPUT_LANGUAGE == "es-ES"
+    assert version.healthy_balanced_instruction == HEALTHY_BALANCED_INSTRUCTION_V2
+    assert version.recipe_metadata_instruction == RECIPE_METADATA_INSTRUCTION_V2
+    assert version.json_output_instruction == JSON_OUTPUT_INSTRUCTION_V2
+    assert version.output_language_template == OUTPUT_LANGUAGE_TEMPLATE_V2
+    assert version.allowed_units_template == ALLOWED_UNITS_TEMPLATE_V2
+    assert version.category_framing_template == CATEGORY_FRAMING_TEMPLATE_V2
+    assert version.specification_framing_template == SPECIFICATION_FRAMING_TEMPLATE_V2
+    assert version.reference_framing_template == REFERENCE_FRAMING_TEMPLATE_V2
+
+
+def test_build_instructions_v2_sources_from_the_v2_constants() -> None:
+    """R5: build_instructions("v2") reads v2's content, proving v1 stays untouched
+    (append-only) while a second version is genuinely reachable."""
+    instructions = build_instructions("v2")
+
+    assert instructions.output_language == OUTPUT_LANGUAGE
+    assert instructions.healthy_balanced_instruction == HEALTHY_BALANCED_INSTRUCTION_V2
+    assert instructions.recipe_metadata_instruction == RECIPE_METADATA_INSTRUCTION_V2
+    assert instructions.json_output_instruction == JSON_OUTPUT_INSTRUCTION_V2
 
 
 def test_resolve_prompt_version_raises_unknown_prompt_version_for_unregistered_id() -> None:

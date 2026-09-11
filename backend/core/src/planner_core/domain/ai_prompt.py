@@ -55,6 +55,35 @@ REFERENCE_FRAMING_TEMPLATE: Final[str] = (
 """FR-AI-14: the adapter's connective/framing wording, versioned (finding 6).
 `string.Template` placeholders — the assembler interpolates, holds no Spanish."""
 
+HEALTHY_BALANCED_INSTRUCTION_V2: Final[str] = (
+    "Generate a healthy, balanced menu, varying the protein sources across "
+    "dishes. This instruction is for household meal-planning purposes only "
+    "and does not constitute medical advice."
+)
+RECIPE_METADATA_INSTRUCTION_V2: Final[str] = (
+    "Also state the number of diners it serves and an estimated preparation "
+    "and cooking time for each generated recipe. These are purely "
+    "informational: do not adjust the ingredient quantities based on them."
+)
+JSON_OUTPUT_INSTRUCTION_V2: Final[str] = (
+    "Respond EXCLUSIVELY with a JSON object with the keys: name (str), "
+    "ingredients (list of {name, quantity, unit}), tools (list of str), "
+    "procedure (list of str), category (str), servings (int|null), "
+    "estimated_time (str|null). No additional text."
+)
+OUTPUT_LANGUAGE_TEMPLATE_V2: Final[str] = "Output language: ${language}."
+ALLOWED_UNITS_TEMPLATE_V2: Final[str] = "Allowed units: ${units}."
+CATEGORY_FRAMING_TEMPLATE_V2: Final[str] = (
+    "Generate a recipe for an open slot. This week's remaining needs: ${needs}."
+)
+SPECIFICATION_FRAMING_TEMPLATE_V2: Final[str] = "Ingredients: ${ingredients}.\nTools: ${tools}."
+REFERENCE_FRAMING_TEMPLATE_V2: Final[str] = (
+    "Reference recipe: ${recipe}.\nSpecifications: ${specifications}."
+)
+"""v2 (2026-09-11 owner correction): English instruction wording — Bedrock
+tokenizes English more efficiently. `OUTPUT_LANGUAGE` (es-ES) is untouched;
+only the instruction sentences change (FR-AI-14/G-84 append-only)."""
+
 
 @dataclass(frozen=True)
 class PromptInstructionsVersion:
@@ -89,10 +118,22 @@ PROMPT_INSTRUCTION_VERSIONS: Final[dict[str, PromptInstructionsVersion]] = {
         specification_framing_template=SPECIFICATION_FRAMING_TEMPLATE,
         reference_framing_template=REFERENCE_FRAMING_TEMPLATE,
     ),
+    "v2": PromptInstructionsVersion(
+        version_id="v2",
+        output_language=OUTPUT_LANGUAGE,
+        healthy_balanced_instruction=HEALTHY_BALANCED_INSTRUCTION_V2,
+        recipe_metadata_instruction=RECIPE_METADATA_INSTRUCTION_V2,
+        json_output_instruction=JSON_OUTPUT_INSTRUCTION_V2,
+        output_language_template=OUTPUT_LANGUAGE_TEMPLATE_V2,
+        allowed_units_template=ALLOWED_UNITS_TEMPLATE_V2,
+        category_framing_template=CATEGORY_FRAMING_TEMPLATE_V2,
+        specification_framing_template=SPECIFICATION_FRAMING_TEMPLATE_V2,
+        reference_framing_template=REFERENCE_FRAMING_TEMPLATE_V2,
+    ),
 }
 """Append-only (R2, G-84): a version is added here when wording changes; an
 existing key is never removed or overwritten (specs/ai_prompt_versioning/design.md
-section 4)."""
+section 4). v2 (2026-09-11): English instruction wording, same es-ES output_language."""
 
 PROMPT_VERSION_CONFIG_KEY: Final[str] = "AI_PROMPT_VERSION_ID"
 """The ConfigPort key naming which PROMPT_INSTRUCTION_VERSIONS entry is active (R3)."""

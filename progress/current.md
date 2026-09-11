@@ -3,6 +3,106 @@
 > This file is emptied when each session closes and moved to `history.md`.
 > While you work, **keep it updated in real time**, not at the end.
 
+## 2026-09-11 — feature 17/27 committed; correction reopens feature 24
+
+Owner committed the bundle as `1944822 feat: ai generation lambda`;
+feature 16, 17, 27 all `done`. Tree clean.
+
+**Owner correction:** AI generation prompts sent to Bedrock should be in
+**English**, not Spanish — more token-efficient. Scope check: FR-AI-07
+governs the model's OUTPUT language only (`OUTPUT_LANGUAGE = "es-ES"`
+untouched); this is instruction wording only, not user-facing text
+(`rest_api_contract.md` §3.0's wire-vs-UI-string boundary applies — an
+internal Bedrock payload isn't user-facing, so English is not an
+es-ES-policy violation). Category/unit *values* interpolated into the
+prompt (`IngredientCategory`/`Unit`) stay Spanish — fixed domain
+vocabulary, a different concern.
+
+No new requirement needed: feature 24 `ai_prompt_versioning`'s own R1/R2/R6
+(distinct immutable versions, all retained, all retrievable by id) already
+specify exactly this operation. **No `spec_author` round** — reopened
+feature 24 (`done -> in_progress`) directly to `implementer`: add
+`PROMPT_INSTRUCTION_VERSIONS["v2"]` in English, `"v1"` (Spanish) retained
+untouched per the append-only design. Also updates
+`backend/lambda_ai/tests/test_bedrock.py` (v2 render case) and feature
+25's `test_no_recipe_metadata_logic.py` sanctioned-line exemption (v2's
+JSON-instruction mentions of servings/estimated_time need the same
+allowlist entry v1's has). `bedrock.py` itself needs no code change — it's
+already a pure version-agnostic assembler (this session's earlier F6).
+
+**Implementer done.** `./init.sh` green — **773 passed** (+4). Only
+feature 24's status changed in `feature_list.json` (mine, no drift).
+`progress/impl_ai_prompt_versioning.md` got a full retroactive report
+(this feature had none — pre-dates the report convention) plus the new
+"v2 (English)" section. `v1` diff is purely additive (8 new `_V2`
+constants + registry entry); `output_language` stays `"es-ES"` for both
+versions. Own mutation probe caught a self-comparison test that didn't
+actually verify content, fixed with a literal-content assertion.
+
+**`reviewer` launched** for the delta (v1-untouched guarantee, v2
+content real, `output_language` still es-ES, the feature-25 guard's new
+exemption narrow, `conventions.md` language-policy read).
+
+**Reviewer run — CHANGES_REQUESTED.** 1 finding, 1 mutant survived:
+`RECIPE_METADATA_INSTRUCTION_V2` had no literal-content test (every v2
+assertion on it was a self-comparison) — blank it to `""` and the whole
+suite stayed green, meaning v2 could ship with no instruction telling
+the model to state diners/prep-time and nothing would notice. 2
+non-blocking notes: stale "Spanish" wording in a `bedrock.py` comment
+(v2 is English now); v1/v2 template fields have no literal tests either
+(pre-existing from feature 11, not required).
+
+**Fix round — DONE.** Added the missing literal-content test (mirrors
+the one for `HEALTHY_BALANCED_INSTRUCTION_V2`) + reworded the stale
+comment. `./init.sh` green, 774 tests. No `feature_list.json` drift.
+
+**Verification — APPROVED.** 0 findings, 0 mutants survived. Mutant
+re-applied and killed (`AssertionError: '' == 'Also state t...'`), tree
+restored (sha256-verified byte-identical), comment confirmed
+language-neutral and accurate. `./init.sh` green — 774 passed.
+
+**Feature 24's v2 (English prompt wording) reopen is complete and
+reviewer-APPROVED.**
+
+## Next step — OWNER
+
+1. **Commit** — 8 changed files: `domain/ai_prompt.py`,
+   `test_ai_prompt.py`, `test_no_recipe_metadata_logic.py`,
+   `test_bedrock.py`, `bedrock.py` (comment only),
+   `impl_ai_prompt_versioning.md`, `feature_list.json`. Small enough for
+   one commit, e.g. `feat: version ai generation prompts in english`.
+2. **Status:** feature 24 `in_progress -> done` (re-close). Yours alone.
+3. **Deployment note for later:** activating v2 is a `ConfigPort`
+   (`AI_PROMPT_VERSION_ID`) value — feature 21 IaC / deploy config, not
+   code. Nothing in the tree defaults to a version id.
+
+## 2026-09-11 — implementer DONE, awaiting reviewer
+
+`domain/ai_prompt.py` gained 8 `_V2` constants (English translations of v1's
+wording) + `PROMPT_INSTRUCTION_VERSIONS["v2"]` (`output_language=OUTPUT_LANGUAGE`,
+same es-ES value as v1). No `OUTPUT_LANGUAGE_V2` — only the template's label
+wording is English, the substituted value is unchanged. `v1` untouched (purely
+additive diff). `bedrock.py::_render` needed no change — already version-agnostic.
+
+Tests: `test_ai_prompt.py` (+3, registry set `{"v1","v2"}` + literal-content v2
+test + `build_instructions("v2")` test), `test_bedrock.py` (+1, v2-parallel F5
+render case, English wording), `test_no_recipe_metadata_logic.py` (feature 25
+guard — 2 new sanctioned-line patterns for `JSON_OUTPUT_INSTRUCTION_V2`'s
+English `servings`/`estimated_time` JSON-key mentions; `RECIPE_METADATA_INSTRUCTION_V2`
+worded "diners" instead of "servings" so it needs no exemption, mirroring v1's
+Spanish wording choice).
+
+Mutation probe: blanked `HEALTHY_BALANCED_INSTRUCTION_V2`. First attempt (a
+registry-value self-comparison) did NOT catch it — added a literal-content
+assertion instead (mirrors v1's own pattern), which did. Reverted, byte-identical.
+
+`./init.sh` green — **773 passed** (769 → 773). Report:
+`progress/impl_ai_prompt_versioning.md` → "v2 (English) prompt wording —
+2026-09-11". No `feature_list.json` change, no commit. Cheap `reviewer`
+verification follows automatically.
+
+### Log
+
 - **Feature in progress:** 17 `ai_lambda` — SDD spec phase
 - **Started:** 2026-09-06
 - **Agent:** `spec_author` launching on a new `specs/ai_lambda/`

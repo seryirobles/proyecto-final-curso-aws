@@ -42,11 +42,13 @@ CANDIDATE_SANCTIONED_LINES = (
 )
 
 # ai_prompt.py's JSON_OUTPUT_INSTRUCTION names the model's output-schema keys as
-# versioned prompt text, not domain logic (FR-AI-14 / G-84; fix round 1 finding
-# 6). A reword must land as a new prompt version, so these exact lines are pinned.
+# versioned prompt text, not domain logic (FR-AI-14 / G-84). A reword must land
+# as a new prompt version; see progress/impl_ai_prompt_versioning.md for the v2 history.
 AI_PROMPT_SANCTIONED_LINES = (
     re.compile(r'\s*"procedure \(lista de str\), category \(str\), servings \(int\|null\), "'),
     re.compile(r'\s*"estimated_time \(str\|null\)\. Sin texto adicional\."'),
+    re.compile(r'\s*"procedure \(list of str\), category \(str\), servings \(int\|null\), "'),
+    re.compile(r'\s*"estimated_time \(str\|null\)\. No additional text\."'),
 )
 
 INFORMATIONAL_METADATA = re.compile(r"\bservings\b|\bestimated_time\b")

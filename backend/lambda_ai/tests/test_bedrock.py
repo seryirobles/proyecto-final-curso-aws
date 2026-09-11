@@ -36,6 +36,25 @@ def test_render_carries_the_versioned_instructions_and_the_category_counts() -> 
     assert "3x vegetable" in rendered
 
 
+def test_render_is_version_agnostic_and_renders_v2_english_wording() -> None:
+    """2026-09-11 owner correction: v2's English instructions render too, proving
+    the assembler sources wording from the given version_id, not hardcoded to v1."""
+    version = build_instructions("v2")
+    prompt = build_category_prompt(
+        (CategoryCountRule(category=IngredientCategory.VEGETABLE, count=3),), "v2"
+    )
+
+    rendered = _render(prompt)
+
+    assert version.healthy_balanced_instruction in rendered
+    assert version.recipe_metadata_instruction in rendered
+    assert version.output_language in rendered
+    assert version.json_output_instruction in rendered
+    for unit in ALLOWED_UNITS:
+        assert unit.value in rendered
+    assert "3x vegetable" in rendered
+
+
 class _Body:
     def __init__(self, text: str) -> None:
         self._text = text
