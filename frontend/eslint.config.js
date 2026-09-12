@@ -27,6 +27,8 @@ export default [
         document: 'readonly',
         console: 'readonly',
         globalThis: 'readonly',
+        fetch: 'readonly',
+        Event: 'readonly',
       },
     },
     settings: {

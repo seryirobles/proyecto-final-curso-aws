@@ -6,11 +6,26 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
+from typing import cast
 
 import pytest
 from _helpers import api_event, authorizer_context, make_deps, seed_user
+from planner_core.domain.calendar import IsoWeek
 from planner_core.domain.role import Role
+from planner_core.domain.rules import DisabledDay
+from planner_core.domain.shopping import ShoppingItem
+from planner_core.domain.units import Unit
 from planner_core.ports.accounts import AccountRecord
+from planner_core.ports.recipes import RecipeRepository
+from planner_core.ports.rules import RuleRepository
+from planner_core.ports.shopping_list import ShoppingListRepository
+from planner_core.ports.weeks import WeekRepository
+from support.fakes import (
+    FakeRecipeRepository,
+    FakeRuleRepository,
+    FakeShoppingListRepository,
+    FakeWeekRepository,
+)
 
 from planner_api.handler import handle
 
@@ -357,3 +372,243 @@ def test_no_source_module_calls_print() -> None:
     for path in _SRC.rglob("*.py"):  # R23 - includes planner_api/adapters/**
         content = path.read_text(encoding="utf-8")
         assert not re.search(r"(?<!\w)print\(", content), f"{path.name} calls print()"
+
+
+# --- feature 26: conditional-GET short-circuit (R1-R7) ---
+
+
+class _NoExpensiveRead:
+    """Wraps a fake port; raises if the named expensive read runs — proof the
+    `304` short-circuit never computes the payload (R5)."""
+
+    def __init__(self, inner: object, forbidden: str) -> None:
+        self._inner = inner
+        self._forbidden = forbidden
+
+    def __getattr__(self, name: str) -> object:
+        if name == self._forbidden:
+
+            def _blocked(*_args: object, **_kwargs: object) -> object:
+                raise AssertionError(f"a 304 response must not call {name}()")
+
+            return _blocked
+        return getattr(self._inner, name)
+
+
+def test_a_matching_marker_304s_and_a_stale_marker_gets_the_full_week() -> None:
+    """A marker frozen at the initial `0` cannot tell a correct reader from a
+    constant one (M-A, fix round 1) - so this writes first, moving the true
+    marker off `0`, then checks both branches against it."""
+    week = IsoWeek(2026, 30)
+    weeks = FakeWeekRepository()
+    weeks.save_week(week, {})
+    current_marker = weeks.current_version(week)
+    assert current_marker != 0
+
+    guarded_weeks = cast(WeekRepository, _NoExpensiveRead(weeks, "get_week"))
+    deps_304 = make_deps(weeks=guarded_weeks)
+    seed_user(deps_304, user_id="u-1")
+    event_304 = api_event(
+        "GET",
+        "/v1/weeks/{weekId}",
+        path_params={"weekId": "2026-W30"},
+        headers={"If-None-Match": f'"{current_marker}"'},
+        context=authorizer_context(user_id="u-1"),
+    )
+
+    response_304 = handle(event_304, deps_304)
+
+    assert response_304["statusCode"] == 304
+    assert response_304["body"] == ""
+    assert response_304["headers"]["ETag"] == f'"{current_marker}"'
+
+    deps_200 = make_deps(weeks=weeks)
+    seed_user(deps_200, user_id="u-1")
+    event_200 = api_event(
+        "GET",
+        "/v1/weeks/{weekId}",
+        path_params={"weekId": "2026-W30"},
+        headers={"If-None-Match": '"0"'},  # stale - predates the write above
+        context=authorizer_context(user_id="u-1"),
+    )
+
+    response_200 = handle(event_200, deps_200)
+
+    assert response_200["statusCode"] == 200
+    assert response_200["headers"]["ETag"] == f'"{current_marker}"'
+    assert response_200["body"] != ""
+
+
+def test_week_summary_304s_on_a_matching_marker_without_reading_the_week() -> None:
+    weeks = cast(WeekRepository, _NoExpensiveRead(FakeWeekRepository(), "get_week"))
+    deps = make_deps(weeks=weeks)
+    seed_user(deps, user_id="u-1")
+    event = api_event(
+        "GET",
+        "/v1/weeks/{weekId}/summary",
+        path_params={"weekId": "2026-W30"},
+        headers={"If-None-Match": '"0"'},
+        context=authorizer_context(user_id="u-1"),
+    )
+
+    response = handle(event, deps)
+
+    assert response["statusCode"] == 304
+    assert response["body"] == ""
+
+
+def test_library_304s_on_a_matching_marker_and_200s_on_a_stale_one() -> None:
+    """See test_a_matching_marker_304s_and_a_stale_marker_gets_the_full_week
+    (M-A). Also caught a real bug: `library_editing.poll_marker` returned a
+    literal `0`, never `recipes.current_version()`."""
+    recipes = FakeRecipeRepository()
+    write_deps = make_deps(recipes=recipes)
+    seed_user(write_deps, user_id="u-1")
+    write_event = api_event(
+        "POST",
+        "/v1/library/recipes",
+        body={"source": "manual", "recipe": _VALID_RECIPE},
+        context=authorizer_context(user_id="u-1"),
+    )
+    handle(write_event, write_deps)
+    current_marker = recipes.current_version()
+    assert current_marker != 0
+
+    guarded_recipes = cast(RecipeRepository, _NoExpensiveRead(recipes, "list_all"))
+    deps_304 = make_deps(recipes=guarded_recipes)
+    seed_user(deps_304, user_id="u-1")
+    event_304 = api_event(
+        "GET",
+        "/v1/library/recipes",
+        headers={"If-None-Match": f'"{current_marker}"'},
+        context=authorizer_context(user_id="u-1"),
+    )
+
+    response_304 = handle(event_304, deps_304)
+
+    assert response_304["statusCode"] == 304
+    assert response_304["body"] == ""
+
+    deps_200 = make_deps(recipes=recipes)
+    seed_user(deps_200, user_id="u-1")
+    event_200 = api_event(
+        "GET",
+        "/v1/library/recipes",
+        headers={"If-None-Match": '"0"'},  # stale - predates the write above
+        context=authorizer_context(user_id="u-1"),
+    )
+
+    response_200 = handle(event_200, deps_200)
+
+    assert response_200["statusCode"] == 200
+    assert response_200["headers"]["ETag"] == f'"{current_marker}"'
+    assert response_200["body"] != ""
+
+
+def test_rules_304s_on_a_matching_marker_and_200s_on_a_stale_one() -> None:
+    """See test_a_matching_marker_304s_and_a_stale_marker_gets_the_full_week
+    (M-A) - same shape, for the rules resource."""
+    rules = FakeRuleRepository()
+    rules.save_rule(DisabledDay(day=6))
+    current_marker = rules.current_version()
+    assert current_marker != 0
+
+    guarded_rules = cast(RuleRepository, _NoExpensiveRead(rules, "get"))
+    deps_304 = make_deps(rules=guarded_rules)
+    seed_user(deps_304, user_id="u-1")
+    event_304 = api_event(
+        "GET",
+        "/v1/rules",
+        headers={"If-None-Match": f'"{current_marker}"'},
+        context=authorizer_context(user_id="u-1"),
+    )
+
+    response_304 = handle(event_304, deps_304)
+
+    assert response_304["statusCode"] == 304
+    assert response_304["body"] == ""
+
+    deps_200 = make_deps(rules=rules)
+    seed_user(deps_200, user_id="u-1")
+    event_200 = api_event(
+        "GET",
+        "/v1/rules",
+        headers={"If-None-Match": '"0"'},  # stale - predates the write above
+        context=authorizer_context(user_id="u-1"),
+    )
+
+    response_200 = handle(event_200, deps_200)
+
+    assert response_200["statusCode"] == 200
+    assert response_200["headers"]["ETag"] == f'"{current_marker}"'
+    assert response_200["body"] != ""
+
+
+def test_shopping_list_304s_on_a_matching_marker_and_200s_on_a_stale_one() -> None:
+    """See test_a_matching_marker_304s_and_a_stale_marker_gets_the_full_week
+    (M-A) - same shape, for the shopping-list resource."""
+    shopping = FakeShoppingListRepository()
+    shopping.save_item(ShoppingItem(id="s-1", name="arroz", quantity=500, unit=Unit.GRAM))
+    current_marker = shopping.current_version()
+    assert current_marker != 0
+
+    guarded_shopping = cast(ShoppingListRepository, _NoExpensiveRead(shopping, "list_items"))
+    deps_304 = make_deps(shopping=guarded_shopping)
+    seed_user(deps_304, user_id="u-1")
+    event_304 = api_event(
+        "GET",
+        "/v1/shopping-list",
+        headers={"If-None-Match": f'"{current_marker}"'},
+        context=authorizer_context(user_id="u-1"),
+    )
+
+    response_304 = handle(event_304, deps_304)
+
+    assert response_304["statusCode"] == 304
+    assert response_304["body"] == ""
+
+    deps_200 = make_deps(shopping=shopping)
+    seed_user(deps_200, user_id="u-1")
+    event_200 = api_event(
+        "GET",
+        "/v1/shopping-list",
+        headers={"If-None-Match": '"0"'},  # stale - predates the write above
+        context=authorizer_context(user_id="u-1"),
+    )
+
+    response_200 = handle(event_200, deps_200)
+
+    assert response_200["statusCode"] == 200
+    assert response_200["headers"]["ETag"] == f'"{current_marker}"'
+    assert response_200["body"] != ""
+
+
+def test_a_current_marker_takes_the_unchanged_200_path() -> None:
+    deps = make_deps()
+    seed_user(deps, user_id="u-1")
+    event = api_event(
+        "GET",
+        "/v1/weeks/{weekId}",
+        path_params={"weekId": "2026-W30"},
+        headers={"If-None-Match": '"7"'},  # never matches a freshly-created week's 0 marker
+        context=authorizer_context(user_id="u-1"),
+    )
+
+    response = handle(event, deps)
+
+    assert response["statusCode"] == 200
+    assert response["headers"]["ETag"] == '"0"'
+
+
+def test_a_missing_if_none_match_header_takes_the_unchanged_200_path() -> None:
+    deps = make_deps()
+    seed_user(deps, user_id="u-1")
+    event = api_event(
+        "GET",
+        "/v1/shopping-list",
+        context=authorizer_context(user_id="u-1"),
+    )
+
+    response = handle(event, deps)
+
+    assert response["statusCode"] == 200

@@ -45,6 +45,13 @@ def list_shopping(*, shopping: ShoppingListRepository) -> ShoppingView:
     return ShoppingView(items=shopping.list_items(), marker=marker)
 
 
+def poll_marker(*, shopping: ShoppingListRepository) -> int:
+    """Feature 26's conditional-GET short-circuit: the marker alone, without
+    `list_items`'s payload — keeps the marker name out of `planner_api/routing.py`
+    (test_change_marker_is_not_a_write_condition.py's R12 scan, feature 27)."""
+    return shopping.current_version()
+
+
 def save_item(item: ShoppingItem, *, shopping: ShoppingListRepository) -> int:
     """AP19 — add or edit by id (upsert)."""
     return shopping.save_item(item)
@@ -97,10 +104,8 @@ def resync_shopping_list(
         merged = resync(before, required, new_ids)
 
         by_id = {item.id: item for item in before}
-        marker: int | None = None
-        for item in merged:
-            if by_id.get(item.id) != item:
-                marker = shopping.save_item(item)
+        changed = tuple(item for item in merged if by_id.get(item.id) != item)
+        marker = shopping.save_items(changed)  # one bump per re-sync (feature 26, R8, R9)
     finally:
         shopping.release_lock(owner_id)
     return ResyncOutcome(items=merged, marker=marker)

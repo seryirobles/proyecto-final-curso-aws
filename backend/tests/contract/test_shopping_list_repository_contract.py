@@ -168,3 +168,31 @@ def test_delete_checked_items_with_nothing_checked_does_not_advance_the_marker(
 
     assert repo.delete_checked_items() == 1  # R9 — returns the marker, no bump
     assert repo.current_version() == 1
+
+
+# --- feature 26: save_items collapses a re-sync into one bump (R8-R11) ---
+
+
+@pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
+def test_save_items_bumps_the_marker_exactly_once_for_a_batch(
+    repository_factory: Callable[[], ShoppingListRepository],
+) -> None:
+    repo = repository_factory()
+    batch = (_item("i1"), _item("i2"), _item("i3"))
+
+    marker = repo.save_items(batch)
+
+    assert marker == 1  # R9 — one bump, not three
+    assert repo.current_version() == 1
+    assert set(repo.list_items()) == set(batch)
+
+
+@pytest.mark.parametrize("repository_factory", IMPLEMENTATIONS)
+def test_save_items_with_an_empty_sequence_is_a_no_op(
+    repository_factory: Callable[[], ShoppingListRepository],
+) -> None:
+    repo = repository_factory()
+
+    assert repo.save_items(()) is None  # R10
+    assert repo.current_version() == 0
+    assert repo.list_items() == ()

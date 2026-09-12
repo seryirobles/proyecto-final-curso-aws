@@ -166,3 +166,24 @@ def test_get_routes_never_call_a_mutating_port_method(
         raise  # a mutator fired - the failure this test exists to catch
     except Exception:  # unseeded fixtures 404 legitimately here; only writes matter
         pass
+
+
+# --- feature 26: current_version_reader scoping (R7) ---
+
+_POLLABLE_GET_ROUTES = frozenset(
+    {
+        ("GET", "/v1/weeks/{weekId}"),
+        ("GET", "/v1/weeks/{weekId}/summary"),
+        ("GET", "/v1/library/recipes"),
+        ("GET", "/v1/rules"),
+        ("GET", "/v1/shopping-list"),
+    }
+)
+
+
+def test_only_the_pollable_get_routes_carry_a_current_version_reader() -> None:
+    for key, spec in ROUTES.items():
+        if key in _POLLABLE_GET_ROUTES:
+            assert spec.current_version_reader is not None, key
+        else:
+            assert spec.current_version_reader is None, key

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Protocol, runtime_checkable
 
@@ -40,6 +41,12 @@ class ShoppingListRepository(Protocol):
     def delete_item(self, item_id: str) -> int:
         """Raises ShoppingItemNotFound; otherwise return the list's marker as
         advanced by this delete, bumped in the same operation (docs/data_model.md 1.1/5.5)."""
+        ...
+
+    def save_items(self, items: Sequence[ShoppingItem]) -> int | None:
+        """Upsert every item in one transaction with a single marcaCambio bump
+        (feature 26, R8, R9). `items` empty -> no write, no bump, returns
+        `None` (R10) — the re-sync composition's own "already in sync" case."""
         ...
 
     def delete_checked_items(self) -> int:

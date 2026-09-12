@@ -528,7 +528,7 @@
         "Shopping-list re-sync bumps COMPRA#<idLista> marcaCambio once per re-sync, not once per differing item — re-sync becomes its own transaction, single bump at docs/data_model.md section 5.3's lock release"
       ],
       "sdd": true,
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": 27,

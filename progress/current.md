@@ -3,6 +3,86 @@
 > This file is emptied when each session closes and moved to `history.md`.
 > While you work, **keep it updated in real time**, not at the end.
 
+## 2026-09-12 — feature 26 fix round 1 (reviewer CHANGES_REQUESTED, 2 findings)
+
+Both required findings fixed. **M-A** — the 4 pollable-route 304 tests in
+`test_handler.py` (weeks/library/rules/shopping) never bumped their marker
+off `0`, so a reader wired to a constant was indistinguishable from a
+correct one; rewrote each to write first, then assert `304` on the new
+marker and `200` (full payload) on the stale `"0"`. This surfaced a real
+bug — `library_editing.py::poll_marker` returned literal `0`, never
+`recipes.current_version()` — now fixed. Both named mutants (`week_editing.
+poll_marker` / `library_editing.poll_marker` → `return 0`) re-verified
+**killed**. **M-B** — `usePolling.test.js` never exercised the hook's
+`blur`/`focus` DOM wiring (only `visibilitychange`); added a case for both.
+The named mutant (deleting the `blur`/`focus` listener pair) re-verified
+**killed**. Bookkeeping: `impl_realtime_channel_transport.md`'s vitest count
+corrected to the real 35→36 (was mis-reported as 29/4 files). `./init.sh`
+green — 795 backend tests, vitest 36/7 files. No `feature_list.json`
+change, no commit. Full detail: `progress/impl_realtime_channel_transport.md`
+→ "Fix round 1 — 2026-09-12".
+
+## 2026-09-12 — feature 26 gate closed; data-loss incident on this file
+
+**Incident (disclosed):** an implementer session accidentally overwrote this
+file's uncommitted content with a placeholder before reading it. That content
+had shown as `M` in git status (uncommitted, never staged), so git holds no
+blob of it and it is **not recoverable**. This file has been restored to the
+last committed (`HEAD`) state below; whatever session notes existed between
+that commit and this incident are lost. No spec, task, or source file was
+affected.
+
+**Feature 26 `realtime_channel_transport` gate (T25) closed.** Code and
+backend tests already existed and were green from an earlier, unfinished
+session; only the SDD bookkeeping and the frontend lint/format gate were
+open. Fixed: `frontend/eslint.config.js` was missing `fetch`/`Event` in its
+`globals` (feature's browser code legitimately uses both); removed a stale
+`eslint-disable-next-line react-hooks/exhaustive-deps` in
+`src/hooks/usePolling.js` whose dep array is already exhaustive; ran
+`prettier --write` on the 6 flagged files. Verified all of T1–T25
+(incl. T24a/T24b) against real code/tests and checked them off in
+`specs/realtime_channel_transport/tasks.md`. `./init.sh` green — **795
+backend tests**, vitest 29/29, ruff/mypy/prettier/eslint all pass. Full
+traceability in `progress/impl_realtime_channel_transport.md`. Status left at
+`in_progress` — `done` and commit are the owner's alone; ready for reviewer.
+
+## 2026-09-12 — reconstructed: feature 26 spec'd + gate ruled (lost entry)
+
+> Recovered from this conversation's own transcript (I read the original
+> entry verbatim before the incident above destroyed it) — not from git,
+> which held no blob of the uncommitted text. Reproduced as closely as
+> memory allows; treat as best-effort, not a byte-exact restore.
+
+`./init.sh` green (774 tests) at session start; feature 24's English-prompt
+fix cycle already committed by owner (`fcbb6a4`). Next actionable: **26
+`realtime_channel_transport`** (deps 16+18 both `done`).
+
+`spec_author` produced `specs/realtime_channel_transport/` (R1–R26,
+design.md, tasks.md T1–T25), `feature_list.json` 26 `pending -> spec_ready`.
+3 gate questions:
+
+1. Re-sync single-bump timing (same `TransactWriteItems` as the batched
+   writes, just before `release_lock`, not folded into the lock's own
+   delete) — **owner: OK**.
+2. Polling constants (5s active / 30s background / 60s backoff cap / ±20%
+   jitter / 3-failure threshold) — **owner: OK**.
+3. Frontend test strategy — spec_author proposed a framework-free
+   `pollingEngine.js` + inert `usePolling.js` hook (no new deps, since
+   `vite.config.js` runs Vitest `environment: "node"`). **Owner reversed:**
+   add `jsdom` + `@testing-library/react` and test `usePolling.js`'s real
+   React wiring too.
+
+Fold pass done: design.md §0/§2/§5/§7/§9 updated, tasks.md gained T24a (add
+`jsdom`/`@testing-library/react`/`@testing-library/dom` devDeps) + T24b
+(`usePolling.test.js`, per-file `// @vitest-environment jsdom` pragma —
+confirmed supported by installed `vitest@^4.1.10`, project-wide config
+untouched). `requirements.md` needed no change. `feature_list.json` still
+`spec_ready` (fold pass doesn't flip status).
+
+Owner then said "go" (off-session from this reconstruction's view) —
+leader flipped feature 26 `spec_ready -> in_progress` and dispatched the
+`implementer`, which produced all the code/tests now closed out above.
+
 ## 2026-09-11 — feature 17/27 committed; correction reopens feature 24
 
 Owner committed the bundle as `1944822 feat: ai generation lambda`;

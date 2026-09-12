@@ -43,6 +43,13 @@ def list_library(*, recipes: RecipeRepository) -> LibraryView:
     return LibraryView(entries=recipes.list_all(), marker=marker)
 
 
+def poll_marker(*, recipes: RecipeRepository) -> int:
+    """Feature 26's conditional-GET short-circuit: the marker alone, without
+    `list_all`'s payload — keeps the marker name out of `planner_api/routing.py`
+    (test_change_marker_is_not_a_write_condition.py's R12 scan, feature 27)."""
+    return recipes.current_version()
+
+
 def save_recipe(entry: LibraryRecipe, *, recipes: RecipeRepository) -> SaveRecipeOutcome:
     """AP16 — create or edit by id; report a same-name collision, never reject it."""
     folded = normalize(entry.recipe.name)

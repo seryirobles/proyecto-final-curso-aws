@@ -4,6 +4,7 @@ rather than trusting DynamoDB TTL deletion, which may lag up to 48h."""
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
@@ -56,6 +57,12 @@ class DynamoShoppingListRepository:
 
     def save_item(self, item: ShoppingItem) -> int:
         return _table.commit(_pk(), [_table.put_action(_item_dict(item))])
+
+    def save_items(self, items: Sequence[ShoppingItem]) -> int | None:
+        # R10 - empty batch never touches DynamoDB, never bumps the marker.
+        if not items:
+            return None
+        return _table.commit(_pk(), [_table.put_action(_item_dict(i)) for i in items])
 
     def delete_item(self, item_id: str) -> int:
         if _table.get_item(_pk(), _sk(item_id)) is None:

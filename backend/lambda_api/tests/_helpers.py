@@ -107,8 +107,9 @@ def api_event(
     body: dict[str, Any] | None = None,
     cookie: str | None = None,
     context: dict[str, str] | None = None,
+    headers: dict[str, str] | None = None,
 ) -> dict[str, Any]:
-    headers: dict[str, str] = {}
+    headers = dict(headers) if headers is not None else {}
     if cookie is not None:
         headers["Cookie"] = f"session={cookie}"
     request_context: dict[str, Any] = {}

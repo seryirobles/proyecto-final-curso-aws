@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -284,6 +284,14 @@ class FakeShoppingListRepository:
     def save_item(self, item: ShoppingItem) -> int:
         self.items[item.id] = item
         self.version += 1
+        return self.version
+
+    def save_items(self, items: Sequence[ShoppingItem]) -> int | None:
+        if not items:  # R10 - no write, no bump
+            return None
+        for item in items:
+            self.items[item.id] = item
+        self.version += 1  # R8, R9 - one bump for the whole batch
         return self.version
 
     def delete_item(self, item_id: str) -> int:

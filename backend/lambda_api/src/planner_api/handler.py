@@ -14,7 +14,8 @@ from planner_core.domain.role import Role
 
 from planner_api import errors
 from planner_api import serialization as ser
-from planner_api.routing import ROUTES, AuthContext
+from planner_api.conditional_get import parse_if_none_match
+from planner_api.routing import ROUTES, AuthContext, quoted_etag
 from planner_api.serialization import RouteNotFound
 from planner_api.wiring import Dependencies, build_dependencies
 
@@ -72,10 +73,18 @@ def handle(event: dict[str, Any], deps: Dependencies | None = None) -> dict[str,
                 raise Forbidden(auth.role)
             if auth.password_reset_required and not spec.allow_during_password_reset:
                 raise PasswordResetPending
-        body = ser.parse_json_body(event.get("body"))
+        resolved_deps = deps or build_dependencies()
         path_params = event.get("pathParameters") or {}
         query_params = event.get("queryStringParameters") or {}
-        result = spec.handler(path_params, query_params, body, auth, deps or build_dependencies())
+        if method == "GET" and spec.current_version_reader is not None:
+            held = parse_if_none_match((event.get("headers") or {}).get("If-None-Match"))
+            if held is not None:
+                current = spec.current_version_reader(path_params, resolved_deps)
+                if held == current:  # R2 - matched marker short-circuits to 304
+                    status = 304
+                    return _response(304, None, etag=quoted_etag(current))
+        body = ser.parse_json_body(event.get("body"))
+        result = spec.handler(path_params, query_params, body, auth, resolved_deps)
         status = result.status
         return _response(
             result.status,

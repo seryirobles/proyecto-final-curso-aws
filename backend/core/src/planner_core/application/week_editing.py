@@ -47,6 +47,13 @@ def load_week(week: IsoWeek, *, weeks: WeekRepository) -> WeekView:
     return WeekView(slots=weeks.get_week(week), marker=marker)
 
 
+def poll_marker(week: IsoWeek, *, weeks: WeekRepository) -> int:
+    """Feature 26's conditional-GET short-circuit: the marker alone, without
+    `get_week`'s payload — keeps the marker name out of `planner_api/routing.py`
+    (test_change_marker_is_not_a_write_condition.py's R12 scan, feature 27)."""
+    return weeks.current_version(week)
+
+
 def load_candidate(
     week: IsoWeek, slot: SlotRef, candidate_id: str, *, weeks: WeekRepository
 ) -> Candidate | None:

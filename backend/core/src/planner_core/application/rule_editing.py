@@ -60,6 +60,13 @@ def read_rules(*, rules: RuleRepository) -> RulesView:
     return RulesView(rule_set=rules.get(), marker=marker)
 
 
+def poll_marker(*, rules: RuleRepository) -> int:
+    """Feature 26's conditional-GET short-circuit: the marker alone, without
+    `get`'s payload — keeps the marker name out of `planner_api/routing.py`
+    (test_change_marker_is_not_a_write_condition.py's R12 scan, feature 27)."""
+    return rules.current_version()
+
+
 def save_rule(rule: Rule, *, rules: RuleRepository) -> int:
     """Validate the whole resulting set in memory, then write the one item.
 

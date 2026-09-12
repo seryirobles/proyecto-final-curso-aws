@@ -78,11 +78,16 @@ class RouteSpec:
     public: bool = False
     requires_role: Role | None = None
     allow_during_password_reset: bool = False
+    current_version_reader: Callable[[dict[str, str], Dependencies], int] | None = None
+    """Set only on the four pollable resources' `GET` routes (feature 26, R7):
+    the cheap marker read `handler.py` uses for the conditional-GET
+    short-circuit before deciding whether to call `handler` at all."""
 
 
-def _quoted_etag(marker: int) -> str:
+def quoted_etag(marker: int) -> str:
     """RFC 7232 strong validator syntax (docs/rest_api_contract.md section 6):
-    the marker itself, quoted."""
+    the marker itself, quoted. Public so handler.py's 304 short-circuit reuses
+    the same quoting format (feature 26, R3)."""
     return f'"{marker}"'
 
 
@@ -299,9 +304,7 @@ def _get_week(
                 "definitiveId": contents.definitive_id,
             }
         )
-    return RouteResult(
-        200, {"weekId": week.week_id, "slots": slots}, etag=_quoted_etag(view.marker)
-    )
+    return RouteResult(200, {"weekId": week.week_id, "slots": slots}, etag=quoted_etag(view.marker))
 
 
 def _get_week_summary(
@@ -317,9 +320,7 @@ def _get_week_summary(
         {**ser.encode_slot_ref(slot_ref), "candidate": ser.encode_candidate(candidate)}
         for slot_ref, candidate in summary(view.slots)
     ]
-    return RouteResult(
-        200, {"weekId": week.week_id, "meals": meals}, etag=_quoted_etag(view.marker)
-    )
+    return RouteResult(200, {"weekId": week.week_id, "meals": meals}, etag=quoted_etag(view.marker))
 
 
 def _week_slot(path: dict[str, str]) -> tuple[Any, Any]:
@@ -389,7 +390,7 @@ def _add_candidate(
             "candidate": ser.encode_candidate(candidate),
             "duplicateWarning": outcome.duplicate_warning,
         },
-        etag=_quoted_etag(outcome.marker),
+        etag=quoted_etag(outcome.marker),
         location=location,
     )
 
@@ -409,7 +410,7 @@ def _edit_candidate(
     candidate = week_editing.load_candidate(week, slot_ref, candidate_id, weeks=deps.weeks)
     assert candidate is not None
     return RouteResult(
-        200, {"candidate": ser.encode_candidate(candidate)}, etag=_quoted_etag(marker)
+        200, {"candidate": ser.encode_candidate(candidate)}, etag=quoted_etag(marker)
     )
 
 
@@ -424,7 +425,7 @@ def _delete_candidate(
     marker = week_editing.delete_slot_candidate(
         week, slot_ref, path["candidateId"], weeks=deps.weeks
     )
-    return RouteResult(204, etag=_quoted_etag(marker))
+    return RouteResult(204, etag=quoted_etag(marker))
 
 
 def _set_definitive(
@@ -437,7 +438,7 @@ def _set_definitive(
     week, slot_ref = _week_slot(path)
     candidate_id = str(ser.require_field(body, "candidateId"))
     marker = week_editing.set_definitive(week, slot_ref, candidate_id, weeks=deps.weeks)
-    return RouteResult(200, {"candidateId": candidate_id}, etag=_quoted_etag(marker))
+    return RouteResult(200, {"candidateId": candidate_id}, etag=quoted_etag(marker))
 
 
 def _clear_definitive(
@@ -449,7 +450,7 @@ def _clear_definitive(
 ) -> RouteResult:
     week, slot_ref = _week_slot(path)
     marker = week_editing.clear_slot_definitive(week, slot_ref, weeks=deps.weeks)
-    return RouteResult(204, etag=_quoted_etag(marker))
+    return RouteResult(204, etag=quoted_etag(marker))
 
 
 # ---------------------------------------------------------------------------
@@ -480,7 +481,7 @@ def _list_library(
     return RouteResult(
         200,
         {"recipes": [_encode_library_entry(e) for e in entries]},
-        etag=_quoted_etag(view.marker),
+        etag=quoted_etag(view.marker),
     )
 
 
@@ -527,7 +528,7 @@ def _save_library_recipe(*, create: bool) -> RouteHandler:
         return RouteResult(
             201 if create else 200,
             {**_encode_library_entry(entry), "duplicateWarning": outcome.duplicate_warning},
-            etag=_quoted_etag(outcome.marker),
+            etag=quoted_etag(outcome.marker),
             location=location,
         )
 
@@ -545,7 +546,7 @@ def _delete_library_recipe(
     outcome = library_editing.delete_recipe(
         path["recipeId"], confirm_cascade=confirm, recipes=deps.recipes, rules=deps.rules
     )
-    return RouteResult(204, etag=_quoted_etag(outcome.marker))
+    return RouteResult(204, etag=quoted_etag(outcome.marker))
 
 
 # ---------------------------------------------------------------------------
@@ -567,7 +568,7 @@ def _list_rules(
         *(ser.encode_rule(r) for r in rule_set.pins),
         *(ser.encode_rule(DisabledDay(day=d)) for d in rule_set.disabled_days),
     ]
-    return RouteResult(200, {"rules": rules}, etag=_quoted_etag(view.marker))
+    return RouteResult(200, {"rules": rules}, etag=quoted_etag(view.marker))
 
 
 def _put_rule(
@@ -581,7 +582,7 @@ def _put_rule(
     if rule_id(rule) != path["ruleId"]:  # T9 - the path segment is authoritative
         raise MalformedRequest
     marker = rule_editing.save_rule(rule, rules=deps.rules)
-    return RouteResult(200, ser.encode_rule(rule), etag=_quoted_etag(marker))
+    return RouteResult(200, ser.encode_rule(rule), etag=quoted_etag(marker))
 
 
 def _delete_rule(
@@ -592,7 +593,7 @@ def _delete_rule(
     deps: Dependencies,
 ) -> RouteResult:
     marker = rule_editing.delete_rule(path["ruleId"], rules=deps.rules)
-    return RouteResult(204, etag=_quoted_etag(marker))
+    return RouteResult(204, etag=quoted_etag(marker))
 
 
 # ---------------------------------------------------------------------------
@@ -611,7 +612,7 @@ def _get_shopping_list(
     return RouteResult(
         200,
         {"items": [ser.encode_shopping_item(i) for i in view.items]},
-        etag=_quoted_etag(view.marker),
+        etag=quoted_etag(view.marker),
     )
 
 
@@ -627,7 +628,7 @@ def _add_shopping_item(
     return RouteResult(
         201,
         ser.encode_shopping_item(item),
-        etag=_quoted_etag(marker),
+        etag=quoted_etag(marker),
         location=f"/v1/shopping-list/items/{item.id}",
     )
 
@@ -641,7 +642,7 @@ def _put_shopping_item(
 ) -> RouteResult:
     item = ser.decode_shopping_item(body, item_id=path["itemId"])
     marker = shopping_editing.save_item(item, shopping=deps.shopping)
-    return RouteResult(200, ser.encode_shopping_item(item), etag=_quoted_etag(marker))
+    return RouteResult(200, ser.encode_shopping_item(item), etag=quoted_etag(marker))
 
 
 def _patch_shopping_item(
@@ -653,7 +654,7 @@ def _patch_shopping_item(
 ) -> RouteResult:
     checked = bool(ser.require_field(body, "checked"))
     marker = shopping_editing.set_checked(path["itemId"], checked, shopping=deps.shopping)
-    return RouteResult(200, {"id": path["itemId"], "checked": checked}, etag=_quoted_etag(marker))
+    return RouteResult(200, {"id": path["itemId"], "checked": checked}, etag=quoted_etag(marker))
 
 
 def _delete_shopping_item(
@@ -664,7 +665,7 @@ def _delete_shopping_item(
     deps: Dependencies,
 ) -> RouteResult:
     marker = shopping_editing.delete_item(path["itemId"], shopping=deps.shopping)
-    return RouteResult(204, etag=_quoted_etag(marker))
+    return RouteResult(204, etag=quoted_etag(marker))
 
 
 def _delete_checked_items(
@@ -675,7 +676,7 @@ def _delete_checked_items(
     deps: Dependencies,
 ) -> RouteResult:
     marker = shopping_editing.delete_checked(shopping=deps.shopping)
-    return RouteResult(204, etag=_quoted_etag(marker))
+    return RouteResult(204, etag=quoted_etag(marker))
 
 
 def _resync(
@@ -701,7 +702,7 @@ def _resync(
     return RouteResult(
         200,
         {"items": [ser.encode_shopping_item(i) for i in outcome.items]},
-        etag=_quoted_etag(marker),
+        etag=quoted_etag(marker),
     )
 
 
@@ -799,8 +800,20 @@ ROUTES: dict[tuple[str, str], RouteSpec] = {
     ("PATCH", "/v1/users/{userId}"): RouteSpec(_update_user, requires_role=Role.ADMIN),
     ("DELETE", "/v1/users/{userId}"): RouteSpec(_delete_user, requires_role=Role.ADMIN),
     ("GET", "/v1/live-weeks"): RouteSpec(_live_weeks, requires_role=Role.USER),
-    ("GET", "/v1/weeks/{weekId}"): RouteSpec(_get_week, requires_role=Role.USER),
-    ("GET", "/v1/weeks/{weekId}/summary"): RouteSpec(_get_week_summary, requires_role=Role.USER),
+    ("GET", "/v1/weeks/{weekId}"): RouteSpec(
+        _get_week,
+        requires_role=Role.USER,
+        current_version_reader=lambda path, deps: week_editing.poll_marker(
+            ser.parse_week_id(path["weekId"]), weeks=deps.weeks
+        ),
+    ),
+    ("GET", "/v1/weeks/{weekId}/summary"): RouteSpec(
+        _get_week_summary,
+        requires_role=Role.USER,
+        current_version_reader=lambda path, deps: week_editing.poll_marker(
+            ser.parse_week_id(path["weekId"]), weeks=deps.weeks
+        ),
+    ),
     ("GET", "/v1/weeks/{weekId}/days/{day}/slots/{slot}/candidates/{candidateId}"): RouteSpec(
         _get_candidate, requires_role=Role.USER
     ),
@@ -819,7 +832,11 @@ ROUTES: dict[tuple[str, str], RouteSpec] = {
     ("DELETE", "/v1/weeks/{weekId}/days/{day}/slots/{slot}/definitive"): RouteSpec(
         _clear_definitive, requires_role=Role.USER
     ),
-    ("GET", "/v1/library/recipes"): RouteSpec(_list_library, requires_role=Role.USER),
+    ("GET", "/v1/library/recipes"): RouteSpec(
+        _list_library,
+        requires_role=Role.USER,
+        current_version_reader=lambda path, deps: library_editing.poll_marker(recipes=deps.recipes),
+    ),
     ("GET", "/v1/library/recipes/{recipeId}"): RouteSpec(
         _get_library_recipe, requires_role=Role.USER
     ),
@@ -832,10 +849,20 @@ ROUTES: dict[tuple[str, str], RouteSpec] = {
     ("DELETE", "/v1/library/recipes/{recipeId}"): RouteSpec(
         _delete_library_recipe, requires_role=Role.USER
     ),
-    ("GET", "/v1/rules"): RouteSpec(_list_rules, requires_role=Role.USER),
+    ("GET", "/v1/rules"): RouteSpec(
+        _list_rules,
+        requires_role=Role.USER,
+        current_version_reader=lambda path, deps: rule_editing.poll_marker(rules=deps.rules),
+    ),
     ("PUT", "/v1/rules/{ruleId}"): RouteSpec(_put_rule, requires_role=Role.USER),
     ("DELETE", "/v1/rules/{ruleId}"): RouteSpec(_delete_rule, requires_role=Role.USER),
-    ("GET", "/v1/shopping-list"): RouteSpec(_get_shopping_list, requires_role=Role.USER),
+    ("GET", "/v1/shopping-list"): RouteSpec(
+        _get_shopping_list,
+        requires_role=Role.USER,
+        current_version_reader=lambda path, deps: shopping_editing.poll_marker(
+            shopping=deps.shopping
+        ),
+    ),
     ("POST", "/v1/shopping-list/items"): RouteSpec(_add_shopping_item, requires_role=Role.USER),
     ("PUT", "/v1/shopping-list/items/{itemId}"): RouteSpec(
         _put_shopping_item, requires_role=Role.USER

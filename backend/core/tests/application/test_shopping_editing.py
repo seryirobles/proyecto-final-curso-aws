@@ -141,6 +141,36 @@ def test_resync_releases_the_lock_when_done() -> None:
     shopping.acquire_lock("owner-c", NOW, EXPIRES)  # would raise if still held
 
 
+def test_resync_needing_three_new_items_bumps_the_marker_once_not_three_times() -> None:
+    """Feature 26, R8/R9 — the re-sync write step is one `save_items` call, so
+    three differing items advance `current_version()` by exactly 1."""
+    weeks = FakeWeekRepository()
+    for index, ingredient_name in enumerate(("arroz", "pasta", "lenteja")):
+        meal = MealSnapshot(
+            name=f"Plato {index}",
+            ingredients=(Ingredient(name=ingredient_name, quantity=100, unit=Unit.GRAM),),
+            tools=(),
+            procedure=(),
+            category=IngredientCategory.CARBOHYDRATE,
+        )
+        plan = SlotContents(
+            candidates=(Candidate(id=f"c{index}", meal=meal, author="u1"),),
+            definitive_id=f"c{index}",
+        )
+        slot = SlotRef(date(2026, 7, 21 + index), MealSlot.LUNCH)
+        weeks.save_slot(IsoWeek(2026, 30), slot, plan)
+    shopping = FakeShoppingListRepository()
+    before_version = shopping.current_version()
+
+    outcome = shopping_editing.resync_shopping_list(
+        "owner-a", TODAY, NOW, EXPIRES, ["s1", "s2", "s3"], shopping=shopping, weeks=weeks
+    )
+
+    assert shopping.current_version() == before_version + 1
+    assert outcome.marker == before_version + 1
+    assert len(outcome.items) == 3
+
+
 def test_plain_edits_return_the_write_marker() -> None:
     shopping = FakeShoppingListRepository()
     item = ShoppingItem(id="i1", name="sal", quantity=1, unit=Unit.UNIT)
