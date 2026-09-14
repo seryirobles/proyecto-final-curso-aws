@@ -29,10 +29,18 @@ export default [
         globalThis: 'readonly',
         fetch: 'readonly',
         Event: 'readonly',
+        Headers: 'readonly',
       },
     },
     settings: {
       react: { version: 'detect' },
+    },
+    rules: {
+      ...react.configs.flat.recommended.rules,
+      // No TypeScript, no `prop-types` dependency (architecture.md section
+      // 1.1, decided 2026-08-17) — this project has no runtime prop-shape
+      // checker; components document their props via naming and design.md.
+      'react/prop-types': 'off',
     },
   },
   {

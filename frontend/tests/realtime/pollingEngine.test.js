@@ -218,6 +218,39 @@ describe('createPollingEngine', () => {
     engine.dispose();
   });
 
+  it('does not re-arm after dispose while a request is in flight (finding 2, fix round 2)', async () => {
+    let resolveFetch;
+    const fetchResource = vi.fn(
+      () =>
+        new Promise((resolve) => {
+          resolveFetch = resolve;
+        }),
+    );
+    const engine = engineWith(fetchResource);
+
+    engine.start(); // poll() starts, fetchResource pending
+    engine.dispose(); // disposed while still in flight
+    resolveFetch({ status: 304, marker: null, body: null });
+    await flush();
+
+    expect(fetchResource).toHaveBeenCalledTimes(1); // finally-block re-arm suppressed
+    vi.advanceTimersByTime(DEFAULT_CONFIG.activeIntervalMs * 4);
+    expect(fetchResource).toHaveBeenCalledTimes(1); // no timer was ever scheduled
+  });
+
+  it('applyMutationMarker on a disposed engine does not fire a stray fetch (fix round 3)', async () => {
+    const fetchResource = vi.fn().mockResolvedValue({ status: 200, marker: 5, body: {} });
+    const engine = engineWith(fetchResource);
+    engine.start();
+    await flush();
+
+    engine.dispose();
+    engine.applyMutationMarker(9); // stale closure calling pollNow() after dispose
+    await flush();
+
+    expect(fetchResource).toHaveBeenCalledTimes(1); // no second, post-dispose fetch
+  });
+
   it('applyMutationMarker discards a mismatched marker and triggers a refetch', async () => {
     const fetchResource = vi.fn().mockResolvedValue({ status: 200, marker: 5, body: {} });
     const engine = engineWith(fetchResource);

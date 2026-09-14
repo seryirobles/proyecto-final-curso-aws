@@ -57,6 +57,7 @@ export function createPollingEngine(config, deps) {
   let consecutiveFailures = 0;
   let timerId = null;
   let inFlight = false;
+  let disposed = false;
   let unsubscribeVisibility = null;
   let wasBackgrounded = false;
   const listeners = new Set();
@@ -78,6 +79,7 @@ export function createPollingEngine(config, deps) {
   }
 
   function scheduleNext() {
+    if (disposed) return; // finding 2, fix round 2 - a disposed engine never re-arms
     const delay = computeDelay(
       { isBackgrounded: visibilitySource.isBackgrounded(), consecutiveFailures, config },
       random,
@@ -107,6 +109,7 @@ export function createPollingEngine(config, deps) {
   }
 
   function pollNow() {
+    if (disposed) return; // fix round 3 - a stale applyMutationMarker/visibility callback
     if (timerId !== null) clearTimeoutFn(timerId);
     poll();
   }
@@ -138,6 +141,7 @@ export function createPollingEngine(config, deps) {
       poll();
     },
     dispose() {
+      disposed = true;
       if (timerId !== null) clearTimeoutFn(timerId);
       if (unsubscribeVisibility) unsubscribeVisibility();
     },

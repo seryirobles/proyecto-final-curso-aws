@@ -209,6 +209,10 @@ export function createPollingEngine(config, deps) { ... }
 //   start(), dispose() }. getSnapshot() -> { data, marker, connectionLost }.
 // Each engine instance owns its own held marker / failure count / timer
 // (R15) — two instances never share state.
+// dispose() sets an internal `disposed` flag; scheduleNext() is then a
+// no-op, so an in-flight request's `finally` block cannot re-arm a
+// disposed engine (bug found + fixed in feature 20's fix round 2,
+// 2026-09-13 — see progress/impl_frontend_spa.md).
 ```
 
 Failure/success transitions (R19, R20, R23, R24) and the visibility-driven

@@ -1,0 +1,17 @@
+// Week designation + Monday-Sunday date range, reused by every week-scoped
+// view (R16, R21; design.md section 5). Dates format through
+// `locale.js:formatDate`, never a hand-built string.
+
+import { formatDate } from '../locale.js';
+import { MESSAGES } from '../messages/index.js';
+
+export function WeekLabel({ designation, monday, sunday }) {
+  const designationLabel =
+    designation === 'next' ? MESSAGES.WEEK_LABEL_NEXT : MESSAGES.WEEK_LABEL_CURRENT;
+
+  return (
+    <span>
+      {designationLabel} · {formatDate(new Date(monday))}–{formatDate(new Date(sunday))}
+    </span>
+  );
+}

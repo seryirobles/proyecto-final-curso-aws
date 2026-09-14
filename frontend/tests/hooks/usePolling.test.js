@@ -7,6 +7,14 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { usePolling } from '../../src/hooks/usePolling.js';
+import { DEFAULT_CONFIG, createPollingEngine } from '../../src/realtime/pollingEngine.js';
+
+// Flushes the microtask queue so an unawaited poll() continuation resolves
+// before the next assertion - same helper as pollingEngine.test.js.
+async function flush() {
+  await Promise.resolve();
+  await Promise.resolve();
+}
 
 function fakeEngine() {
   // A stable snapshot reference, mutated only via setSnapshot - mirrors the
@@ -94,6 +102,79 @@ describe('usePolling', () => {
 
     expect(result.current.marker).toBe(4);
     expect(result.current.data).toEqual({ items: [] });
+  });
+
+  it('never starts the engine when enabled is false (finding 3, fix round 2)', () => {
+    const engine = fakeEngine();
+    const createEngine = vi.fn(() => engine);
+
+    renderHook(() => usePolling('/v1/shopping-list', {}, { createEngine, enabled: false }));
+
+    expect(engine.start).not.toHaveBeenCalled();
+  });
+
+  it('starts the engine exactly once when enabled flips false to true', () => {
+    const engine = fakeEngine();
+    const createEngine = vi.fn(() => engine);
+
+    const { rerender } = renderHook(
+      ({ enabled }) => usePolling('/v1/shopping-list', {}, { createEngine, enabled }),
+      { initialProps: { enabled: false } },
+    );
+    expect(engine.start).not.toHaveBeenCalled();
+
+    rerender({ enabled: true });
+
+    expect(engine.start).toHaveBeenCalledTimes(1);
+  });
+
+  it('disposes the engine exactly once when enabled flips true to false', () => {
+    const engine = fakeEngine();
+    const createEngine = vi.fn(() => engine);
+
+    const { rerender } = renderHook(
+      ({ enabled }) => usePolling('/v1/shopping-list', {}, { createEngine, enabled }),
+      { initialProps: { enabled: true } },
+    );
+    expect(engine.dispose).not.toHaveBeenCalled();
+
+    rerender({ enabled: false });
+
+    expect(engine.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it('resumes real polling after an enabled true -> false -> true cycle (fix round 3)', async () => {
+    // Against a REAL engine - the bug only reproduces through the real
+    // disposed/scheduleNext interaction. See progress/impl_frontend_spa.md
+    // > "Library slice — Fix round 3".
+    vi.useFakeTimers();
+    try {
+      const fetchResource = vi.fn().mockResolvedValue({ status: 304, marker: null, body: null });
+      const createEngine = (config, deps) =>
+        createPollingEngine(config, { ...deps, fetchResource });
+
+      const { rerender } = renderHook(
+        ({ enabled }) => usePolling('/v1/shopping-list', DEFAULT_CONFIG, { createEngine, enabled }),
+        { initialProps: { enabled: true } },
+      );
+      await act(flush);
+      expect(fetchResource).toHaveBeenCalledTimes(1);
+
+      rerender({ enabled: false }); // disposes the engine
+      rerender({ enabled: true }); // must resume with a fresh, working engine
+      await act(flush);
+      expect(fetchResource).toHaveBeenCalledTimes(2); // start()'s own immediate poll
+
+      // The real proof: a later scheduled poll must still fire (re-armed).
+      // jsdom reports the document unfocused, so this uses the background
+      // interval, not the active one.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(DEFAULT_CONFIG.backgroundIntervalMs);
+      });
+      expect(fetchResource).toHaveBeenCalledTimes(3);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('disposes the injected engine exactly once on unmount', () => {
