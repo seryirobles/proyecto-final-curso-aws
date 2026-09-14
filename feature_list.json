@@ -430,7 +430,7 @@
         "No business logic in the client (architecture.md section 1.1); all UI text es-ES from one messages module, Intl pinned to es-ES; fluid-first layout, matchMedia for genuine breakpoints"
       ],
       "sdd": true,
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": 21,
@@ -556,16 +556,51 @@
       "name": "single_recipe_generation",
       "tier": 3,
       "title": "Single-recipe AI generation submit-then-poll path",
-      "description": "The end-to-end submit path for single-recipe AI generation (FR-AI-01/-02), the piece feature 12 (ai_output_validation) explicitly deferred to a later feature: the POST /v1/generations single-recipe request body, the server-authoritative attempt ordinal folded into idPeticionIA so an FR-AI-10 regenerate gets past FR-AI-08 idempotency (rest_api_contract.md section 7 Q3), and the ai Lambda branch that builds the prompt (feature 11), invokes the provider under the cost gate (feature 17), runs validate_and_preview (feature 12) and writes the preview into the PETICIONIA# result via GenerationQueue write-back - never through WeekRepository, since a single-recipe result persists nothing until the user saves it as a candidate or library recipe (rest_api_contract.md section 3.1). Split out on 2026-09-06 rather than widening feature 17 (owner). Needs a contract-doc lift: section 3.5 / section 7 today document only the type:\"week\" body.",
+      "description": "The end-to-end submit path for single-recipe AI generation (FR-AI-01/-02), the piece feature 12 (ai_output_validation) explicitly deferred to a later feature: the POST /v1/generations single-recipe request body, the server-authoritative attempt ordinal folded into idPeticionIA so an FR-AI-10 regenerate gets past FR-AI-08 idempotency (rest_api_contract.md section 7 Q3), and the ai Lambda branch that builds the prompt (feature 11), invokes the provider under the cost gate (feature 17), runs validate_and_preview (feature 12) and writes the preview into the PETICIONIA# result via GenerationQueue write-back - never through WeekRepository, since a single-recipe result persists nothing until the user saves it as a candidate or library recipe (rest_api_contract.md section 3.1). Split out on 2026-09-06 rather than widening feature 17 (owner). Needs a contract-doc lift: section 3.5 / section 7 today document only the type:\"week\" body. Owner ruling 2026-09-13: also owns completing the frontend AI authoring-tab, which feature 20 ships only as a disabled stub (spec-input fields, es-ES 'not available yet' notice) pending this feature's contract.",
       "covers": [],
-      "depends_on": [11, 12, 16, 17],
+      "depends_on": [11, 12, 16, 17, 20],
       "acceptance": [
         "OWNER-OWNED PRECURSOR: rest_api_contract.md gains the single-recipe POST /v1/generations request body (discriminated - ingredients + tools per FR-AI-01, or a reference library recipeId plus extra specifications per FR-AI-02; carrying the target day/slot) and the attempt derivation, added the way section 7's gate rulings were. The spec_author proposes the shape at the spec gate; the owner edits the contract before implementation begins",
         "attempt is server-authoritative (rest_api_contract.md section 7 Q3): the count of COMPLETED generations for the target slot, never a client field, folded into idPeticionIA so a retry dedupes and a regenerate misses, and two fast clicks compute the same value (FR-AI-08, FR-AI-10)",
         "domain/generation.py (or a sibling module) gains a single-recipe request type and an idempotency key that includes attempt; the existing whole-week key is untouched",
         "The ai Lambda gains a single-recipe branch: prompt build (feature 11 build_specification_prompt / build_reference_prompt), provider invocation and cost gate (feature 17), validate_and_preview (feature 12), then write estado / resultado onto the PETICIONIA# item via the GenerationQueue write-back method - no WeekRepository call, no MarcaCambio bump",
         "GET /v1/generations/{id} returns the single-recipe preview in result and DELETE discards it - both already built in feature 16; this feature adds no route handler beyond the _submit_generation branch",
-        "Per-slot concurrency for single-recipe (FR-AI-09): a submit for a slot that already holds a pending / running single-recipe generation follows feature 17's resolution of its own per-slot-concurrency gate question (a per-slot marker item type, or exact-hash-resubmit dedupe only)"
+        "Per-slot concurrency for single-recipe (FR-AI-09): a submit for a slot that already holds a pending / running single-recipe generation follows feature 17's resolution of its own per-slot-concurrency gate question (a per-slot marker item type, or exact-hash-resubmit dedupe only)",
+        "Frontend: replaces feature 20's disabled AI-tab stub with the real submit + poll UI (spec-input form for from-scratch, reference-recipe picker for library-based, wired to this feature's POST /v1/generations body and GET /v1/generations/{id} polling) - React/Vite, no business logic in the client, per architecture.md section 1.1"
+      ],
+      "sdd": true,
+      "status": "pending"
+    },
+    {
+      "id": 29,
+      "name": "rules_dropdown_constraints_wiring",
+      "tier": 4,
+      "title": "Wire FR-RULE-07's preventive dropdown constraints through the API and SPA",
+      "description": "FR-RULE-07's preventive half (\"dropdown options shall prevent contradictory combinations\") is claimed by feature 6 rules_model's acceptance, but feature 6 is tier 1 (pure domain) - it built the constraint functions (max_selectable_count, available_days_for_pin, available_days_to_disable in backend/core/src/planner_core/domain/rules.py) without ever wiring them to an HTTP response or a dropdown. Today the SPA's RulesView (feature 20) renders every fixed-value option always and relies solely on the reactive 422 UNSATISFIABLE_RULE_SET (feature 27) - the requirement's preventive behaviour is undelivered end-to-end despite feature 6 being done. Found during feature 20's final review (2026-09-14); not a defect in feature 20, which correctly scoped only the reactive route.",
+      "covers": [],
+      "depends_on": [6, 20],
+      "acceptance": [
+        "OWNER-OWNED PRECURSOR: rest_api_contract.md needs a shape for exposing the available/constrained option sets per rule type - e.g. GET /v1/rules gaining an availableOptions field (max selectable count per category, days still available to pin, days still available to disable), computed via rules.py's already-built pure functions. The spec_author proposes the shape at the spec gate; the owner edits the contract before implementation begins",
+        "Backend: routing.py's _list_rules (or a new field on the same response) computes and returns the available option sets using the existing pure functions - no new domain logic, this feature only wires it through the API",
+        "Frontend: RulesView's add/edit dropdowns (category-count select, pin-day select, disable-day select) render only the options the API reports as available, replacing today's full fixed-value lists - the constraint is enforced by not offering the option, never by client-side validation logic (architecture.md section 1.1)",
+        "The existing whole-set 422 UNSATISFIABLE_RULE_SET check (feature 27) is untouched and stays the last line of defense for a race between two concurrent edits; this feature only narrows what a single well-behaved client can submit"
+      ],
+      "sdd": true,
+      "status": "pending"
+    },
+    {
+      "id": 30,
+      "name": "library_delete_pin_cascade_ui",
+      "tier": 4,
+      "title": "Frontend warning + retry for deleting a library recipe pinned by a rule",
+      "description": "rest_api_contract.md section 3.4's two-step pin-cascade delete (DELETE /v1/library/recipes/{id} -> 409 PIN_RULES_AFFECTED with the affected pins, confirmed retry with ?confirmCascade=true -> 204) is fully implemented server-side (library_editing.py, feature 27) but has no frontend consumer. Feature 20 frontend_spa's useLibrary.remove sends a plain DELETE and surfaces any rejection as generic error.detail text (R15's convention) - a real pin-rules-affected conflict shows the backend's raw problem+json detail with no way to proceed, instead of the warn-then-confirm flow FR-RULE-07 (G-20) describes. Found during feature 20's final review (2026-09-14); flagged rather than fixed there since it needed its own scoped task, not a silent addition to a closing feature.",
+      "covers": [],
+      "depends_on": [20],
+      "acceptance": [
+        "Backend already implements the full two-step cascade (rest_api_contract.md section 3.4, feature 27) - this feature adds no backend code",
+        "Frontend: useLibrary's remove handler (feature 20) catches a 409 PIN_RULES_AFFECTED ApiError specifically, shows the affected pins (day/slot) in a confirmation dialog reusing useConfirm.js/ConfirmDialog.jsx, and on confirmation retries the same DELETE with ?confirmCascade=true",
+        "No client-side business logic beyond assembling the retry URL and rendering the affected-pins list - the recipe/rule deletion decision itself stays server-side (architecture.md section 1.1)",
+        "Test: a 409 response opens the cascade-warning dialog with the correct day/slot text; confirming re-issues DELETE with confirmCascade=true and the item disappears from both the library and rules views; cancelling leaves the recipe and its pin rule untouched"
       ],
       "sdd": true,
       "status": "pending"
