@@ -121,7 +121,7 @@ def test_read_rules_returns_the_current_marker_and_reads_it_first() -> None:
     repo.save_rule(DisabledDay(day=6))
     repo.calls.clear()
 
-    view = rule_editing.read_rules(rules=repo)
+    view = rule_editing.read_rules(rules=repo, recipes=FakeRecipeRepository())
 
     assert view.marker == repo.current_version()
     assert repo.calls[:2] == ["marker", "payload"]

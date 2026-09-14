@@ -356,3 +356,100 @@ Reviewer findings 2 and 7 (finding 1's port/adapter half is shared — see
 Note: the earlier deviation "T41 under-specified the prompt-version wiring —
 routing reads the raw configured id" is **superseded** by finding 2. Routing no
 longer touches config; the application layer owns the resolution + the guard.
+
+---
+
+## Reopen round 2026-09-14 — GET /v1/rules never resolved recipeName (bug, no spec round)
+
+`docs/rest_api_contract.md` and `docs/data_model.md` §6 both document a pin
+rule carrying `recipeName` resolved at read time from the library — no code
+path implemented it. Owner-confirmed original intent; fixed directly
+(features 16 + 27 reopened `done -> in_progress` together, no `spec_author`
+round — already fully specified in frozen docs).
+
+### Changes
+
+- `planner_core/application/rule_editing.py` — `read_rules` gains a required
+  `recipes: RecipeRepository` param; resolves each pin's `recipe_id` via one
+  `recipes.get(...)` call (bounded: ≤7 pins). `RulesView` gains
+  `pin_recipe_names: dict[str, str]` (recipe_id -> name) — a read-time
+  enrichment, kept off `RuleSet`/`PinRule` themselves (data_model.md §6: "do
+  not denormalize"). A missing recipe (should not happen — G-20 cascade-
+  deletes the pin) falls back to the existing `messages.RECIPE_NOT_FOUND`
+  string rather than inventing a new placeholder constant.
+- `planner_api/serialization.py::encode_rule` — gains an optional keyword-only
+  `recipe_name: str | None = None`; the `PinRule` arm adds `recipeName` to the
+  payload only when supplied. `PUT`/`DELETE` echo call sites pass nothing (no
+  repository read available there to resolve it from) — unchanged wire shape.
+- `planner_api/routing.py::_list_rules` — passes `recipes=deps.recipes`
+  through to `read_rules`, encodes each pin with
+  `recipe_name=view.pin_recipe_names[r.recipe_id]`.
+
+### Final wire shape (GET /v1/rules, pin entry)
+
+```json
+{"type": "pin", "day": 1, "slot": 1, "recipeId": "r1", "recipeName": "Lentejas"}
+```
+
+### Tests
+
+- `core/tests/application/test_rule_editing.py` —
+  `test_read_rules_resolves_a_pin_recipe_name_from_the_library`,
+  `test_read_rules_falls_back_when_a_pinned_recipe_is_missing`;
+  `test_read_rules_returns_the_shared_set` updated for the new param.
+- `core/tests/application/test_read_markers.py` —
+  `test_read_rules_returns_the_current_marker_and_reads_it_first` updated
+  (passes `recipes=FakeRecipeRepository()`).
+- `lambda_api/tests/test_rules_routes.py` —
+  `test_get_rules_resolves_a_pin_rules_recipe_name_from_the_library` asserts
+  the full pin payload above through `handle()`.
+
+### Mutation check (hand-applied, confirmed killed, reverted)
+
+1. `rule_editing.py`: resolved name replaced with a constant `"WRONG_NAME"`
+   → 3 tests failed (both new `test_rule_editing.py` cases plus the routing
+   test). Reverted.
+2. `serialization.py`: dropped the `if recipe_name is not None: ...` block
+   in `encode_rule`'s `PinRule` arm → the routing test failed (`recipeName`
+   absent). Reverted.
+
+### `./init.sh`
+
+Quality gates (`uv run pytest -q -m "not aws"`: **798 passed**, was 795; +3;
+`ruff check`, `ruff format --check`, `mypy` all clean; frontend
+`npx vitest run` 312/312, `npx eslint .` clean) all green — see
+`progress/impl_frontend_spa.md`'s matching reopen entry for the
+`RulesView.jsx` simplification this unblocked. §4 guardrails report 4
+`[FAIL]`s from the leader's multi-feature reopen (16/20/27 simultaneously
+`in_progress`, plus their pairwise dependency-order checks) — this is the
+expected consequence of that reopen scope, not a code defect.
+`feature_list.json` untouched — the leader's `done -> in_progress` flips on
+16/27 stand; no further status change made here.
+
+### Fix round 1 (2026-09-14) — 3 reviewer findings on this reopen round
+
+1. **Blocking — surviving mutant on `encode_rule`'s `recipeName` guard.**
+   The only test covering the full pin payload shape (`GET /v1/rules`)
+   always supplies a name, so removing
+   `if recipe_name is not None:` left the suite green while leaking
+   `"recipeName": null` from the two call sites that pass no name:
+   `routing.py`'s `PUT /v1/rules/{ruleId}` echo and `errors.py`'s
+   `UNSATISFIABLE_RULE_SET` `conflicts` array (via `rule_editing.py`'s
+   `pin_clash` branch). Added
+   `test_put_rule_echo_for_a_pin_has_no_recipename_key` and
+   `test_unsatisfiable_conflicts_array_has_no_recipename_for_a_conflicting_pin`
+   to `lambda_api/tests/test_rules_routes.py`. Hand-removed the guard: both
+   new tests failed with a literal `recipeName: None` in the payload;
+   restored the guard: green. Mutant now **killed**.
+2. Retargeted the stale "finding 6" comment on `useLibraryPicker.js`'s
+   `allRecipes` — the id->name lookup it described was deleted from
+   `RulesView.jsx` in this same round; it now feeds only the new-pin
+   recipe-picker control.
+3. Corrected this file's and `impl_frontend_spa.md`'s `./init.sh` claims
+   above and in the matching reopen entry — quality gates are green, but
+   §4's guardrail `[FAIL]`s (expected multi-`in_progress` state) were
+   omitted, implying a fuller green than accurate.
+
+**Test result**: backend `uv run pytest -q -m "not aws"` **800 passed**
+(798→800; +2), ruff/mypy clean. Frontend `npx vitest run` **312/312**,
+`npx prettier --check .` / `npx eslint .` clean on the touched file.

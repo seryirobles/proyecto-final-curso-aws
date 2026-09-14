@@ -4,7 +4,7 @@ docs/rest_api_contract.md section 7 Q5 consequence i)."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from planner_core.domain.rules import (
     CategoryCountRule,
@@ -16,6 +16,8 @@ from planner_core.domain.rules import (
     apply_rule,
     remove_rule_by_id,
 )
+from planner_core.messages import RECIPE_NOT_FOUND
+from planner_core.ports.recipes import RecipeRepository
 from planner_core.ports.rules import RuleRepository
 
 
@@ -48,16 +50,28 @@ def _existing_conflicts(current: RuleSet, attempted: Rule) -> tuple[Rule, ...]:
 @dataclass(frozen=True)
 class RulesView:
     """AP22 read: the shared rule set plus its change marker (R34), marker read
-    before the payload (R35)."""
+    before the payload (R35). `pin_recipe_names` is a read-time enrichment
+    (recipe_id -> name, docs/data_model.md section 6) — never stored on
+    RuleSet/PinRule themselves."""
 
     rule_set: RuleSet
     marker: int
+    pin_recipe_names: dict[str, str] = field(default_factory=dict)
 
 
-def read_rules(*, rules: RuleRepository) -> RulesView:
-    """AP22 — the shared rule set and its marker, marker read first."""
+def read_rules(*, rules: RuleRepository, recipes: RecipeRepository) -> RulesView:
+    """AP22 — the shared rule set and its marker, marker read first, then one
+    library lookup per pin rule to resolve its recipe's current name
+    (docs/data_model.md section 6 — never denormalized onto the rule itself).
+    A pin's recipe missing (should not happen: G-20 cascade-deletes it) falls
+    back to the existing RECIPE_NOT_FOUND message."""
     marker = rules.current_version()  # marker before payload (R35)
-    return RulesView(rule_set=rules.get(), marker=marker)
+    rule_set = rules.get()
+    pin_recipe_names: dict[str, str] = {}
+    for pin in rule_set.pins:
+        entry = recipes.get(pin.recipe_id)
+        pin_recipe_names[pin.recipe_id] = entry.recipe.name if entry else RECIPE_NOT_FOUND
+    return RulesView(rule_set=rule_set, marker=marker, pin_recipe_names=pin_recipe_names)
 
 
 def poll_marker(*, rules: RuleRepository) -> int:

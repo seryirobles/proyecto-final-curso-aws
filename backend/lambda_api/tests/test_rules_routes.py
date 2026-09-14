@@ -6,8 +6,11 @@ from __future__ import annotations
 import json
 
 from _helpers import api_event, authorizer_context, make_deps, seed_user
+from planner_core.domain.calendar import MealSlot
 from planner_core.domain.ingredient_category import IngredientCategory
-from planner_core.domain.rules import DisabledDay
+from planner_core.domain.recipe import Recipe
+from planner_core.domain.rules import DisabledDay, PinRule
+from planner_core.ports.recipes import LibraryRecipe
 
 from planner_api.handler import handle
 
@@ -29,6 +32,32 @@ def test_put_rule_maps_to_the_single_rule_write_operation() -> None:
     stored = deps.rules.get()
     assert stored.category_counts[0].category is IngredientCategory.MEAT
     assert stored.category_counts[0].count == 2
+
+
+def test_put_rule_echo_for_a_pin_has_no_recipename_key() -> None:
+    """serialization.py's encode_rule omits recipeName when no read-time
+    resolution happened (PUT echo, docs/data_model.md section 6) - a surviving
+    mutant on that guard leaks `"recipeName": null` into this response."""
+    deps = make_deps()
+    seed_user(deps, user_id="u-1")
+    recipe = Recipe(
+        name="Lentejas", ingredients=(), tools=(), procedure=(), category=IngredientCategory.LEGUME
+    )
+    deps.recipes.save(LibraryRecipe(id="r1", recipe=recipe, author="u-1"))
+    event = api_event(
+        "PUT",
+        "/v1/rules/{ruleId}",
+        path_params={"ruleId": "pin#1#1"},
+        body={"type": "pin", "day": 1, "slot": 1, "recipeId": "r1"},
+        context=authorizer_context(user_id="u-1"),
+    )
+
+    response = handle(event, deps)
+
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    assert body == {"type": "pin", "day": 1, "slot": 1, "recipeId": "r1"}
+    assert "recipeName" not in body
 
 
 def test_a_body_that_does_not_match_the_path_ruleid_is_rejected() -> None:
@@ -68,6 +97,27 @@ def test_delete_rule_maps_to_the_single_rule_delete_operation() -> None:
     assert deps.rules.get().disabled_days == ()
 
 
+def test_get_rules_resolves_a_pin_rules_recipe_name_from_the_library() -> None:
+    """docs/rest_api_contract.md 'Rules': pin rules carry recipeName, resolved
+    at read time from the library, never stored (data_model.md section 6)."""
+    deps = make_deps()
+    seed_user(deps, user_id="u-1")
+    recipe = Recipe(
+        name="Lentejas", ingredients=(), tools=(), procedure=(), category=IngredientCategory.LEGUME
+    )
+    deps.recipes.save(LibraryRecipe(id="r1", recipe=recipe, author="u-1"))
+    deps.rules.save_rule(PinRule(day=1, slot=MealSlot.LUNCH, recipe_id="r1"))
+    event = api_event("GET", "/v1/rules", context=authorizer_context(user_id="u-1"))
+
+    response = handle(event, deps)
+
+    assert response["statusCode"] == 200
+    pins = [r for r in json.loads(response["body"])["rules"] if r["type"] == "pin"]
+    assert pins == [
+        {"type": "pin", "day": 1, "slot": 1, "recipeId": "r1", "recipeName": "Lentejas"}
+    ]
+
+
 def test_an_unsatisfiable_rule_change_is_rejected_422_with_conflicts() -> None:
     deps = make_deps()
     seed_user(deps, user_id="u-1")
@@ -89,3 +139,30 @@ def test_an_unsatisfiable_rule_change_is_rejected_422_with_conflicts() -> None:
     parsed = json.loads(response["body"])
     assert parsed["code"] == "UNSATISFIABLE_RULE_SET"
     assert "conflicts" in parsed["details"]
+
+
+def test_unsatisfiable_conflicts_array_has_no_recipename_for_a_conflicting_pin() -> None:
+    """errors.py's conflicts array reuses encode_rule with no name resolved
+    (rule_editing.py's pin_clash branch) - must not leak `"recipeName": null`."""
+    deps = make_deps()
+    seed_user(deps, user_id="u-1")
+    recipe = Recipe(
+        name="Lentejas", ingredients=(), tools=(), procedure=(), category=IngredientCategory.LEGUME
+    )
+    deps.recipes.save(LibraryRecipe(id="r1", recipe=recipe, author="u-1"))
+    deps.rules.save_rule(PinRule(day=1, slot=MealSlot.LUNCH, recipe_id="r1"))
+    event = api_event(
+        "PUT",
+        "/v1/rules/{ruleId}",
+        path_params={"ruleId": "day#1"},
+        body={"type": "disabledDay", "day": 1},
+        context=authorizer_context(user_id="u-1"),
+    )
+
+    response = handle(event, deps)
+
+    assert response["statusCode"] == 422
+    parsed = json.loads(response["body"])
+    assert parsed["details"]["conflicts"] == [
+        {"type": "pin", "day": 1, "slot": 1, "recipeId": "r1"}
+    ]

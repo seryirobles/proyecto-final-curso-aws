@@ -6,11 +6,12 @@ from __future__ import annotations
 import dataclasses
 
 import pytest
-from support.fakes import FakeRuleRepository
+from support.fakes import FakeRecipeRepository, FakeRuleRepository
 
 from planner_core.application import rule_editing
 from planner_core.domain.calendar import MealSlot
 from planner_core.domain.ingredient_category import IngredientCategory
+from planner_core.domain.recipe import Recipe
 from planner_core.domain.rules import (
     CategoryCountRule,
     DisabledDay,
@@ -18,6 +19,8 @@ from planner_core.domain.rules import (
     RuleSet,
     UnsatisfiableRuleSet,
 )
+from planner_core.messages import RECIPE_NOT_FOUND
+from planner_core.ports.recipes import LibraryRecipe
 
 PIN = PinRule(day=1, slot=MealSlot.LUNCH, recipe_id="r1")
 
@@ -64,4 +67,32 @@ def test_rules_view_is_frozen() -> None:
 def test_read_rules_returns_the_shared_set() -> None:
     repo = FakeRuleRepository()
     rule_editing.save_rule(PIN, rules=repo)
-    assert rule_editing.read_rules(rules=repo).rule_set == RuleSet(pins=(PIN,))
+    view = rule_editing.read_rules(rules=repo, recipes=FakeRecipeRepository())
+    assert view.rule_set == RuleSet(pins=(PIN,))
+
+
+def test_read_rules_resolves_a_pin_recipe_name_from_the_library() -> None:
+    """R34 (AP22): recipeName is resolved at read time, never stored on the
+    pin itself (docs/data_model.md section 6)."""
+    rules_repo = FakeRuleRepository()
+    rule_editing.save_rule(PIN, rules=rules_repo)
+    recipes_repo = FakeRecipeRepository()
+    recipe = Recipe(
+        name="Lentejas", ingredients=(), tools=(), procedure=(), category=IngredientCategory.LEGUME
+    )
+    recipes_repo.save(LibraryRecipe(id="r1", recipe=recipe, author="u1"))
+
+    view = rule_editing.read_rules(rules=rules_repo, recipes=recipes_repo)
+
+    assert view.pin_recipe_names["r1"] == "Lentejas"
+
+
+def test_read_rules_falls_back_when_a_pinned_recipe_is_missing() -> None:
+    """Should not happen (G-20 cascade-deletes the pin), but a repository
+    read is never trusted to be exhaustive without a fallback."""
+    rules_repo = FakeRuleRepository()
+    rule_editing.save_rule(PIN, rules=rules_repo)
+
+    view = rule_editing.read_rules(rules=rules_repo, recipes=FakeRecipeRepository())
+
+    assert view.pin_recipe_names["r1"] == RECIPE_NOT_FOUND

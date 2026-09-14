@@ -561,11 +561,15 @@ def _list_rules(
     auth: AuthContext | None,
     deps: Dependencies,
 ) -> RouteResult:
-    view = rule_editing.read_rules(rules=deps.rules)  # marker-first read (R34/R35)
+    # marker-first read (R34/R35); recipes resolves each pin's name (data_model.md section 6)
+    view = rule_editing.read_rules(rules=deps.rules, recipes=deps.recipes)
     rule_set = view.rule_set
     rules = [
         *(ser.encode_rule(r) for r in rule_set.category_counts),
-        *(ser.encode_rule(r) for r in rule_set.pins),
+        *(
+            ser.encode_rule(r, recipe_name=view.pin_recipe_names[r.recipe_id])
+            for r in rule_set.pins
+        ),
         *(ser.encode_rule(DisabledDay(day=d)) for d in rule_set.disabled_days),
     ]
     return RouteResult(200, {"rules": rules}, etag=quoted_etag(view.marker))

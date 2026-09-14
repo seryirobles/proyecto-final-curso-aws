@@ -184,17 +184,23 @@ def decode_shopping_item(payload: dict[str, Any], *, item_id: str) -> ShoppingIt
     )
 
 
-def encode_rule(rule: Rule) -> dict[str, Any]:
+def encode_rule(rule: Rule, *, recipe_name: str | None = None) -> dict[str, Any]:
+    """`recipe_name` is the pin's read-time-resolved recipe name (AP22,
+    docs/rest_api_contract.md section "Rules"); omitted for PUT/DELETE echoes,
+    which have no repository read to resolve it from."""
     match rule:
         case CategoryCountRule():
             return {"type": "categoryCount", "category": rule.category.value, "count": rule.count}
         case PinRule():
-            return {
+            payload: dict[str, Any] = {
                 "type": "pin",
                 "day": rule.day,
                 "slot": int(rule.slot.value),
                 "recipeId": rule.recipe_id,
             }
+            if recipe_name is not None:
+                payload["recipeName"] = recipe_name
+            return payload
         case DisabledDay():
             return {"type": "disabledDay", "day": rule.day}
 
