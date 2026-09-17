@@ -40,8 +40,9 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 markers = [
     "aws: marks tests that hit real AWS services; deselected by default (see docs/verification.md)",
+    "docker: marks tests that hit DynamoDB Local via Docker; deselected by default (see docs/verification.md)",
 ]
-addopts = "-m \"not aws\""
+addopts = "-m \"not aws and not docker\""
 # Lets lambda_api's tests `from support.fakes import ...` without a second
 # conftest.py named "conftest" (mypy treats same-named rootless test dirs as
 # a module clash; core/tests/conftest.py already does this insertion for

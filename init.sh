@@ -261,9 +261,10 @@ else
   run_gate "ruff check"   uv run ruff check .
   run_gate "mypy"         uv run mypy .
 
-  # Default tiers only (unit + contract-vs-fake). The live-AWS tier is opt-in.
-  if (cd backend && uv run pytest -q -m "not aws"); then
-    ok "pytest (unit + contract, no AWS)"
+  # Default tiers only (unit + contract-vs-fake). Live-AWS and Docker-local
+  # tiers are opt-in; an explicit -m here would override pyproject's addopts.
+  if (cd backend && uv run pytest -q -m "not aws and not docker"); then
+    ok "pytest (unit + contract, no AWS, no Docker)"
   else
     fail "pytest — there are failing tests"
     EXIT_CODE=1

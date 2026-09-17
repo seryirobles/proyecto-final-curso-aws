@@ -15,9 +15,21 @@ from typing import Any
 import boto3
 from boto3.dynamodb.conditions import Key
 from boto3.dynamodb.types import TypeSerializer
+from botocore.config import Config
 
 TABLE_NAME = os.environ.get("PLANNER_DATA_TABLE", "data")
-_REGION = os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
+_REGION = os.environ.get("AWS_DEFAULT_REGION", "eu-south-2")
+# Unset -> None -> boto3's own default (real AWS); local dev points this at
+# DynamoDB Local, mirroring lambda_api's adapters/dynamo/_table.py exactly.
+_ENDPOINT_URL = os.environ.get("DYNAMODB_ENDPOINT_URL")
+# Real AWS keeps botocore's own default (None = no override). Local mode gets
+# a short timeout so an unreachable container fails in seconds, not the
+# default connect/retry budget of tens of seconds.
+_CONFIG = (
+    Config(connect_timeout=2, read_timeout=2, retries={"max_attempts": 1})
+    if _ENDPOINT_URL
+    else None
+)
 
 # Single-value partition ids kept as ids, not literals (docs/data_model.md
 # section 7): a future multi-household model is then a prefix change.
@@ -34,7 +46,9 @@ _serializer = TypeSerializer()
 # boto3 ships no type stubs, so these resource/table/client handles are untyped
 # (docs/conventions.md — no bare `Any` without a justification).
 def resource() -> Any:
-    return boto3.resource("dynamodb", region_name=_REGION)
+    return boto3.resource(
+        "dynamodb", region_name=_REGION, endpoint_url=_ENDPOINT_URL, config=_CONFIG
+    )
 
 
 def table() -> Any:
@@ -42,7 +56,7 @@ def table() -> Any:
 
 
 def client() -> Any:
-    return boto3.client("dynamodb", region_name=_REGION)
+    return boto3.client("dynamodb", region_name=_REGION, endpoint_url=_ENDPOINT_URL, config=_CONFIG)
 
 
 def create_data_table() -> None:

@@ -19,13 +19,8 @@ from planner_core.ports.rules import RuleRepository
 from planner_core.ports.shopping_list import ShoppingListRepository
 from planner_core.ports.weeks import WeekRepository
 
-for _var, _value in {
-    "AWS_DEFAULT_REGION": "us-east-1",
-    "AWS_ACCESS_KEY_ID": "testing",
-    "AWS_SECRET_ACCESS_KEY": "testing",
-    "AWS_SESSION_TOKEN": "testing",
-}.items():
-    os.environ.setdefault(_var, _value)
+# AWS stub env vars are set by ../../core/tests/conftest.py (collects
+# first), before any test module here or in lambda_ai/lambda_api imports.
 
 
 @contextlib.contextmanager

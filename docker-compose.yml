@@ -1,0 +1,42 @@
+services:
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    container_name: planner-dynamodb-local
+    working_dir: /home/dynamodblocal
+    # In-memory, not -dbPath + a volume: the image runs as a non-root user
+    # and Docker Desktop's named-volume ownership breaks its SQLite file
+    # access (SQLiteException 14 "unable to open database file"), hanging
+    # every real request. Data resets on restart — fine for local dev.
+    command: ["-jar", "DynamoDBLocal.jar", "-inMemory", "-sharedDb"]
+    ports:
+      - "8000:8000"
+    # Any HTTP response (DynamoDB Local returns 400 unauthenticated) proves the
+    # JVM inside is actually serving, not just that the container started.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -o /dev/null http://localhost:8000/"]
+      interval: 1s
+      timeout: 2s
+      retries: 30
+
+  sqs-local:
+    image: softwaremill/elasticmq-native:latest
+    container_name: planner-sqs-local
+    # elasticmq.conf pre-creates `generation-queue` declaratively (its own
+    # `queues {}` block) - no idempotent create_queue call needed at startup,
+    # unlike DynamoDB Local's table above.
+    volumes:
+      - ./elasticmq.conf:/opt/elasticmq.conf:ro
+    ports:
+      - "9324:9324"
+    # No curl in this Alpine image; busybox wget exits 1 on both a refused
+    # connection and an HTTP error, so distinguish by grepping its stderr
+    # for a real HTTP response instead of trusting its exit code.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q -O /dev/null http://localhost:9324/ 2>&1 | grep -q 'HTTP/1.1'",
+        ]
+      interval: 1s
+      timeout: 2s
+      retries: 30

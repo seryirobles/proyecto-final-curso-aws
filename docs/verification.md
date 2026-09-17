@@ -32,9 +32,16 @@ The suite is tiered so "mock locally, real in AWS" is verifiable, not hopeful:
 | **Unit** | each member's `tests/` | No | Yes (default) |
 | **Contract** | `backend/tests/contract/` | No — runs the port suite against the **fake** | Yes (default) |
 | **Contract (live)** | same suite, marked `@pytest.mark.aws` | Yes — runs it against the **real adapter** | No — opt-in |
+| **Docker (local)** | `backend/lambda_api/tests/`, marked `@pytest.mark.docker` | No — hits DynamoDB Local via Docker, not real AWS | No — opt-in |
 
 - Live-AWS tests are marked `@pytest.mark.aws` and excluded from the default
-  `pytest` run (registered in `pyproject.toml`, deselected via `-m "not aws"`).
+  `pytest` run (registered in `pyproject.toml`, deselected via
+  `-m "not aws and not docker"`).
+- Docker-local tests are marked `@pytest.mark.docker`, excluded the same way
+  (`-m "not aws and not docker"`), and prove the real adapter/HTTP wiring
+  against actual DynamoDB Local wire behaviour, which moto can diverge from
+  subtly. Run `docker compose up -d` then `uv run pytest -m docker`; they skip
+  cleanly if the container isn't running.
 - CI runs the AWS tier explicitly (`uv run pytest -m aws`) against real
   components, with credentials CI provides — never an agent, never `init.sh`.
 - **The contract suite is one suite, two backends.** It is parametrized over

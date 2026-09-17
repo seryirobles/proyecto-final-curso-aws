@@ -10,6 +10,13 @@ export default defineConfig({
   build: {
     outDir: 'dist',
   },
+  // Same-origin from the browser's view (SameSite=Lax cookie, docs/rest_api_contract.md);
+  // target matches local_server.py's LOCAL_SERVER_PORT default (backend/lambda_api).
+  server: {
+    proxy: {
+      '/v1': { target: 'http://localhost:8080', changeOrigin: true },
+    },
+  },
   test: {
     include: ['tests/**/*.test.{js,jsx}'],
     environment: 'node',

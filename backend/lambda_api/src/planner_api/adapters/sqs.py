@@ -10,6 +10,7 @@ import time
 from typing import Any
 
 import boto3
+from botocore.config import Config
 from botocore.exceptions import ClientError
 from planner_core.domain.generation import GenerationRequest, RuleOverride
 from planner_core.domain.rules import RuleSet
@@ -20,6 +21,14 @@ from planner_api.adapters.dynamo import _table
 _RESULT_TTL_SECONDS = 7 * 24 * 3600
 _METADATA_SK = "METADATA"
 _REGION = os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
+# Same local-override pattern as _table.py's DYNAMODB_ENDPOINT_URL: unset ->
+# real AWS, set -> a local queue emulator with a short fail-fast timeout.
+_ENDPOINT_URL = os.environ.get("SQS_ENDPOINT_URL")
+_CONFIG = (
+    Config(connect_timeout=2, read_timeout=2, retries={"max_attempts": 1})
+    if _ENDPOINT_URL
+    else None
+)
 
 
 def _pk(idempotency_key: str) -> str:
@@ -65,7 +74,7 @@ class SqsGenerationQueue:
     def _sqs(self) -> Any:
         # boto3 ships no type stubs, so the client handle is untyped
         # (docs/conventions.md — no bare `Any` without a justification).
-        return boto3.client("sqs", region_name=_REGION)
+        return boto3.client("sqs", region_name=_REGION, endpoint_url=_ENDPOINT_URL, config=_CONFIG)
 
     def stored_generation(self, idempotency_key: str) -> StoredGeneration | None:
         item = _table.get_item(_pk(idempotency_key), _METADATA_SK, consistent=True)
