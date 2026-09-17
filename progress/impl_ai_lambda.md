@@ -146,3 +146,93 @@ to feature 17's `covers` — the registry and its append-only rule stay feature
   versioned templates — `.format()`/`%` are banned by `conventions.md`, and a
   stored template needs *some* substitution mechanism; `${…}` also tolerates the
   literal `{…}` braces inside `JSON_OUTPUT_INSTRUCTION`.
+
+## Reopen 2026-09-16 — provider swap: Anthropic Claude → OpenAI GPT-5.6 Terra
+
+Owner decision (`architecture.md` §1.2.6, already updated by the leader):
+lacks Bedrock model-access permissions for Anthropic models. Transport-only
+change — no `R<n>` renumbered (`requirements.md` names no provider/model),
+`covers` unchanged.
+
+**Verified before coding**: boto3's own `bedrock-runtime.Client.converse`
+docs (`https://boto3.amazonaws.com/v1/documentation/api/latest/reference/
+services/bedrock-runtime/client/converse.html`) — `messages=[{"role":"user",
+"content":[{"text": "..."}]}]`, `inferenceConfig={"maxTokens": ...}`,
+response `output.message.content` (list of blocks keyed by content type, no
+Anthropic-style `type` discriminator). Exceptions listed
+(`AccessDeniedException`, `ThrottlingException`, `ValidationException`, etc.)
+are all `BedrockRuntime.Client.exceptions.*`, i.e. `botocore.exceptions
+.ClientError` subclasses — the existing `except (BotoCoreError, ClientError)`
+catch needed no widening.
+
+**Changed**: `planner_ai/adapters/bedrock.py` — `.invoke_model()` →
+`.converse()`; `BEDROCK_MODEL_ID` = `"global.openai.gpt-5.6-terra"` (the
+Global cross-Region inference profile `eu-south-2` requires, per §1.2.6);
+`_render()`'s prompt-assembly logic untouched (transport only); `_extract_text`
+now reads `output.message.content`; `_REGION` default `us-east-1` →
+`eu-south-2`. `backend/lambda_ai/tests/test_bedrock.py` — fixture rebuilt for
+the Converse response shape; added
+`test_a_converse_client_error_raises_ai_provider_error` (new coverage, no
+prior ClientError-path test existed). `backend/tests/contract/
+test_ai_provider_contract.py` — its own `_StubBedrock` (separate from the
+lambda_ai test fixture) updated to the same Converse shape; the dead
+`_StubBody` class removed. `specs/ai_lambda/design.md` — §0, §4, §10, §12
+updated to the new provider/API; §1's stale `anthropic[bedrock] rejected in
+§11` pointer corrected to `openai[bedrock]` and §11 gained the matching
+rejected-alternative entry (that pointer target never existed — pre-existing
+drift, fixed while in the area).
+
+No `pyproject.toml` change (no `openai` package added — the whole point of
+`Converse` via existing `boto3`). `planner_core` untouched.
+
+`cd backend && uv run pytest -q -m "not aws"` — **810 passed** (808 → 810,
++2: the new ClientError test plus the contract suite's existing
+malformed/well-formed cases now exercising the real Converse path). `uv run
+ruff check .` / `uv run ruff format --check .` / `uv run mypy .` — all clean.
+`git diff --stat` confirms only `backend/lambda_ai/src/planner_ai/adapters/
+bedrock.py`, `backend/lambda_ai/tests/test_bedrock.py`, `backend/tests/
+contract/test_ai_provider_contract.py` and `specs/ai_lambda/design.md`
+changed by this round (the `_table.py`/`backend/pyproject.toml` diffs in
+`git status` predate this session). `feature_list.json` untouched by this
+implementer — status left `in_progress`. Reviewer next.
+
+## Fix round 2 — 2026-09-16 (reviewer findings on the Converse reopen)
+
+Findings 1 (Converse envelope unverified) and 2 (multi-content-block guard
+unverified): both stub `_Client`/`_StubBedrock` classes (`test_bedrock.py`,
+`test_ai_provider_contract.py`) now capture `messages`/`inferenceConfig`;
+`test_it_uses_the_module_model_id_by_default` and the new
+`test_the_converse_envelope_role_and_content_shape` assert `role == "user"`,
+`content` is a list, `content[0]["text"] == _render(PROMPT)`, and
+`inferenceConfig == {"maxTokens": _MAX_TOKENS}`. New
+`test_a_leading_non_text_block_is_skipped_and_the_text_block_parses` covers a
+`reasoningContent` block preceding the text block. Both hand-verified mutants
+(role/content-flatten; drop the `isinstance(block.get("text"), str)` guard)
+killed, then reverted.
+
+Finding 3 (advisory): `ssm.py`, `dynamo/_table.py`, `local_worker.py` region
+default `us-east-1` -> `eu-south-2`, matching `bedrock.py`'s reopen default.
+
+**Unanticipated regression from finding 3, fixed in the same round**: the new
+`eu-south-2` default broke 11 moto contract tests when the full backend suite
+runs together (passed in isolation). Root cause: `planner_ai` adapters
+resolve `_REGION` from `AWS_DEFAULT_REGION` at *module import time*; pytest
+collects `lambda_ai/tests/test_wiring.py` (imports `planner_ai.wiring`,
+pulling in the adapters) before `tests/contract/dynamo_contract.py`'s lazy
+`os.environ.setdefault("AWS_DEFAULT_REGION", "us-east-1")` ever runs, so the
+adapters baked in `eu-south-2` while moto's table stayed `us-east-1`. Fix:
+moved that `setdefault` block to `backend/core/tests/conftest.py` — `core/`
+collects alphabetically first, so it now runs before any `planner_ai`/
+`planner_api` adapter import. A new root-level `backend/conftest.py` was
+tried first and reverted: it clashes with `core/tests/conftest.py` under
+mypy's rootless same-basename-module rule (the existing pyproject.toml
+comment already documents this constraint for `tests/contract`).
+
+`cd backend && uv run pytest -q -m "not aws and not docker"` — **811 passed**
+(810 -> 811: +2 new tests). `ruff format` / `ruff check` / `mypy` all clean.
+`./init.sh` — only §4's expected dual-`in_progress` (17 + 20) guardrail red;
+everything else (§5: ruff, mypy, pytest, prettier, eslint, vitest) green.
+`git diff --stat`: `bedrock.py`, `dynamo/_table.py`, `ssm.py`,
+`test_bedrock.py`, `test_ai_provider_contract.py`, `dynamo_contract.py`
+(comment only), `core/tests/conftest.py` — no files outside this scope
+touched. `feature_list.json` untouched. Reviewer next.

@@ -280,21 +280,65 @@ Lambda. This section records only the load-bearing shape:
 The 13 gate questions and their rulings are recorded in
 `docs/rest_api_contract.md` §7.
 
-### 1.2.6 AI provider — AWS Bedrock + Claude (was P4)
+### 1.2.6 AI provider — AWS Bedrock + OpenAI GPT-5.6 Terra (was P4)
 
-**Decided by the human 2026-08-30.** Formerly P4.
+**Decided by the human 2026-08-30; model changed 2026-09-16.** Formerly P4.
+Originally Anthropic Claude — the owner does not have Bedrock model-access
+permissions for Anthropic models, so the provider stays Bedrock but the
+model changes to **OpenAI GPT-5.6 Terra**, generally available on Bedrock
+(model card: `docs.aws.amazon.com/bedrock/latest/userguide/model-card-openai-gpt-56-terra.html`).
 
-- **AWS Bedrock**, Anthropic **Claude** models. **Sonnet tier to start**
-  (`anthropic.claude-sonnet-5` via Bedrock's `anthropic.` prefix); whether
-  **Haiku** (`anthropic.claude-haiku-4-5`) is sufficient is evaluated
-  during generation testing, not now. (Google Gemini was the initial ask
-  but is not available on Bedrock — only Google's open Gemma models are.)
+- **AWS Bedrock**, OpenAI **GPT-5.6 Terra** — the balanced tier, "superior
+  performance to GPT-5.5 at a lower cost" per the model card; Sol
+  (flagship) and Luna (fast/cheap) are the other two variants in the same
+  family if a different tier is needed later. (Anthropic Claude was the
+  original choice, reverted for the permissions reason above; Google
+  Gemini was the initial ask before that but was never available on
+  Bedrock — only Google's open Gemma models are.)
+- **Invocation: Bedrock's `Converse` API, plain `boto3`, no new
+  dependency.** Verified against the model's own AWS-published capability
+  table: on the `bedrock-runtime` endpoint this model supports `Converse`
+  but **not** `InvokeModel` — the reverse of the old Anthropic adapter,
+  which used `InvokeModel` with Anthropic's Messages-API body shape.
+  `Converse` is provider-agnostic and already part of `boto3`
+  (`bedrock-runtime` client, already this Lambda's dependency), so the
+  same boto3-only reasoning `specs/ai_lambda/design.md` §3 already gave
+  for rejecting `anthropic[bedrock]` applies equally here — no `openai`
+  package needed either. (OpenAI's own Bedrock guide recommends its
+  `openai[bedrock]` SDK using the Responses API instead; that path was
+  not taken here specifically to preserve the boto3-only adapter
+  closure. This reopen adds the matching `openai[bedrock]`-rejected entry
+  to design.md §11, which previously only held the `anthropic[bedrock]`
+  pointer, not a full entry.)
+- **Region: `eu-south-2` (Spain). Model id: `global.openai.gpt-5.6-terra`.**
+  The `bedrock-runtime` endpoint requires a cross-Region inference profile
+  id, not the bare `openai.gpt-5.6-terra` id (that bare id is only for the
+  separate `bedrock-mantle` endpoint, not used here) — and per the model
+  card's regional-availability table, `eu-south-2` supports only the
+  **Global** profile on `bedrock-runtime` (neither In-Region nor Geo are
+  available there), so it must be `global.openai.gpt-5.6-terra`, not the
+  `us.`-prefixed id. IAM needs `bedrock:InvokeModel` on both the inference
+  profile **and** the account's default project ARN
+  (`arn:aws:bedrock:{region}:{account-id}:project/default`) per the model
+  card's own setup note.
+- **Accepted tradeoff: no hard EU data-residency guarantee.** The owner's
+  preference is that data stay in Europe. Checked against the model card's
+  full regional table: **every** EU region (Ireland, London, Paris,
+  Frankfurt, Zurich, Stockholm, Milan, Spain) supports only the **Global**
+  cross-Region profile for this model on `bedrock-runtime` — none support
+  the EU-scoped "Geo" tier, and `bedrock-mantle` (the alternative endpoint)
+  currently has no EU presence at all (US regions + GovCloud only). There
+  is therefore no region choice today that keeps inference traffic
+  strictly inside the EU for this model. Owner decision 2026-09-16:
+  proceed anyway, `eu-south-2` chosen as the account's home region even
+  though `global.` routing may leave the EU for the inference call itself.
 - The `ai` Lambda's provider client is a Bedrock adapter — the Bedrock
-  SDK path is **its** dependency closure, never `api`'s (§1.2 rule).
+  path is **its** dependency closure, never `api`'s (§1.2 rule).
 - **Cost cap: a real kill-switch**, resolving `G-81` / `NFR-AI-01` — an
   alert alone is not acceptable. The mechanism (reserved concurrency 0,
   event-source-mapping disable, or a flag the `ai` worker reads before
-  invoking the provider) is a feature 17 spec-gate detail.
+  invoking the provider) is a feature 17 spec-gate detail, unaffected by
+  the model change.
 - The `ai` worker consumes from the `api` → `ai` SQS queue (§1.2.5). It
   writes whole-week results through `WeekRepository` — never a separate
   write path (`G-88`, recorded on feature 17).

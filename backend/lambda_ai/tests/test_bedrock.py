@@ -7,12 +7,13 @@ import json
 from typing import Any
 
 import pytest
+from botocore.exceptions import ClientError
 from planner_core.domain.ai_prompt import ALLOWED_UNITS, build_category_prompt, build_instructions
 from planner_core.domain.ingredient_category import IngredientCategory
 from planner_core.domain.rules import CategoryCountRule
 from planner_core.ports.ai_provider import AiProviderError
 
-from planner_ai.adapters.bedrock import BEDROCK_MODEL_ID, BedrockAiProvider, _render
+from planner_ai.adapters.bedrock import _MAX_TOKENS, BEDROCK_MODEL_ID, BedrockAiProvider, _render
 
 PROMPT = build_category_prompt((), "v1")
 
@@ -55,22 +56,28 @@ def test_render_is_version_agnostic_and_renders_v2_english_wording() -> None:
     assert "3x vegetable" in rendered
 
 
-class _Body:
-    def __init__(self, text: str) -> None:
-        self._text = text
-
-    def read(self) -> bytes:
-        return json.dumps({"content": [{"type": "text", "text": self._text}]}).encode()
-
-
 class _Client:
+    """Stands in for the real Converse response shape (verified against
+    boto3's bedrock-runtime.Client.converse docs): output.message.content."""
+
     def __init__(self, text: str) -> None:
         self.text = text
         self.model_id: str | None = None
+        self.messages: Any = None
+        self.inference_config: Any = None
 
-    def invoke_model(self, *, modelId: str, body: str) -> dict[str, Any]:
+    def converse(self, *, modelId: str, messages: Any, inferenceConfig: Any) -> dict[str, Any]:
         self.model_id = modelId
-        return {"body": _Body(self.text)}
+        self.messages = messages
+        self.inference_config = inferenceConfig
+        return {"output": {"message": {"content": [{"text": self.text}]}}}
+
+
+class _FailingClient:
+    def converse(self, *, modelId: str, messages: Any, inferenceConfig: Any) -> dict[str, Any]:
+        raise ClientError(
+            {"Error": {"Code": "ThrottlingException", "Message": "too many requests"}}, "Converse"
+        )
 
 
 def test_it_uses_the_module_model_id_by_default() -> None:
@@ -80,18 +87,22 @@ def test_it_uses_the_module_model_id_by_default() -> None:
 
     BedrockAiProvider(client=client).generate(PROMPT)
 
-    assert client.model_id == BEDROCK_MODEL_ID == "anthropic.claude-sonnet-5"
+    assert client.model_id == BEDROCK_MODEL_ID == "global.openai.gpt-5.6-terra"
+    assert client.messages[0]["role"] == "user"
+    assert isinstance(client.messages[0]["content"], list)
+    assert client.messages[0]["content"][0]["text"] == _render(PROMPT)
+    assert client.inference_config == {"maxTokens": _MAX_TOKENS}
 
 
 def test_the_ai_model_id_env_var_overrides_the_model(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("AI_MODEL_ID", "anthropic.claude-haiku-4-5")
+    monkeypatch.setenv("AI_MODEL_ID", "eu.openai.gpt-5.6-terra")
     client = _Client(
         json.dumps({"name": "X", "ingredients": [], "procedure": [], "category": "eggs"})
     )
 
     BedrockAiProvider(client=client).generate(PROMPT)
 
-    assert client.model_id == "anthropic.claude-haiku-4-5"
+    assert client.model_id == "eu.openai.gpt-5.6-terra"
 
 
 def test_a_response_with_no_json_block_raises() -> None:
@@ -103,3 +114,30 @@ def test_a_json_block_missing_a_required_key_raises() -> None:
     client = _Client(json.dumps({"name": "X", "procedure": []}))  # no ingredients / category
     with pytest.raises(AiProviderError):
         BedrockAiProvider(client=client).generate(PROMPT)
+
+
+def test_a_converse_client_error_raises_ai_provider_error() -> None:
+    # ThrottlingException etc. are ClientError subclasses on bedrock-runtime's
+    # own .exceptions, per the boto3 Converse docs - same catch as before.
+    with pytest.raises(AiProviderError):
+        BedrockAiProvider(client=_FailingClient()).generate(PROMPT)
+
+
+class _MultiBlockClient:
+    """A non-text block (e.g. reasoningContent) precedes the text block, per
+    Converse's real multi-block content shape - _extract_text must skip it."""
+
+    def __init__(self, text: str) -> None:
+        self._text = text
+
+    def converse(self, *, modelId: str, messages: Any, inferenceConfig: Any) -> dict[str, Any]:
+        content = [{"reasoningContent": {"text": "thinking..."}}, {"text": self._text}]
+        return {"output": {"message": {"content": content}}}
+
+
+def test_a_leading_non_text_block_is_skipped_and_the_text_block_parses() -> None:
+    recipe_json = json.dumps({"name": "X", "ingredients": [], "procedure": [], "category": "eggs"})
+
+    output = BedrockAiProvider(client=_MultiBlockClient(recipe_json)).generate(PROMPT)
+
+    assert output.name == "X"

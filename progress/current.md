@@ -3,6 +3,704 @@
 > This file is emptied when each session closes and moved to `history.md`.
 > While you work, **keep it updated in real time**, not at the end.
 
+## 2026-09-16 — Feature 17 `ai_lambda`, fix round 2 on the Converse reopen (reviewer findings) — DONE
+
+Fixed the 2 required gaps: both stub `_Client`/`_StubBedrock` classes now
+capture `messages`/`inferenceConfig`, with assertions on `role`, `content`
+shape, `content[0]["text"] == _render(PROMPT)`, and `inferenceConfig` in
+`test_bedrock.py` and `test_ai_provider_contract.py`; a new test covers a
+leading non-text (`reasoningContent`) Converse block being skipped. Both
+hand-planted mutants (role/content-flatten; drop the text-block guard)
+confirmed killed, reverted. Advisory region-default cleanup done (`ssm.py`,
+`dynamo/_table.py`, `local_worker.py`: `us-east-1` → `eu-south-2`).
+
+That cleanup broke 11 moto contract tests when the full suite ran together
+(passed in isolation) — `planner_ai` adapters resolve `_REGION` at module
+import time, and pytest collects `lambda_ai/tests/test_wiring.py` before
+`tests/contract/dynamo_contract.py`'s env-var setup ever runs. Fixed by
+moving that `AWS_DEFAULT_REGION`/credential `os.environ.setdefault` block
+into `backend/core/tests/conftest.py` (collects alphabetically first). A new
+root-level `backend/conftest.py` was tried first and reverted — it clashes
+with `core/tests/conftest.py` under mypy's rootless same-basename-module
+rule.
+
+`cd backend && uv run pytest -q -m "not aws and not docker"` — **811 passed**
+(810 → 811). `./init.sh` fully green except §4's expected dual-`in_progress`
+(17 + 20). `feature_list.json` untouched. Full detail:
+`progress/impl_ai_lambda.md` → "Fix round 2 — 2026-09-16". Reviewer next.
+
+## 2026-09-16 — Feature 17 `ai_lambda` reopen (OpenAI GPT-5.6 Terra via Bedrock Converse) — DONE, implementation-complete
+
+**Feature in progress: 17 — ai_lambda (provider swap only: Anthropic Claude →
+OpenAI GPT-5.6 Terra, `docs/architecture.md` §1.2.6). Precondition now met —
+the leader flipped `done -> in_progress` and corrected the first `acceptance`
+bullet before this run (superseding the blocked entry below).**
+
+Swapped `planner_ai/adapters/bedrock.py`'s Bedrock call from
+`invoke_model` (Anthropic Messages body) to `converse` (verified against
+boto3's own `bedrock-runtime.Client.converse` docs before coding —
+`messages=[{"role":"user","content":[{"text":...}]}]`, `inferenceConfig=
+{"maxTokens":...}`, response `output.message.content`; all documented
+exceptions are `ClientError` subclasses, so the existing `except
+(BotoCoreError, ClientError)` catch needed no change). `BEDROCK_MODEL_ID` →
+`"global.openai.gpt-5.6-terra"` (the only inference profile `eu-south-2`
+supports for this model per §1.2.6); `AI_MODEL_ID` env override mechanism
+untouched. `_render()`'s prompt content is unchanged — transport only. No new
+dependency (`openai` package NOT added; `Converse` via the existing `boto3`
+is the whole point of the design).
+
+Updated to match: `backend/lambda_ai/tests/test_bedrock.py` (Converse-shaped
+fixture, same success/malformed/error coverage, +1 new case for a Converse
+`ClientError`); `backend/tests/contract/test_ai_provider_contract.py` (its
+own separate `_StubBedrock` fixture, same fix); `specs/ai_lambda/design.md`
+§0/§4/§10/§12 (provider description, model id, test-strategy rows) plus a
+pre-existing stale `§11` pointer (`anthropic[bedrock] rejected in §11` — that
+target never existed) corrected and completed while in the area. `planner_core`
+untouched; no architecture decision made (all values sourced from the
+leader-written §1.2.6).
+
+`cd backend && uv run pytest -q -m "not aws"` — **810 passed** (808 → 810).
+`uv run ruff check .` / `ruff format --check .` / `mypy .` — clean. Full
+traceability (R1–R21 chain unaffected — no `R<n>` names a provider/model,
+`covers` unchanged): `progress/impl_ai_lambda.md` → "Reopen 2026-09-16 —
+provider swap: Anthropic Claude → OpenAI GPT-5.6 Terra". `feature_list.json`
+untouched by this implementer. Still `in_progress` — reviewer next.
+
+## 2026-09-16 — Feature 17 `ai_lambda` reopen (OpenAI GPT-5.6 Terra via Bedrock Converse) — BLOCKED, precondition not met
+
+Implementer session launched with a dispatch brief to swap the Bedrock
+provider from Anthropic Claude to OpenAI GPT-5.6 Terra
+(`docs/architecture.md` §1.2.6, already updated by the leader). Stopped
+before touching any file: `feature_list.json` still has feature 17 at
+`"status": "done"`, not `in_progress`. Per the implementer protocol,
+preconditions require `in_progress` with an approved spec before any
+implementation starts — status flips are the leader/human's alone. No
+`specs/ai_lambda/` work or code change made. Needs the leader to flip
+feature 17 `done -> in_progress` before an implementer can act on this
+brief.
+
+## 2026-09-16 — feature 20 `frontend_spa`, post-hoc fix on the T64–T94 reopen: unstyled native controls — DONE
+
+Owner did manual QA in a browser (unavailable to either agent) and found a
+real gap none of the 6 automated review rounds caught: several Tier B–F card
+wrappers were restyled but the native `<select>`/`<button>`/`<ul>`/`<li>`/
+`<label>` controls inside them were left at browser defaults. Not a new
+design decision — `design.md` §10/`tasks.md` T64–T94 already cover the token
+scales; this completes an incomplete application of them. No `tasks.md`
+T-number re-ticked (not a new task).
+
+Audited every component for the "container styled, controls forgotten"
+pattern (not just the 4 files with a bare `<select>` the brief named).
+4 files had it: `RulesView.jsx`, `ShoppingListView.jsx`, `AccountRow.jsx`,
+`AdminAccountsView.jsx`. `RecipeAuthoringForm.jsx` and `LibraryFilters.jsx`
+were already correctly styled (checked, not touched). Values matched against
+`prototypes/wireframe/Sobremesa.dc.html` lines 259 (select/input), 314/
+328-336/350-354 (rule selects), 340/378 (primary/secondary button), 343/362
+(dashed add — not applicable here, no add-rule affordance exists on the real
+`RulesView`), 312 (list row), 310/323/347 (rule-group accent dot).
+
+New shared helper `frontend/src/domain/controlStyles.js` (`selectStyle`/
+`inputStyle` alias, `primaryButtonStyle(disabled)`, `secondaryButtonStyle`,
+`ghostButtonStyle`, `dashedAddButtonStyle`, `listResetStyle`, `listRowStyle`,
+`accentDotStyle`) — avoids 4 independent copies drifting, same reasoning as
+`RecipeAuthoringForm.jsx`'s existing local `fieldInputStyle`/`rowButtonStyle`
+pattern, now made reusable. `RulesView.jsx`'s three rule-group headings each
+gained an accent dot (`olive`/`honey`/`aub`, matching the prototype's own
+"Comidas fijas" honey / "Días sin generación" aub semantics). Token gaps: no
+exact 9-10px radius or 7-11px padding token exists — used `radius.sm` (8px)
+and `${space.xs} ${space.sm}` as the nearest fit, no new token invented.
+`colors.js` also picked up a `backdrop` token in this same working tree
+before this round started (pre-existing, `ConfirmDialog.jsx`'s use, not
+touched here).
+
+Only `style` props added to already-wired elements — no `value`/`onChange`/
+`onClick`/`disabled`/option-list/conditional-rendering touched. `npx vitest
+run` 347/347 (unchanged count — pure styling, no test added/removed/broken).
+`npx eslint .` clean, `npx prettier --check .` clean (one `--write` on
+`RulesView.jsx`). No `backend/` file touched (verified via `git status`).
+`feature_list.json`/`docs/` untouched. Full detail:
+`progress/impl_frontend_spa.md` → "Fix round: unstyled native controls
+(post-hoc, T64–T94 reopen)". Still `in_progress` — reviewer next.
+
+## 2026-09-16 — Seed usernames simplified + wired into VS Code debug — DONE
+
+Owner requests: shorter usernames (`user1`/`user2`/`admin1`/`admin2`,
+passwords unchanged), and auto-seed on debug launch. `seed_local_data.py`
+`_ACCOUNTS` renamed (both `user_id` and `username`) — mechanical, verified
+live (double-run still idempotent), `pytest -q -m "not aws"` 816, ruff/mypy
+clean. `.vscode/tasks.json` gained a `seed: local test accounts` task
+(`dependsOn: ["dynamodb: up"]`, **`dependsOrder: "sequence"`** — VS Code
+defaults `dependsOn` to parallel, which would have raced the seed script
+against `docker compose up -d` still starting); `.vscode/launch.json`'s
+"api: local Lambda server" now uses that task as its `preLaunchTask` instead
+of `dynamodb: up` directly, so "Debug: full stack" seeds automatically every
+launch. `docs/local_development.md` §3 table updated, new §5 documenting the
+VS Code flow end-to-end (previously undocumented despite existing).
+
+## 2026-09-16 — DynamoDB/SQS container readiness race — DONE
+
+Owner hit it live: `seed_local_data.py` got `ConnectionClosedError` right
+after `docker compose up -d` — the JVM inside a freshly-started container
+needs a moment before it's actually serving, but `docker compose up -d`
+returns once containers are merely *started*. Widened by having two
+containers start together (dynamodb-local + sqs-local). Fixed at the
+Docker layer, not with more Python retry logic: added a `healthcheck` to
+both services in `docker-compose.yml` and changed `.vscode/tasks.json`'s
+`docker: up` task to `docker compose up -d --wait` — blocks until both
+report healthy, fixing all three local entry points (seed script,
+`local_server.py`, `local_worker.py`) in one place, no Python touched.
+`dynamodb-local` (Amazon Linux, has curl): any HTTP response via `curl`
+proves the JVM is serving. `sqs-local` (Alpine, no curl, only busybox
+`wget`): `wget`'s exit code can't distinguish refused-connection from
+HTTP-error (both are `1`) — verified live via `docker exec`, switched to
+grepping its stderr for `HTTP/1.1` instead. Verified: `docker compose down`
+→ `up --wait` → immediately run the seed script, 5 clean cold-start runs in
+a row, zero races (previously reproduced every time). `pytest -q -m "not
+aws"` 816 passed (untouched — no Python changed), ruff/mypy clean.
+
+## 2026-09-16 — feature 20 post-hoc fix: unstyled native form controls — DONE
+
+Owner screenshot showed cards styled correctly (Tier F) but every control
+inside them (selects, buttons, list rows) raw/unstyled — none of the six
+review rounds across T64-T94 caught this since they checked wiring
+correctness and token usage, never a holistic visual pass. Fixed across
+`RulesView`/`ShoppingListView`/`RecipeAuthoringForm`/`LibraryFilters` +
+others, using exact values read from `prototypes/wireframe/
+Sobremesa.dc.html`'s real Rules-screen markup. Reviewer found 3 more
+survived mutants (RulesView's pin/disabled-day save buttons, ShoppingList's
+un-check transition — same recurring "restyle, forget to test the other
+rows/sections" class) plus real code-quality gaps in the new shared style
+module (`domain/controlStyles.js`: dead code, 3 places still duplicating
+what it was built to centralize, wrong location for a pure-styling module).
+Fix round: all 3 mutants killed, module relocated to `tokens/
+controlStyles.js`, dedup completed, dead code removed. Leader independently
+verified (test count 347→349, file checks) rather than a second full
+review, per this project's cheap-verification convention.
+
+## 2026-09-16 — feature 17 `ai_lambda` reopen: AI provider AWS Bedrock +
+Anthropic Claude → AWS Bedrock + OpenAI GPT-5.6 Terra
+
+Owner correction: lacks Bedrock model-access permissions for Anthropic
+models; firm decision to switch. Verified live against AWS's own docs (not
+guessed): real model (`docs.aws.amazon.com/bedrock/.../model-card-openai-
+gpt-56-terra.html`), correct id format is `global.openai.gpt-5.6-terra`
+for the owner's chosen region `eu-south-2` (Spain) — `bedrock-runtime`
+only supports the **Global** cross-Region profile from any EU region for
+this model (checked every EU region in the model card's table, all
+identical), so **no EU-only data-residency guarantee exists** for this
+model today; owner accepted that tradeoff explicitly. Invocation:
+Bedrock's `Converse` API via plain `boto3` — this model has no
+`InvokeModel` support on `bedrock-runtime` (confirmed against the model
+card), and `Converse` being provider-agnostic and already in `boto3` means
+**no new dependency**, preserving `specs/ai_lambda/design.md` §11's
+existing rejection of a provider SDK (`anthropic[bedrock]`) — the same
+reasoning now also covers rejecting `openai[bedrock]` (which OpenAI's own
+Bedrock guide recommends, not taken here on purpose).
+`docs/architecture.md` §1.2.6 rewritten with the full decision;
+`feature_list.json` 17 `done -> in_progress` + acceptance text corrected
+(leader). Implementer verified the real Converse request/response shape
+against boto3's own docs before writing code, rewired `bedrock.py`
+(preserving `_render()`'s prompt content unchanged), updated
+`test_bedrock.py` + a second stale fixture it found on its own in
+`test_ai_provider_contract.py`, and `design.md`. `pytest -q -m "not aws"`
+810 passed (808→810), ruff/mypy clean, no `frontend/` touched.
+
+**Closed** — see the two entries above (chronologically after this one):
+reviewer found 2 real mutants (Converse request envelope unverified;
+multi-content-block response guard unverified) + region-default drift;
+fix round 2 closed both, plus a self-found regression (moto contract
+tests broke on collection order after the region-default change, fixed
+in `core/tests/conftest.py`). Leader independently sanity-checked that
+fix. Both feature 17 (`ai_lambda`) and feature 20 (`frontend_spa`)
+reopens are now implementation-complete and reviewed. `done`/commit is
+the owner's call.
+
+## 2026-09-16 — Scope correction: local SQS + local `ai` worker (only Bedrock stays remote) — DONE
+
+Owner correction mid-session: they'd said "ai service in AWS" earlier, but
+meant only Bedrock itself — the SQS queue and the `ai` Lambda should also
+run locally, matching `api`/DynamoDB/SPA. Built: `SQS_ENDPOINT_URL` override
+on `lambda_api/adapters/sqs.py` (mirrors `_table.py`'s pattern);
+`DYNAMODB_ENDPOINT_URL` override added to `lambda_ai`'s own separate
+`_table.py` copy (each Lambda has its own adapter closure,
+architecture.md §3.2 — the fix doesn't propagate automatically); a second
+`docker-compose.yml` service, `softwaremill/elasticmq-native` on :9324,
+queue pre-created declaratively via `elasticmq.conf` (no bootstrap code
+needed, unlike DynamoDB's table); new `backend/lambda_ai/src/planner_ai/
+local_worker.py` — a local poller standing in for the real SQS→Lambda
+trigger (long-polls, builds the `Records` event shape, calls the real
+`handle()`, deletes processed messages, same per-record isolation as prod).
+
+**Credential design**: `api`'s local server keeps fake `local`/`local`
+creds (nothing it touches is real anymore). `ai`'s local worker needs REAL
+AWS credentials (Bedrock) — deliberately no fake creds in its `.vscode`
+config, relies on the developer's own AWS credential chain.
+
+**review-risk found a real, serious gap**: unlike `api`'s fake-credential
+safety net (AWS itself rejects a fake-credentialed request that
+accidentally reaches real AWS), `ai`'s local worker carries genuinely
+working credentials — so an accidentally-unset `DYNAMODB_ENDPOINT_URL`
+would silently redirect real reads/writes onto the developer's real AWS
+DynamoDB table (same default name `data` the eventual IaC-provisioned
+table is expected to use), no error, no signal anything was wrong. Fixed:
+`local_worker.py` now refuses to start at all unless
+`DYNAMODB_ENDPOINT_URL`/`SQS_ENDPOINT_URL`/`GENERATION_QUEUE_URL` are ALL
+explicitly set — no override flag, since this script (unlike
+`seed_local_data.py`) has no legitimate real-AWS use case. Also broadened
+clean-failure handling to `ProfileNotFound`/expired-or-invalid-token cases,
+not just zero-credentials.
+
+`.vscode/launch.json`/`tasks.json` updated: `dynamodb: up` renamed
+`docker: up` (now starts both containers), new "ai: local worker" debug
+config, compound renamed "Debug: full stack (DynamoDB + SQS + api + ai +
+SPA)". `docs/local_development.md` rewritten for the corrected scope — the
+AI flow now works end-to-end in local-emulator mode; only the Bedrock call
+itself ever leaves the machine. Verified live throughout (real message
+send/receive/delete round-trip, poison-message isolation, both new fail-loud
+guards). `pytest -q -m "not aws"` 816 passed, ruff/mypy clean.
+
+## 2026-09-16 — Local DB seed script for manual testing — DONE
+
+Owner request: 4 test accounts in the local DynamoDB — user/admin ×
+password-set/password-pending. New `backend/lambda_api/src/planner_api/
+seed_local_data.py` (dev tooling, no `feature_list.json`/spec entry, same
+category as `local_server.py`). Reuses the real domain functions
+(`account_admin.create_user`, `authentication.set_password`,
+`Pbkdf2PasswordHasher`) rather than hand-rolled writes; the two Admin
+accounts are the one legitimate exception — `create_user` is hardcoded to
+`Role.USER` by design (`account_admin.py`'s own docstring: admin accounts
+can never be created through the app, R9/R31), so they're written directly
+via `AccountRecord` + `DynamoAccountRepository.create()`, commented as to
+why. `review-risk` found `--force`/`SEED_FORCE=1` could write a real Admin
+account with a hardcoded, repo-visible password into real AWS if a
+developer working in the documented "real AWS table" dev mode reached for
+the flag — fixed: Admin seeding is now unconditionally skipped against any
+non-local target, no override exists; `--force` only ever applies to the
+two User accounts. Also fixed an idempotency gap (an interrupted run could
+strand an "active" account on its temp password while reporting "already
+seeded") and a hardcoding bug in the admin-record builder. Credentials:
+`seed_user_active`/`UserActive1234`, `seed_user_pending`/`TempPass1234`,
+`seed_admin_active`/`AdminActive1234`, `seed_admin_pending`/`TempPass1234`
+— documented in `docs/local_development.md` §3. Verified live: double-run
+idempotent, `pytest -q -m "not aws"` 816 passed, ruff/mypy clean.
+
+## 2026-09-16 — feature 20 `frontend_spa` reopen (T64–T94, visual-fidelity pass) — implementation-complete, all 6 tiers reviewed
+
+Owner discovered — by running the app in a real browser for the first time via
+this session's new VS Code debug setup — that the shipped, `done` frontend
+followed almost none of `prototypes/wireframe/Sobremesa.dc.html`'s design
+language beyond the colour palette. `spec_author` drafted `design.md` §10
+(font-family self-hosted via the CSS Font Loading API, a 4-step border-radius
+scale, a 3-step shadow scale — same "read the prototype for intent, not
+values" method already used for font-size/spacing) and `tasks.md` T64–T94 in
+six tiers; owner approved via `AskUserQuestion`, feature 20 `done -> spec_ready
+-> in_progress` (leader-flipped both times).
+
+**Tier A** (foundation tokens): 1 reviewer finding (untested `fonts.js` face
+registration), fixed. **Tier B** (shared primitives): 2 real bugs from
+`WeekSwitcher.jsx`'s restyle (swapped switch direction; wrong week's label/
+dates displayed) — both caught only by the reviewer's mutation testing,
+fixed. **Tier C** (auth): reviewer's mutation tests initially read as 2 more
+dropped handlers, but the fix round found both `onClick` bindings were
+already correct on disk — coverage gaps only, not live bugs (leader
+initially mischaracterized this to the owner, corrected in-thread). **Tier
+D** (planning): 4 coverage gaps (promote-button, day-indexing, new
+`dayStatus()` precedence logic, error-branch close), all fixed; `MealCard`'s
+"IA" AI-badge correctly marked `(Partial)` — no field anywhere in the real
+system distinguishes AI-authored from manual candidates, verified against
+`docs/rest_api_contract.md`/`candidate.py`, not invented. **Tier E**
+(library): 3 coverage gaps, all the same "asserted item[0], not the actual
+target row" class; `LibraryView`'s IA badge hit the identical wall, same
+Partial treatment. **Tier F** (summary/shopping/rules/admin, closing gate):
+`AccountRow.jsx`'s security-relevant R36/R37 gating (reset hidden on own
+row, remove hidden on admin rows) independently re-verified correct and
+fail-closed — the project's historical fail-open bug is genuinely still
+fixed. 3 more coverage gaps found (admin reset bound to the wrong row —
+R34, security-relevant; shopping-checkbox wrong-row binding; untested
+pin-rule removal), all fixed.
+
+**Total**: 6 real bugs + 13 coverage gaps found across 6 review rounds, all
+fixed and mutation-verified killed by hand in each case. Final state:
+`./init.sh` fully green — **808 backend** (untouched all session), **347
+frontend vitest** (312 → 347, +35 across the reopen). `feature_list.json`:
+only feature 20's own `status` field ever changed, verified via `git diff`
+after every dispatch. `specs/frontend_spa/tasks.md`: all of T1–T94 ticked
+(T82/T85 correctly `(Partial)`, justified, not silently dropped).
+
+Not the leader's call: marking feature 20 `done` and committing. Also
+separately this session (before this reopen): local dev tooling
+(`docker-compose.yml` DynamoDB Local, `backend/lambda_api/.../local_server.py`,
+`.vscode/` debug config, a new opt-in `docker`-marked pytest tier) — see
+this file's earlier entries below for that work's own detail once this
+session closes to `history.md`.
+
+## 2026-09-16 — feature 20 `frontend_spa`, reopened visual-fidelity pass, Tier F summary/shopping/rules/admin (T89–T94) — DONE, closes the reopen
+
+**Feature in progress: 20 — frontend_spa (Tier F only, T89–T94 of the
+2026-09-16 reopen; Tiers A–E closed/reviewed. This is the final tier — T94
+is the closing gate for the whole T64–T94 reopen.)**
+
+`SummaryView.jsx` restyled: each definitive-meal row is now a card
+(`tokens.radius.md`/`shadow.sm`) carrying a "definitiva" pill matching
+`MealCard.jsx`'s (T82) treatment, unconditional since every summary entry
+already is the definitive meal. `ShoppingListView.jsx`: checked items gained
+`textDecoration: 'line-through'` alongside the existing `ink3` dimming; the
+unchecked/checked sections each wrapped in a card container.
+`RulesView.jsx`: the three rule-type sections (count/pin/disable) each
+wrapped in a card, headers on `tokens.fontFamily.heading`.
+`AdminAccountsView.jsx`/`AccountRow.jsx`: an initials avatar-circle
+(`tokens.radius.pill`, colour keyed off admin/user role) plus role and
+pending-reset pill badges, replacing plain text; rows gained the same card
+shape as every other restyled list this reopen.
+
+**R36/R37 deliberately untouched:** `AccountRow.jsx`'s `isOwnRow`/
+`isAdminRow` conditionals — the exact class that caused a real fail-open bug
+earlier in this feature — were read, never edited; `git diff` confirms zero
+lines touching either condition or its two render guards. All 7 pre-existing
+`AccountRow.test.jsx` cases pass unmodified.
+
+**Handler-binding self-check:** every restyled interactive element's
+`onClick`/`onToggle`/`onEdit`/`onRemove`/`onOpen*` binding verified via
+`git diff` identical before/after (only reindented under new wrapper
+`<div>`s) — no dropped or misbound handler.
+
+**New tests deviate from T93's literal "selector-only" text, per this run's
+dispatch brief:** added a same-row-not-first-row targeting test per
+restyled list (Summary/Shopping/Rules/Admin — clicking the SECOND meal/item/
+rule/account targets that one, not the first), since every prior Tier
+D/E round found exactly this class of bug invisible to single-row fixtures.
+Also fixed one guard-file false-positive: an `aria-hidden="true"` on the new
+avatar tripped `test_no_extra_accessibility.test.js` (R22) — removed, the
+avatar is decorative only.
+
+`npx vitest run` 343/343 (336→343: 7 new cases). `./init.sh` fully green:
+808 backend (untouched), ruff/mypy/prettier/eslint/vitest. `tasks.md`
+T89–T94 all ticked — **this closes the entire 2026-09-16 reopen
+(T64–T94)**. Full traceability: `progress/impl_frontend_spa.md` → "Tier F —
+summary / shopping / rules / admin (T89–T94)". `feature_list.json`
+untouched — still `in_progress`. Reviewer next.
+
+## 2026-09-16 — feature 20 `frontend_spa`, reopened visual-fidelity pass, Tier E library screens (T85–T88) — DONE
+
+**Feature in progress: 20 — frontend_spa (Tier E only, T85–T88 of the
+2026-09-16 reopen; Tiers A–D closed/reviewed; Tier F, T89–T94, is a
+separate implementer run).**
+
+`LibraryView.jsx`/`LibraryRecipePicker.jsx` restyled from a plain `<ul>` into
+a card grid (`tokens.radius.md`/`shadow.sm`) with a category-color dot (new
+`CATEGORY_COLORS` in `domain/labels.js`, decorative-only, mapped to the 5
+non-neutral accent tokens — `eggs` reuses `ink2`, only 5 accents for 6
+categories) and an icon-button edit/remove row (icon + existing `MESSAGES`
+text, same T82 convention, no test change forced). `LibraryFilters.jsx`
+restyled from **zero token references at all** (confirmed the audit's
+worst offender) into an icon-prefixed search box + pill-shaped category
+select — the `<label>`-wraps-`<input>`/`<select>` structure was kept intact
+so `getByLabelText`/`getByRole('textbox')` selectors needed no change.
+`RecipeAuthoringForm.jsx`'s non-AI parts (`scratch`/`library` methods, the
+method tab bar) got field/button styling off tokens; the `ai` tab's own
+`AiStubFields` content was left byte-for-byte untouched (feature 28's
+territory) — only its tab button gained an `--aub` accent.
+
+**Real gap found, not fixed (T85, same wall as T82):** the prototype's
+library card has an "IA" badge (`r.isAI`); the real `Recipe` domain type has
+no origin field to key it on. `tasks.md` T85 marked `[x] (Partial)`.
+
+Since the leader's brief flagged this tier's known regression risk
+(restyling silently breaking existing handler wiring), added 4 new
+`LibraryView.test.jsx` cases exercising the card grid's openDetail/openEdit/
+remove/openAdd wiring directly via props (the file's existing tests only
+drove the real `useLibrary` hook, never checked per-card click wiring) plus
+1 `RecipeAuthoringForm.test.jsx` T88 guard case. Both `LibraryFilters.test.jsx`
+and `LibraryRecipePicker.test.jsx` passed **unmodified**. 2 hand-applied
+mutants (remove's recipe-id argument; the tab bar's `setMethod` argument)
+hand-verified **killed**, reverted, `git diff` byte-identical.
+
+`npx vitest run` 335/335 (330→335). `npx eslint .` clean, `npx prettier
+--check .` clean (one `--write`), `npx vite build` succeeds. `./init.sh`
+fully green: 808 backend (untouched), ruff/mypy/prettier/eslint/vitest.
+`tasks.md` T85 (Partial)/T86/T87/T88 ticked. Full traceability:
+`progress/impl_frontend_spa.md` → "Tier E — library (T85–T88)".
+`feature_list.json` untouched — still `in_progress`. Reviewer next; Tier F
+awaits a separate implementer run.
+
+## 2026-09-16 — feature 20 `frontend_spa`, reopened visual-fidelity pass, Tier D planning screens (T81–T84) — DONE
+
+**Feature in progress: 20 — frontend_spa (Tier D only, T81–T84 of the
+2026-09-16 reopen; Tiers A–C closed/reviewed; Tiers E–F, T85–T94, are
+separate implementer runs).**
+
+`DaySlot.jsx` restyled into a day-card (`tokens.radius.md`/`shadow.sm`,
+`surface`/`surface2` header band) with a status pill (`tokens.radius.pill`)
+computed from the already-fetched slot data (`definitive` > `candidates` >
+`empty`, priority order) — a presentation-only aggregation, not a
+recomputed domain rule. `WeekPlannerView.jsx`'s grid switched from a fixed
+`repeat(7, ...)` to `repeat(auto-fill, minmax(min(100%, 260px), 1fr))`
+(fluid-first, `conventions.md`, no new breakpoint) so the new day cards
+collapse on narrow widths instead of squeezing to nothing; its top-level
+`error` message restyled with the honey/honeySoft warning idiom already
+established by `ConnectionLostBanner.jsx`/`SetPasswordView.jsx`. `MealCard.jsx`
+gained the card shape plus icon-button treatment (inline SVG check/close
+icons) on its promote/clear controls, keeping the existing `MESSAGES` text
+alongside each icon rather than going icon-only, specifically so the
+existing handler/text-based test assertions needed no change (T82's own
+"pure visual" scope, and the reopen's stated regression risk). `RecipeDetailView.jsx`
+restyled into a slide-up bottom sheet (`tokens.radius.lg`/`shadow.lg`,
+`tokens.color.backdrop`, `data-testid="recipe-detail-backdrop"` matching
+`ConfirmDialog.jsx`'s idiom) with pill metadata badges (category/servings/
+time — the exact same text nodes the existing tests query, just rewrapped)
+and numbered-step circles for the procedure list. No backdrop-click-to-close
+added (a real behavioural addition beyond "styling completion" — the close
+button remains the only close path, a deliberate, disclosed narrowing).
+
+**Real spec gap found, not fixed (T82, disclosed rather than invented
+around):** the task asks for an "IA" badge on AI-authored meal cards
+(`tokens.color.aub`/`aubSoft`), mined from the prototype's own
+`meal.author='IA'` idiom. The real system has no equivalent signal at any
+layer checked — `docs/rest_api_contract.md` §3.1/3.2 (`author` is always
+`{userId, displayName}`), `backend/core/src/planner_core/domain/candidate.py`
+(`Candidate.author: str`, resolved to a human user id or the
+`unknown-user` placeholder, never an AI marker), and the frontend (no
+`source`/`isAI` field anywhere in `useWeekPlanner.js`). Once an AI-generated
+recipe is accepted into a slot, nothing distinguishes it from a manual or
+library candidate. Implementing the badge would mean inventing either a
+backend data-model field (an architecture/data-model decision, out of an
+implementer's authority and out of a frontend-only tier's scope) or a fake
+client-side heuristic — both excluded by `.claude/agents/implementer.md`'s
+hard rules. Left undone; `tasks.md` T82 marked `[x] (Partial)` per the
+established T13/T20/T21/T23/T27 convention. Needs an owner decision (likely
+a `source`/`origin` field added to the stored meal item) before it can ship.
+
+**Mechanical guard fix (disclosed, not a task):** these are the first
+inline `<svg>` icons anywhere in `frontend/src/components/`, and
+`test_all_strings_from_messages.test.js`'s R15 scan flagged their numeric/
+keyword attributes (`width`, `viewBox`, `stroke`, `d`, …) as hardcoded
+prop-text — a real false positive, same class the T62 fix rounds already
+handled for other attribute shapes. Fixed by extending `SAFE_ATTR_NAMES`
+with the 9 SVG geometry/presentation attribute names actually used; no
+scan-logic change, no new violation class introduced.
+
+`npx vitest run` 323/323 (unchanged count — one of the 323 briefly failed on
+the R15 false-positive above, fixed by the guard extension, not a test
+added/removed; no test file changed for T84 itself: both
+`WeekPlannerView.test.jsx` and `RecipeDetailView.test.jsx` passed
+**unmodified** against the new markup, same outcome as T80a). `npx eslint .`
+clean, `npx prettier --check .` clean (one `--write` on
+`RecipeDetailView.jsx`), `npx vite build` succeeds. `./init.sh` fully green:
+808 backend (untouched), ruff/mypy/prettier/eslint/vitest. `tasks.md`
+T81/T83/T84 ticked; T82 ticked `(Partial)` with the gap above recorded.
+Full traceability: `progress/impl_frontend_spa.md` → "Tier D — planning
+screens (T81–T84)". `feature_list.json` untouched — still `in_progress`.
+Reviewer next; Tiers E–F await separate implementer runs.
+
+## 2026-09-16 — feature 20 `frontend_spa`, reopened visual-fidelity pass, Tier C auth screens (T79–T80a) — DONE
+
+**Feature in progress: 20 — frontend_spa (Tier C only, T79–T80a of the
+2026-09-16 reopen; Tiers A/B closed/reviewed; Tiers D–F, T81–T94, are
+separate implementer runs).**
+
+`LoginView.jsx`/`SetPasswordView.jsx` restyled: a page wrapper
+(`tokens.color.paper`, centred) around a card (`tokens.color.surface`, 1px
+`tokens.color.line` border, `tokens.radius.md`, `tokens.shadow.md`, 420px
+max-width, mined from `Sobremesa.dc.html:67-113`), a monogram badge
+(`MESSAGES.APP_TITLE.charAt(0)` — no new hardcoded brand string), font
+tokens (`heading`/`label`/`body`), styled inputs and submit button. No
+prop/handler/validation logic touched — pure restyle, same
+`useLoginForm.js`/`useSetPasswordForm.js` contracts. Login-only dashed
+footer note (new `MESSAGES.LOGIN_NO_REGISTRATION_NOTE` key, reinforces
+R29); `SetPasswordView`'s mismatch now uses the honey/honeySoft warning
+idiom already established by `ConnectionLostBanner.jsx` (T74); its Cancel
+button is now ghost-styled. No new `R<n>` (design.md §10.0).
+
+Both existing test files (`LoginView.test.jsx`, `SetPasswordView.test.jsx`)
+passed **unmodified** against the new markup — the implicit `<label>`
+wrapping each `<span>` + `<input>` pair still associates correctly, so no
+selector needed updating (T80a). `npx vitest run` 320/320 (unchanged — no
+test case added or removed, matching Tier B's "no new behavioural
+assertions" convention). `npx eslint .` / `npx prettier --check .` clean,
+`npx vite build` succeeds. `./init.sh` fully green: 808 backend (untouched),
+ruff/mypy/prettier/eslint/vitest. `tasks.md` T79/T80/T80a ticked. Full
+traceability: `progress/impl_frontend_spa.md` → "Tier C — auth screens
+(T79–T80a)". `feature_list.json` untouched — still `in_progress`. Reviewer
+next; Tiers D–F await separate implementer runs.
+
+## 2026-09-16 — feature 20 `frontend_spa`, reopened visual-fidelity pass, Tier B shared primitives (T72–T78) — DONE
+
+**Feature in progress: 20 — frontend_spa (Tier B only, T72–T78 of the
+2026-09-16 reopen; Tier A (T64–T71) closed/reviewed; Tiers C–F, T79–T94, are
+separate implementer runs).**
+
+`EmptyState.jsx` (dashed-border card), `LoadingState.jsx` (shimmer bar
+driven by new `hooks/useLoadingShimmer.js`), `ConfirmDialog.jsx` (backdrop +
+card + heading title), `ConnectionLostBanner.jsx` (honey/honeySoft palette +
+radius.sm), `WeekLabel.jsx` (two-tier: heading designation / label range),
+`WeekSwitcher.jsx` (restructured to arrow-flanked single label, mined from
+the prototype's real markup — see design decision below), `App.jsx`'s
+`headerStyle`/`navButtonStyle`/new `logoutButtonStyle`. No new `R<n>`
+(design.md §10.0, same as Tier A).
+
+Two disclosed design decisions (full detail in
+`progress/impl_frontend_spa.md` → "Reopen 2026-09-16 — Tier B"): (1)
+`LoadingState`'s shimmer needed a new hook (`useLoadingShimmer.js`) since
+none existed — applies the already-decided hook/component split, not a new
+architecture call; (2) `WeekSwitcher.jsx` was restructured, not just
+recolored — "circular... fixed square dimensions" can't hold two lines of
+text, so it now mirrors the prototype's real arrow-flanked control
+(`Sobremesa.dc.html:130-133`), `onSwitch` signature unchanged. Flagged, not
+fixed: `WeekSwitcher.jsx` has no dedicated test file (pre-existing gap,
+only indirect `WeekPlannerView.test.jsx` coverage) — task's own "no new
+behavioural assertions" scope kept it that way.
+
+One necessary collateral fix outside Tier B: `WeekLabel`'s two-tier
+restructure broke `ShoppingListView.test.jsx`'s one resync-scope assertion
+(stale selector, old joined-string query) — fixed the assertion only,
+`ShoppingListView.jsx` itself untouched.
+
+`npx vitest run` 317/317 (312→317), `npx eslint .` / `npx prettier --check .`
+clean, `npx vite build` succeeds. `./init.sh` fully green: 808 backend
+(untouched), ruff/mypy/prettier/eslint/vitest. `tasks.md` T72–T78 ticked.
+Full traceability: `progress/impl_frontend_spa.md` → "Reopen 2026-09-16 —
+Tier B, shared primitives (T72–T78)". `feature_list.json` untouched — still
+`in_progress`. Reviewer next; Tiers C–F await separate implementer runs.
+
+## 2026-09-16 — feature 20 `frontend_spa`, reopened visual-fidelity pass, Tier A foundation tokens (T64–T71) — DONE
+
+**Feature in progress: 20 — frontend_spa (Tier A only, T64–T71 of the
+2026-09-16 reopen; Tiers B–F, T72–T94, are separate implementer runs).**
+
+`frontend/src/tokens/fontFamily.js`, `borderRadius.js`, `shadow.js` (new,
+wired into `tokens/index.js`); `frontend/src/fonts.js` +
+`frontend/src/assets/fonts/*.woff2` (5 real, verified OFL Google Fonts
+binaries fetched from `fonts.gstatic.com` directly, not their CDN `<link>`
+— network egress happened to be available this run); `main.jsx` calls
+`loadSelfHostedFonts()` before mount; `index.html`'s `<body>` gets a
+minimal inline style; `App.jsx`'s two shell root `<div>`s share a new
+`rootShellStyle()` foundation. `eslint.config.js` gained `FontFace`/`URL`
+globals. No new `R<n>` (design.md §10.0). `npx vitest run` 312/312
+(unchanged — no test task named for this tier, matching the untested
+`colors.js`/`spacing.js`/`typography.js`/`breakpoints.js` pattern), `npx
+eslint .` clean, `npx prettier --check .` clean (one `--write` on
+`index.html`), `npx vite build` succeeds with 5 hashed font assets
+emitted. `./init.sh` fully green: 808 backend (untouched), ruff/mypy/
+prettier/eslint/vitest. One disclosed deviation: `fonts.js` uses `new
+URL(path, import.meta.url)` instead of design.md's literal
+`/src/assets/fonts/...` string — the literal path 404s after `vite
+build`; verified via a real production build. Full traceability:
+`progress/impl_frontend_spa.md` → "Reopen 2026-09-16 — Visual design
+system, Tier A foundation tokens (T64–T71)". `feature_list.json`
+untouched — still `in_progress`. Reviewer next; Tiers B–F await separate
+implementer runs.
+
+### 2026-09-16 — Fix round: Tier A reviewer finding (untested `fonts.js`) — DONE
+
+Reviewer found `frontend/src/fonts.js`'s `loadSelfHostedFonts()` (executable
+logic, unlike the untested constant-table files) had zero coverage — a
+hand-verified surviving mutant (dropping the `DM Mono` entry from `FACES`)
+left all tests green. Added `frontend/tests/fonts.test.js`: stubs
+`globalThis.FontFace`/`document.fonts.add`, asserts the concrete set of all
+5 `(family, weight)` registrations and that a rejected `.load()` is
+swallowed with no `unhandledRejection`. Mutant hand-verified **killed**
+(dropped `DM Mono`, test failed) then reverted — `git diff` confirms
+`fonts.js` itself unchanged. `npx vitest run` 314/314 (312→314). `./init.sh`
+fully green: 808 backend (untouched), ruff/mypy/prettier/eslint/vitest.
+`tasks.md`/`feature_list.json` untouched (review-fix, no new task).
+
+## 2026-09-14 — Local development tooling (not an SDD feature, no `feature_list.json` entry) — DONE
+
+Owner request: run DynamoDB, the `api` Lambda and the SPA locally, proxied;
+the `ai` service (Bedrock) stays deployed in real AWS, owner provides its
+connection details separately. Owner picked, via `AskUserQuestion`: (1)
+support **both** a local DynamoDB emulator and a real AWS table, switchable
+— not one or the other; (2) a lightweight custom local HTTP wrapper over
+`sam local`/other tooling.
+
+**Backend** (`backend/lambda_api/src/planner_api/`): `adapters/dynamo/_table.py`
+gained `DYNAMODB_ENDPOINT_URL` (`os.environ.get`, default `None` — a true
+no-op for the real deployment, boto3's own default). New `local_server.py`
+(stdlib `http.server.ThreadingHTTPServer` only, no new dependency): replicates
+production's two-step flow — matches the request against `routing.ROUTES`,
+skips `authorizer.py`'s `handle()` for `public` routes, otherwise calls it and
+maps Deny → `403`; on Allow builds the real API-Gateway-proxy event
+(`requestContext.authorizer` from the Allow policy's context, never from raw
+client headers) and calls the real `handler.py`'s `handle()`. `LOCAL_SERVER_PORT`
+(default `8080`); on startup, if `DYNAMODB_ENDPOINT_URL` is set, auto-provisions
+the table via the existing `create_data_table()` — a real failure there now
+fails startup loudly (`SystemExit(1)`), not silently. Run:
+`cd backend/lambda_api && uv run python -m planner_api.local_server`.
+
+**Frontend**: `frontend/vite.config.js` gained `server.proxy['/v1'] ->
+http://localhost:8080` so the SPA and API are same-origin in the browser
+(required by the session cookie's `SameSite=Lax`).
+
+**Root-level** (leader-authored, outside `backend/`/`frontend/`):
+`docker-compose.yml` (DynamoDB Local, port 8000, named volume) and
+`docs/local_development.md` (both modes documented; notes the accepted
+tradeoff that AI generation cannot round-trip when DynamoDB is
+local-emulator-only, since the real AWS `ai` Lambda can't reach it; notes the
+`localhost` vs `127.0.0.1` `Secure`-cookie browser quirk).
+
+**Review**: `review-risk` + `review-reliability` run in parallel on the new/
+changed files. Risk: clean, 2 low-priority suggestions only. Reliability: 1
+CRITICAL (startup DynamoDB-provisioning failure was silently swallowed past
+the legitimate "already exists" case — server would start and serve broken
+requests) + 2 WARNING (header case not normalized before `handler.py`'s
+exact-case `If-None-Match` lookup, silently breaking local 304s; route
+matching more permissive than production, silently accepting trailing/doubled
+slashes, plus a test misnamed for behavior it didn't actually test). One fix
+round closed all 4 (the 3 above + the cheap `_dispatch()` exception-hardening
+both reviewers flagged), with new regression tests for each. `./init.sh`
+green: **808 backend tests** (800 → 805 → 808), frontend vitest unaffected
+(312, untouched by this work). No `feature_list.json` or `specs/` change —
+this is dev tooling, not a product feature.
+
+**Addendum — VS Code debug config + one more live-only bug (2026-09-14):**
+Owner asked for a VS Code way to start everything in debug mode. Added
+(leader-authored, `.vscode/` is already gitignored so nothing here is
+committed): `.vscode/tasks.json` (`dynamodb: up` runs `docker compose up -d`;
+`frontend: dev server` runs `npm run dev` as a background task with a
+problem matcher watching for Vite's "ready in" line) and `.vscode/launch.json`
+(a `debugpy` config for `local_server.py`, pinned to
+`backend/.venv/Scripts/python.exe`, local-emulator env vars by default,
+`dynamodb: up` as its preLaunchTask; a `chrome` config for the SPA with
+`frontend: dev server` as its preLaunchTask; a compound "Debug: full stack"
+launching both).
+
+Live-testing this (Docker Desktop wasn't running in this sandbox, so the
+happy path couldn't be exercised, but the failure path could) surfaced a real
+bug the earlier static review passes couldn't have caught: with
+`DYNAMODB_ENDPOINT_URL` set and nothing listening, `main()`'s "fail loudly"
+startup guard from the earlier fix round never fired within any reasonable
+time — boto3's default connect timeout/retry policy made it hang
+indefinitely (still running past 45s when killed). Fixed in `_table.py`:
+`boto3.resource`/`boto3.client` now get a short `botocore.config.Config`
+(`connect_timeout=2, read_timeout=2, retries={"max_attempts": 1}`) **only**
+when `DYNAMODB_ENDPOINT_URL` is set — `config=None` (a true no-op) in
+real-AWS mode. Verified live twice independently (once by the fix agent,
+once by the leader): now fails deterministically in ~9-10s with a clear
+logged error and exit code 1, instead of hanging. `pytest -q -m "not aws"`
+808 passed (unchanged), ruff/mypy clean.
+
+**Addendum 2 — real DynamoDB Local happy-path bug found and fixed
+(2026-09-14, owner started Docker Desktop and asked to verify):**
+`docker compose up -d` with the original `docker-compose.yml` (`-sharedDb
+-dbPath ./data` + a named volume) started the container cleanly, but every
+*signed* DynamoDB request (list-tables, create-table) hung — not the
+connect-timeout case Addendum 1 fixed, a *read* timeout, because the
+container's non-root user couldn't write into the volume-mounted directory:
+`docker compose logs` showed a repeating `SQLiteException: [14] unable to
+open database file`, DynamoDB Local's internal SQLite queue stuck
+reincarnating every 3s. `curl` to the raw port answered instantly (proves the
+network/port mapping was always fine — only DB-backed operations were
+affected). Root-caused by diffing curl (fast 400, no DB access needed)
+against boto3 (hangs, needs DB access) plus reading the container logs.
+Fixed: `docker-compose.yml` now runs `-inMemory -sharedDb` instead of
+`-dbPath` + a volume — sidesteps the permission problem entirely, at the
+cost of data not surviving a container restart (acceptable for local dev;
+the table re-provisions itself on `local_server.py` startup anyway). Old
+orphaned volume removed. Verified live end-to-end after the fix:
+`list_tables` 0.38s, `local_server.py` starts clean and auto-provisions the
+`data` table, an unauthenticated `GET /v1/live-weeks` through it returns
+`403` as designed. DynamoDB Local container left running for the owner.
+
 ## 2026-09-14 — Reopen: features 16/27 GET /v1/rules recipeName bug, + feature 20 simplification — DONE
 
 Owner-authorized reopen (`done -> in_progress` on 16/27 already done by the

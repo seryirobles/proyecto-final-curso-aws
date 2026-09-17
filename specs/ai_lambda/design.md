@@ -12,9 +12,12 @@
 
 ## 0. Governing decisions already made elsewhere — not re-opened
 
-- Provider is **AWS Bedrock + Anthropic Claude** (`architecture.md` §1.2.6,
-  formerly P4). The Bedrock SDK path is `planner_ai`'s dependency closure only,
-  never `planner_api`'s (`architecture.md` §1.2 rule).
+- Provider is **AWS Bedrock + OpenAI GPT-5.6 Terra** (`architecture.md` §1.2.6,
+  formerly P4; originally Anthropic Claude, changed 2026-09-16 — owner lacks
+  Bedrock model-access permissions for Anthropic models). Invocation is the
+  `Converse` API via plain `boto3` — this model has no `InvokeModel` support
+  on `bedrock-runtime`. The Bedrock SDK path is `planner_ai`'s dependency
+  closure only, never `planner_api`'s (`architecture.md` §1.2 rule).
 - `api`→`ai` is the **one signed-off SQS queue** (`architecture.md` §1.2 /
   §1.2.5). No second queue, no third Lambda (`architecture.md` §6).
 - The **generation domain logic exists** and is not rewritten here:
@@ -52,7 +55,7 @@
 | `ports/generation_queue.py` | `planner_core/ports/` | **Feature 27 reopen** (§6): `claim` and `record_result` land there — `specs/rest_api_persistence_and_services/` R36–R39. This feature builds the `planner_ai` adapter side and consumes the ported signature. |
 
 `planner_ai` gains **`boto3`** as its first runtime dependency (Bedrock-runtime,
-DynamoDB and SSM are all boto3 clients — no separate package; `anthropic[bedrock]`
+DynamoDB and SSM are all boto3 clients — no separate package; `openai[bedrock]`
 rejected in §11). `moto` as a dev dependency for adapter contract tests. Both
 justified here per `architecture.md` §1.3 — this is the `ai` adapter closure.
 `planner_core` stays stdlib-only.
@@ -150,15 +153,16 @@ class AiProvider(Protocol):
 ```
 
 `BedrockAiProvider` (`planner_ai/adapters/bedrock.py`) renders the prompt value
-object to the Anthropic messages JSON, calls `bedrock-runtime:InvokeModel`,
-parses the JSON block the model returns into `RawRecipeOutput`. A parse failure
-raises a named adapter exception the use case catches as a per-slot failure
+object to plain text, calls `bedrock-runtime:Converse` (the provider-agnostic
+API; this model has no `InvokeModel` support), parses the JSON block the model
+returns into `RawRecipeOutput`. A parse failure raises a named adapter
+exception the use case catches as a per-slot failure
 (`GenerationFailureReason.INVALID_OUTPUT`, R4).
 
-`BEDROCK_MODEL_ID` — a module constant, `"anthropic.claude-sonnet-5"`
-(`architecture.md` §1.2.6, Bedrock's `anthropic.` prefix), overridable by the
-`AI_MODEL_ID` env var so the Haiku evaluation §1.2.6 anticipates needs no code
-change. See §10.
+`BEDROCK_MODEL_ID` — a module constant, `"global.openai.gpt-5.6-terra"`
+(`architecture.md` §1.2.6, the Global cross-Region inference profile id;
+`eu-south-2` has no In-Region/Geo profile for this model), overridable by the
+`AI_MODEL_ID` env var. See §10.
 
 ## 5. Cost-cap kill-switch (`NFR-AI-01`, resolves `G-81` — owner ruled 2026-09-06)
 
@@ -273,13 +277,19 @@ reconciles `rest_api_contract.md` §3.5 / L171.
 
 | Item | Value | Rationale |
 |---|---|---|
-| Bedrock model id | `anthropic.claude-sonnet-5`, `AI_MODEL_ID` env override | `architecture.md` §1.2.6 Sonnet-to-start; env override so the Haiku evaluation needs no code change |
+| Bedrock model id | `global.openai.gpt-5.6-terra`, `AI_MODEL_ID` env override | `architecture.md` §1.2.6 — the only inference profile `eu-south-2` supports for this model; env override keeps a future model/tier swap a config-only change |
 | Kill-switch store | SSM Parameter Store, `String` | `NFR-SEC-02` already names SSM; live-mutable by a feature-21 Lambda without a redeploy (env vars are not); one datastore concern kept out of the `data` table |
 | Kill-switch parameter name | `/planner/<env>/ai-generation-enabled` (`"true"` / `"false"`) | matches the `Project`/`Environment` tagging convention (`NFR-FIN-01`) |
 | Kill-switch cache TTL | ~5 s in-process | bounds SSM calls on a hot Lambda without making "disabled" take minutes to take effect |
 | `resultado` per-slot payload | `[{day, slot, status, message}]` JSON | smallest shape `GET /v1/generations/{id}` needs for per-slot display (`FR-AI-12`) |
 
 ## 11. Rejected alternatives
+
+**OpenAI's own `openai[bedrock]` SDK (Responses API) for the 2026-09-16 model
+swap.** OpenAI's Bedrock integration guide recommends it. Rejected: it is a
+provider-specific package — `Converse` via `boto3` (already a dependency)
+needs no new package and keeps the adapter closure provider-agnostic
+(`architecture.md` §1.2.6).
 
 **Cost cap as reserved-concurrency-0 / event-source-mapping disable only (no
 application code).** Cleanest kill — the worker never runs. Rejected as the
@@ -322,8 +332,9 @@ call the `discard` reopening already made.
   per-user counter attribute or read anywhere in `planner_ai` /
   `application/week_generation.py`, mirroring `test_no_ambient_time.py`'s
   technique (R19, R20).
-- **Bedrock adapter**: a recorded Anthropic-messages response fixture →
-  `RawRecipeOutput`; a malformed block → the named adapter exception. No live
+- **Bedrock adapter**: a recorded Converse response fixture (`output.message.
+  content`) → `RawRecipeOutput`; a malformed block → the named adapter
+  exception; a `ClientError` from `.converse()` → the same exception. No live
   call in the default gate; any real call is `@pytest.mark.aws`.
 - **Contract suites**: `WeekRepository` suite green against the `planner_ai`
   adapter (`moto`); `AiProvider`, `GenerationGate`, `claim`/`record_result`

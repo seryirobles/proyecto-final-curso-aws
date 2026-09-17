@@ -1699,3 +1699,747 @@ suite green.
 guardrails report the expected multi-`in_progress` state from the leader's
 reopen scope (16/20/27 at once), not a code issue. `feature_list.json`
 untouched — still `in_progress`, per the leader's reopen scope.
+
+## Reopen 2026-09-16 — Visual design system, Tier A foundation tokens (T64–T71) — DONE
+
+Scope: only `specs/frontend_spa/tasks.md`'s reopened "Tier A — foundation
+tokens" section (T64–T71). Tiers B–F (T72–T94) not touched, per explicit
+dispatch scope; `RecipeAuthoringForm.jsx`'s AI-tab stub untouched (feature
+28's territory, design.md §10.6).
+
+### Traceability
+
+| Task | File(s) | `R<n>` |
+|---|---|---|
+| T64 | `frontend/src/tokens/fontFamily.js` | No `R<n>` |
+| T65 | `frontend/src/assets/fonts/*.woff2` (5 files), `frontend/src/fonts.js` | No `R<n>` |
+| T66 | `frontend/src/main.jsx` | No `R<n>` |
+| T67 | `frontend/src/tokens/borderRadius.js` | No `R<n>` |
+| T68 | `frontend/src/tokens/shadow.js` | No `R<n>` |
+| T69 | `frontend/src/tokens/index.js` | No `R<n>` |
+| T70 | `frontend/index.html` | No `R<n>` |
+| T71 | `frontend/src/components/App.jsx` (`rootShellStyle()`) | No `R<n>` (extends T42/T58) |
+
+Design.md §10.0 is explicit: this reopen adds no new `FR-*`/`R<n>` — it
+elaborates feature 20's own already-approved acceptance criterion 3. No new
+test files: pure token modules (`fontFamily.js`, `borderRadius.js`,
+`shadow.js`) follow the established, untested pattern of `colors.js`/
+`spacing.js`/`typography.js`/`breakpoints.js` (none of the four has a test
+file either), and `tasks.md`'s own Tier A task list — unlike the paired
+implementation/test tasks in "Shared infrastructure" (T1/T2, T3/T4, ...) —
+names no test task for T64–T71.
+
+### Font assets — real files, not placeholders
+
+The 5 `.woff2` files are genuine, verified font binaries (`file(1)`
+confirms "Web Open Font Format (Version 2)" for each), fetched directly
+from `fonts.gstatic.com`'s "latin" static subset (covers the full Spanish
+accented-character range, U+0000-00FF) — a build-time asset fetch, not the
+runtime CDN `<link>` design.md §10.1/§10.7 rejects:
+
+- Baloo 2 600: `.../s/baloo2/v23/wXK0E3kTposypRydzVT08TS3JnAmtdjEyppo_lc.woff2`
+- Baloo 2 700: `.../s/baloo2/v23/wXK0E3kTposypRydzVT08TS3JnAmtdj9yppo_lc.woff2`
+- Nunito 400: `.../s/nunito/v32/XRXI3I6Li01BKofiOc5wtlZ2di8HDLshdTQ3jw.woff2`
+- Nunito 600: `.../s/nunito/v32/XRXI3I6Li01BKofiOc5wtlZ2di8HDGUmdTQ3jw.woff2`
+- DM Mono 400: `.../s/dmmono/v16/aFTU7PB1QTsUX8KYthqQBA.woff2`
+
+Network egress happened to be available in this sandbox run; had it not
+been, this task would have needed empty placeholder files with the
+limitation flagged, per the leader's dispatch brief. It was not needed.
+
+### Design deviation (disclosed)
+
+`fonts.js` resolves each asset via `new URL('./assets/fonts/....woff2',
+import.meta.url)` instead of design.md §10.1's literal
+`/src/assets/fonts/....woff2` string. The literal path only resolves in
+Vite's dev server (which serves `/src` directly); after `npx vite build`
+it 404s, since Vite hashes and relocates assets into `dist/assets/`.
+`new URL(..., import.meta.url)` is Vite's documented way to reference a
+static asset from JS and is what makes the build emit and hash the file at
+all — verified: `npx vite build` output lists all 5 hashed `.woff2` files
+under `dist/assets/`. Not an architecture decision (still a plain top-level
+JS module, no new dependency, no CSS surface) — a correctness fix to the
+pseudocode, disclosed rather than silently substituted.
+
+Also added `FontFace`/`URL` to `frontend/eslint.config.js`'s browser
+globals (both previously absent, would otherwise trip `no-undef`).
+
+### T71 — App.jsx root wrapper
+
+The current `App.jsx` has two structurally separate root `<div>`s (Admin
+shell, User shell), not literally one universal wrapper — the
+`loading`/`anonymous`/`passwordResetPending` branches return `LoadingState`/
+`LoginView`/`SetPasswordView` directly with no wrapping div at all.
+Restructuring those three branches into a shared wrapper is Tier C's job
+(T79/T80 style `LoginView`/`SetPasswordView` card containers), not this
+task's "extends T42/T58" scope, so left untouched. Applied the foundation
+(`fontFamily`, `background`, `color`, `minHeight`) to both existing
+wrappers via one shared `rootShellStyle()` helper instead of duplicating
+the object literal twice.
+
+### Test result
+
+`npx vitest run` — **312/312 passed, 47 files** (unchanged — no new test
+files, per the "no test task named" reasoning above). `npx eslint .`
+clean. `npx prettier --check .` clean (one `--write` on `index.html`,
+Prettier's own hex-case normalization). `npx vite build` succeeds, 5 hashed
+font assets emitted. `./init.sh` fully green: 808 backend (unchanged, this
+reopen touches no `backend/` file), ruff/mypy/prettier/eslint/vitest all
+pass. `feature_list.json` untouched — still `in_progress`. `tasks.md`
+T64–T71 ticked. Reviewer next; Tiers B–F remain for later implementer runs.
+
+## Reopen 2026-09-16 — Tier B, shared primitives (T72–T78)
+
+Scope: only `tasks.md`'s Tier B (T72–T78) — `EmptyState.jsx`,
+`LoadingState.jsx`, `ConfirmDialog.jsx`, `ConnectionLostBanner.jsx`,
+`WeekLabel.jsx`, `WeekSwitcher.jsx`, `App.jsx`'s nav shell (header +
+nav strip, not its root wrapper — Tier A's job, closed). No Tier C–F
+screen component touched.
+
+### Traceability
+
+| Task | File(s) | `R<n>` |
+|---|---|---|
+| T72 | `EmptyState.jsx` (dashed-border card), `LoadingState.jsx` (shimmer bar) + new `hooks/useLoadingShimmer.js` | R19, R20 |
+| T73 | `ConfirmDialog.jsx` (backdrop + card + heading title) | R18 |
+| T74 | `ConnectionLostBanner.jsx` (honey/honeySoft palette + radius.sm) | no new `R<n>` (consumes FR-RT-03) |
+| T75 | `WeekLabel.jsx` (two-tier: heading designation / label range) | R16, R21 |
+| T76 | `WeekSwitcher.jsx` (arrow-flanked, replaces the two labeled buttons) | R2, R3 |
+| T77 | `App.jsx` (`headerStyle`, `navButtonStyle`, new `logoutButtonStyle`) | no new `R<n>` (R30/R31/R32 already covered) |
+| T78 | `tests/components/LoadingState.test.jsx`, `ConfirmDialog.test.jsx`, `WeekLabel.test.jsx` (extended); `tests/hooks/useLoadingShimmer.test.js` (new) | R16, R18, R19, R20, R21 |
+
+`FR-*` reachability: unchanged from prior sections — this tier adds no new
+`R<n>` beyond what T72–T77's table already cites (all already reached in
+earlier `impl_frontend_spa.md` sections' `covers` accounting).
+
+### Design decisions (disclosed)
+
+**T72 — shimmer needs a hook, not component state.** The task's "driven by
+a state tick in the existing hook" has no literal referent — `LoadingState`
+never had a hook. Per `docs/conventions.md`'s hook/component split (state
+lives in a hook, component stays a pure function), added
+`frontend/src/hooks/useLoadingShimmer.js`: a `useState`/`useEffect`
+`globalThis.setInterval` toggling a boolean every 600ms (`globalThis.*`,
+not the bare global, matching `realtime/pollingEngine.js`'s existing
+convention so `eslint`'s browser-globals list needs no new entry). The
+shimmer bar is a `data-testid="loading-shimmer"` `<div>` swapping
+`tokens.color.surface2`/`surface` — no CSS `@keyframes` (no-stylesheet
+rule).
+
+**T73 — backdrop alpha.** `tokens.color.ink` has no alpha channel; used the
+same literal-rgba-derived-from-ink technique `tokens/shadow.js` already
+established (`rgba(40, 51, 31, 0.45)`, 3-line comment pointing at the
+precedent) rather than inventing a new token axis for one call site.
+
+**T76 — WeekSwitcher restructured, not just recolored.** "Circular arrow
+buttons... fixed square dimensions" cannot hold two lines of text (a
+designation heading plus a date-range label), which rules out simply
+rounding the two existing label-buttons' corners. Read the prototype's own
+markup for this exact control
+(`prototypes/wireframe/Sobremesa.dc.html:130-133`): two 30×30 icon buttons
+(SVG chevrons) flanking one two-line week label — mined for the layout
+*idiom*, not ported. Reimplemented as two `tokens.radius.pill`, fixed
+32×32 arrow buttons (plain `‹`/`›` glyphs — punctuation only, so the
+`test_all_strings_from_messages.test.js` mechanical scan's own
+`HAS_CONTENT` check does not flag them, and no `aria-label` was added, per
+`FR-UX-07`/G-62's accessibility-scope exclusion) flanking a single active
+`WeekLabel`. `onSwitch('current'|'next')`'s signature is unchanged — R2/R3
+behaviour is identical, only the affordance is redrawn. The muted arrow
+(`tokens.color.ink3`) is the one already pointing at the displayed week (a
+no-op click), mirroring the prototype's `prevCol`/`nextCol` logic.
+**Known gap, not fixed here:** `WeekSwitcher.jsx` had no dedicated test
+file before this reopen (only indirect coverage via
+`WeekPlannerView.test.jsx`'s button-count invariant, unaffected by this
+restructure since the button count is still 2). `tasks.md` T78 explicitly
+scopes this run to "no new behavioural assertions", so no new test file was
+added — flagged for the reviewer/owner rather than silently expanded.
+
+**T75 collateral fix (not a Tier C/D touch):** the two-tier `WeekLabel`
+restructure turns its old single joined-string render (`"<designation> ·
+<range>"`) into two separate text nodes, which breaks 2 pre-existing
+assertions that queried the old combined string:
+`WeekLabel.test.jsx` (in scope, updated) and
+`ShoppingListView.test.jsx`'s one resync-scope test (out of Tier B scope,
+but a mechanical selector fix only — `ShoppingListView.jsx` itself
+untouched, no shopping-list business logic touched).
+
+### Test result
+
+`npx vitest run` — **317/317 passed, 49 files** (312→317: 3 new cases in
+extended files + 2 in the new `useLoadingShimmer.test.js` file). `npx
+eslint .` clean, `npx prettier --check .` clean, `npx vite build` succeeds
+(6 chunks incl. fonts, no import-graph break). `./init.sh` fully green: 808
+backend (unchanged, no `backend/` file touched), ruff/mypy/prettier/eslint/
+vitest all pass. `feature_list.json` untouched — still `in_progress`.
+`tasks.md` T72–T78 ticked. Reviewer next; Tiers C–F (T79–T94) remain for
+later implementer runs.
+
+## Tier B — Fix round (5 reviewer findings) — 2026-09-16
+
+Scope: the 5 findings on T72–T78 above. No other section touched.
+
+| Finding | Fix | File(s) |
+|---|---|---|
+| 1 (blocking, no test file) | New `WeekSwitcher.test.jsx`: back/forward arrows call `onSwitch` with distinct args; `designation="next"` renders the next week's `WeekLabel` (designation + its own range), asserting the current week's designation/range are absent. | `tests/components/WeekSwitcher.test.jsx` (new) |
+| 2 (blocking, FR-UX-06/G-57 regression) | Added a `title` on each arrow button naming the target week's designation + Monday–Sunday range (`switchTitle()`, built from `MESSAGES.WEEK_LABEL_CURRENT`/`NEXT` + `formatDate`), covering the week not currently displayed. Confirmed `title` is not one of `test_no_extra_accessibility.test.js`'s banned patterns before adding it. | `WeekSwitcher.jsx` |
+| 3 (required, stray colour literal) | Added `tokens.color.backdrop` (`ink` at low alpha, same derivation `shadow.js` already uses) to `colors.js`; `ConfirmDialog.jsx` now references it instead of the inline `rgba(...)`. | `tokens/colors.js`, `ConfirmDialog.jsx` |
+| 4 (mechanical, comment ceiling) | Trimmed the 4-line comment to 1 line, same claim. | `tests/components/ShoppingListView.test.jsx` |
+| 5 (minor, dropped assertion) | Restored the date-range assertion alongside the designation assertion in the "next" case. | `tests/components/WeekLabel.test.jsx` |
+
+### Mutation-kill confirmation (hand-verified, both named mutants)
+
+Backed up `WeekSwitcher.jsx` by file copy (not `git checkout`, per
+mutation-testing safety convention) before applying either mutant.
+
+1. **`onSwitch('current')` → `onSwitch('next')`** on the back-arrow button:
+   new test's first assertion failed (`expected … called with … 'current' …
+   received … 'next'`). Reverted from backup; `git diff --stat` unchanged
+   (53 lines, matching pre-mutation).
+2. **`liveWeeks[designation]` → `liveWeeks.current`**: with `designation="next"`,
+   the rendered `WeekLabel` showed `"Semana próxima"` (designation prop
+   passed through unmutated) paired with the *current* week's range —
+   new test's `getByText(nextRange)` failed to find it. Exactly the
+   `FR-UX-06`/`G-57` hazard. Reverted from backup; `git diff --stat`
+   unchanged.
+
+### Test result
+
+`npx vitest run` — **320/320 passed, 51 files** (317 → 320: 3 new
+`WeekSwitcher.test.jsx` cases). `npx eslint .` clean, `npx prettier --check .`
+clean. `./init.sh` fully green — **808 backend pytest** (unchanged, no
+`backend/` file touched), ruff/mypy/prettier/eslint/vitest all pass.
+`feature_list.json` untouched — still `in_progress`. Tiers C–F (T79–T94)
+remain for later implementer runs.
+
+## Tier C — auth screens (T79–T80a) — 2026-09-16
+
+Scope: `LoginView.jsx`, `SetPasswordView.jsx` only (design.md §10.6,
+tasks.md T79/T80/T80a). No prop, handler, or validation logic touched —
+pure restyle, same `useLoginForm.js`/`useSetPasswordForm.js` contracts.
+
+Both views gained a page wrapper (`tokens.color.paper` background,
+`tokens.fontFamily.body`, centred) around a card (`tokens.color.surface`,
+1px `tokens.color.line` border, `tokens.radius.md`, `tokens.shadow.md`,
+max-width 420px) — mined from the prototype's card idiom
+(`Sobremesa.dc.html:67-113`). Per-file additions, cited where they extend
+beyond the tasks' literal "card + input/button" wording, per the
+leader's dispatch brief comparing against the prototype:
+
+- **Monogram badge**: a decorative, non-interactive 58×58 `tokens.radius.md`
+  square in `tokens.color.terra`, showing `MESSAGES.APP_TITLE.charAt(0)` —
+  derives its letter from the existing `APP_TITLE` key rather than adding a
+  new hardcoded brand string (verified: `test_all_strings_from_messages.
+  test.js` and `test_no_extra_accessibility.test.js` both pass unchanged,
+  since it is a JS expression, not a literal, and adds no ARIA/role/tabIndex).
+- **Font tokens**: `tokens.fontFamily.heading` (title), `.label` (field
+  labels, uppercase, mined from the prototype's `DM Mono` label style), `.body`
+  (inputs, buttons) — closing "no font tokens applied".
+- **Inputs**: `tokens.color.line2` border, `tokens.color.surface2`
+  background, `tokens.radius.sm`, `tokens.space.sm` padding.
+- **Submit button**: `tokens.color.terra` background, `tokens.radius.sm`,
+  `tokens.shadow.sm`, full width.
+- **Login-only dashed footer** (`Sobremesa.dc.html:84`): new
+  `MESSAGES.LOGIN_NO_REGISTRATION_NOTE` key ("Sin registro público. Las
+  cuentas las crea el administrador."), rendered under a `1px dashed
+  tokens.color.line` top border — reinforces R29 (no self-registration
+  control), no new `R<n>` (design.md §10.0, a copy/styling completion, not
+  new behaviour).
+- **`SetPasswordView`'s mismatch treatment**: reused the honey/honeySoft
+  warning idiom `ConnectionLostBanner.jsx` (T74) already established,
+  instead of inventing a new error colour outside the 18-token palette.
+- **Cancel button**: ghost-styled (`transparent` background, `tokens.color.
+  ink3` text, no border) instead of a bare default button.
+
+The generic `error` prop's paragraph (`{ color: tokens.color.ink }`, no
+padding) was left exactly as before in both views — that convention is
+identical across every other view in this feature (`AdminAccountsView`,
+`LibraryView`, `WeekPlannerView`, `SummaryView`, `ShoppingListView`,
+`RulesView`) and was not named as a Tier C gap; changing it here would be
+an uninvited cross-cutting change.
+
+### Traceability
+
+| Task | Covers | Test proof |
+|---|---|---|
+| T79 | R24, R25, R29 | `LoginView.test.jsx` (5 cases, unmodified selectors — username/password/submit render, password `type="password"`, error renders, no registration control) |
+| T80 | R26, R27, R28 | `SetPasswordView.test.jsx` (6 cases, unmodified selectors — renders only while pending, fields + Cancelar render, both fields masked, mismatch copy conditional, error renders, submit disabled while `canSubmit` is false) |
+| T80a | (test-only task) | Both test files ran unmodified against the new markup and passed — the implicit `<label>` wrapping still associates each `<span>` + `<input>` pair, so no selector needed updating |
+
+No new `R<n>` (design.md §10.0). Every `FR-AUTH-*` id these two views
+render (`FR-AUTH-02`, `-03`, `-04`, `-10`) was already covered by R24–R29
+before this run; this pass changes no behaviour those tests assert.
+
+### Test result
+
+`npx vitest run` **320/320** (unchanged — no test case added or removed,
+matching Tier B's "no new behavioural assertions" convention for a
+styling-only pass). `npx eslint .` / `npx prettier --check .` clean, `npx
+vite build` succeeds (69 modules, 6 asset chunks). `./init.sh` fully green:
+**808 backend** (untouched), ruff/mypy/prettier/eslint/vitest. `tasks.md`
+T79/T80/T80a ticked. `feature_list.json` untouched — still `in_progress`.
+Reviewer next; Tiers D–F (T81–T94) remain for later implementer runs.
+
+## Tier C — fix round 1 (3 reviewer findings) — 2026-09-16
+
+`onClick={submit}`/`onClick={cancel}` were already present in both files on
+disk (confirmed via `git diff` against the pre-Tier-C commit) — the wiring
+itself needed no code change, only regression coverage that would have
+caught it going missing.
+
+| Finding | Fix | File(s) |
+|---|---|---|
+| F1 (blocking) | Added a click-invokes-`submit` test. Hand-verified: deleting `onClick={submit}` failed the new test; restored, `git diff` shows only the restored line. | `LoginView.test.jsx` |
+| F2 (blocking) | Added a click-invokes-`cancel` test (Cancelar) plus a click-invokes-`submit` test for the same screen's submit button (was wired but untested, same class). Hand-verified the `cancel` mutant the same way. | `SetPasswordView.test.jsx` |
+| F3 (mechanical) | Trimmed both 4-line file headers back to 3, folding the §10.6 pointer onto the existing §5a line. | `LoginView.jsx`, `SetPasswordView.jsx` |
+
+### Test result
+
+`npx vitest run` — **323/323 passed, 50 files** (320 → 323: 3 new click
+regression tests). `./init.sh` fully green — **808 backend pytest**
+(unchanged), ruff/mypy/prettier/eslint/vitest all pass.
+
+## Tier D — planning screens (T81–T84) — 2026-09-16
+
+Scope: `WeekPlannerView.jsx`, `DaySlot.jsx`, `MealCard.jsx`,
+`RecipeDetailView.jsx` only. No handler/prop signature changed on any of
+the four files — verified by re-reading each diff for `onPromote`/
+`onClear`/`onOpenDetail`/`onAddCandidate` call sites after the restyle
+(the reopen's own named regression class, from Tier B's `WeekSwitcher` bug).
+
+### Traceability
+
+| Task | File(s) | Covers | Test proof |
+|---|---|---|---|
+| T81 | `DaySlot.jsx`, `WeekPlannerView.jsx` | R1, R19, R20 | `WeekPlannerView.test.jsx` (8 cases, unmodified) — 7×2 grid shape, empty-slot/loading text, promote/clear wiring all still assert against the restyled markup |
+| T82 (Partial) | `MealCard.jsx` | R4, R5 | Same file — click-openDetail-with-candidate and clear-not-promote assertions pass unmodified; IA badge not implemented, see gap below |
+| T83 | `RecipeDetailView.jsx` | R4, R5 | `RecipeDetailView.test.jsx` (4 cases, unmodified) — ingredient/tool/step/servings/time text nodes preserved verbatim, close-click wiring intact |
+| T84 | `frontend/tests/components/*`, `test_all_strings_from_messages.test.js` | (test-only) | See below |
+
+No new `R<n>` (design.md §10.0, same as every prior tier this reopen).
+
+### T82 gap: no "IA" badge (disclosed, not invented around)
+
+Checked three layers before concluding this is a real gap, not an oversight:
+
+1. `docs/rest_api_contract.md` §3.1/3.2 — a candidate's wire shape carries
+   only `author: {userId, displayName}`, always a human.
+2. `backend/core/src/planner_core/domain/candidate.py` —
+   `Candidate.author: str`, resolved via `resolve_author()` to a known user
+   id or `UNKNOWN_USER_ID`, never an AI sentinel.
+3. `frontend/src/hooks/useWeekPlanner.js` / `buildWeekViewModel` — no
+   `source`/`isAI` field passed through anywhere.
+
+The prototype's own model sets `meal.author = 'IA'` for generated content
+(`Sobremesa.dc.html:966`) — that idiom has no real-system equivalent to
+mine. Adding one needs either a backend data-model field (out of a
+frontend-only tier, and an architecture/data-model call not an
+implementer's to make) or a fabricated client heuristic (excluded by hard
+rule). Left undone; `tasks.md` T82 is `[x] (Partial)`.
+
+### Deliberately not added
+
+- **Backdrop-click-to-close** on `RecipeDetailView`'s new sheet (the
+  prototype's own `onClick={closeRecipe}` on the overlay): a new
+  interaction path, not a style, and outside "styling completion" scope.
+  The close button remains the only way to dismiss it.
+- **Icon-only** promote/clear/close buttons: kept the existing `MESSAGES`
+  text alongside each new SVG icon so every existing text-based test
+  assertion (and the handler it proves) needed zero changes.
+
+### Mechanical guard fix (T84)
+
+`test_all_strings_from_messages.test.js`'s R15 scan flagged the new inline
+`<svg>` icons' geometry attributes (`width`, `height`, `viewBox`, `fill`,
+`stroke`, `strokeWidth`, `strokeLinecap`, `strokeLinejoin`, `d`) as
+hardcoded prop text — a real false positive (these are the first `<svg>`
+elements anywhere in `frontend/src/components/`). Added all 9 to
+`SAFE_ATTR_NAMES`; no scan-logic change.
+
+### Test result
+
+`npx vitest run` **323/323** (unchanged count — `WeekPlannerView.test.jsx`
+and `RecipeDetailView.test.jsx` both passed **unmodified** against the
+restyled markup, matching T80a's outcome; no `DaySlot.test.jsx`/
+`MealCard.test.jsx` exist, same pre-existing gap as `WeekSwitcher.jsx`'s,
+Tier B). `npx eslint .` clean, `npx prettier --check .` clean (one
+`--write`, `RecipeDetailView.jsx`), `npx vite build` succeeds. `./init.sh`
+fully green: 808 backend (untouched), ruff/mypy/prettier/eslint/vitest.
+`tasks.md` T81/T83/T84 ticked, T82 ticked `(Partial)`. `feature_list.json`
+untouched — still `in_progress`. Reviewer next; Tiers E–F (T85–T94) remain
+for later implementer runs.
+
+## Tier D — fix round 1 (5 reviewer findings) — 2026-09-16
+
+Scope: the 5 findings on T81–T84 above (test-coverage gaps plus one doc
+correction). No other section touched; no handler/prop signature changed.
+
+| Finding | Fix | File(s) |
+|---|---|---|
+| 1 (surviving mutant) | New `DaySlot.test.jsx` test clicks the promote control, asserts `onPromote` called with `(day, slot, candidateId)`. | `DaySlot.test.jsx` (new) |
+| 2 (surviving mutant) | New `WeekPlannerView.test.jsx` test asserts all 7 `DAY_LABELS` entries render distinctly. | `WeekPlannerView.test.jsx` |
+| 3 (real coverage gap, T81's new logic) | New `DaySlot.test.jsx` covers all 3 `dayStatus()` branches plus the definitive-over-candidates precedence case. | `DaySlot.test.jsx` (new) |
+| 4 (surviving mutant) | New `RecipeDetailView.test.jsx` test clicks close in the error (no-recipe) branch, asserts `onClose` fires. | `RecipeDetailView.test.jsx` |
+| 5 (doc inaccuracy) | T84's note corrected: `dayStatus()` + 3 new message keys were real new behaviour, not covered by "no new behavioural assertions"; now records the fix round's added coverage. | `specs/frontend_spa/tasks.md` |
+
+### Mutation-kill confirmation (hand-applied, one at a time, each reverted after)
+
+1. `MealCard.jsx` promote button: `onClick={onPromote}` → `onClick={onClear}`.
+   `DaySlot.test.jsx`'s promote test failed (`expected … called with […] Number
+   of calls: 0`). Reverted.
+2. `WeekPlannerView.jsx`: `day={day.day}` → `day={1}` (hardcoded).
+   `WeekPlannerView.test.jsx`'s day-indexing test failed (`getByText` found
+   multiple elements for day 1's label, none for the others). Reverted.
+3. `DaySlot.jsx`'s `dayStatus()`: swapped the candidates/definitive check
+   order. Both the definitive-branch test and the precedence test failed.
+   Reverted.
+4. `RecipeDetailView.jsx`'s error branch: `onClose={onClose}` →
+   `onClose={() => {}}`. The new error-branch close test failed (`expected …
+   called 1 times, but got 0 times`). Reverted.
+
+`git diff` confirmed each of the 4 source files identical to before the
+hand-verify cycle (edit + exact revert, no residual change).
+
+### Test result
+
+`npx vitest run` — **330/330 passed, 53 files** (323 → 330: new
+`DaySlot.test.jsx` (5 cases — empty/candidates/definitive/precedence/promote),
+1 new `WeekPlannerView.test.jsx` day-indexing case, 1 new
+`RecipeDetailView.test.jsx` error-close case). `./init.sh` fully green:
+**808 backend pytest**
+(unchanged), ruff/mypy/prettier/eslint/vitest all pass. `feature_list.json`
+untouched — still `in_progress`.
+
+## Tier E — library (T85–T88) — 2026-09-16
+
+Scope: only `specs/frontend_spa/tasks.md`'s Tier E section (T85–T88,
+`design.md` §10.6) — `LibraryView.jsx`, `LibraryRecipePicker.jsx`,
+`LibraryFilters.jsx`, `RecipeAuthoringForm.jsx` (non-AI parts only). Built on
+the reviewer-approved Tiers A–D. No other component touched.
+
+### Traceability
+
+| Task | File(s) | `R<n>` |
+|---|---|---|
+| T85 (Partial) | `LibraryView.jsx`, `LibraryRecipePicker.jsx`, `domain/labels.js` (+`CATEGORY_COLORS`) | R9, R10, R11, R12 (styling completion, partial — see gap below) |
+| T86 | `LibraryFilters.jsx` | R11, R13, R14 (styling completion) |
+| T87 | `RecipeAuthoringForm.jsx` | R6, R7, R8 (styling completion) |
+| T88 | `tests/components/LibraryView.test.jsx`, `LibraryRecipePicker.test.jsx` (unmodified, passed as-is), `RecipeAuthoringForm.test.jsx` | same `R<n>` as above, plus the T22 stub-regression guard |
+
+`FR-*` reachability (this slice): `FR-LIB-01` (R9), `FR-LIB-02` (R10),
+`FR-LIB-04` (R11, R12, R13, R14), `FR-CAND-02` (R6), `FR-CAND-03` (R7, R8) —
+all already reached by R6–R14 per `requirements.md`'s existing coverage
+table (270-274); this reopen adds no new `R<n>` (design.md §10.0).
+
+## Tier E — Fix round 1 (4 reviewer findings) — 2026-09-16
+
+Scope: the 4 findings on T85–T88 above. No other section touched.
+
+| Finding | Fix | File(s) |
+|---|---|---|
+| 1 (blocking, surviving mutant) | Edit-button test now targets the second card (`[1]` → `RECIPE_B`), matching the sibling remove-button test's pattern. | `LibraryView.test.jsx` |
+| 2 (blocking, surviving mutant) | Select test converted to a second-card assertion (`[1]` → `'r-2'`). | `LibraryRecipePicker.test.jsx` |
+| 3 (blocking, test gap) | New test: `selectedRecipeId: 'r-2'` renders `LIBRARY_PICKER_SELECTED` once and `LIBRARY_PICKER_SELECT` on the other card. | `LibraryRecipePicker.test.jsx` |
+| 4 (mechanical, comment ceiling) | Trimmed 3 over-length banners to ≤3 lines, pointing at this section; also corrected `labels.js`'s `CATEGORY_COLORS` comment wording (6 categories, 5 accent tokens + `eggs`'s neutral `ink2`, not "5 solid accent tokens"). | `LibraryView.jsx`, `RecipeAuthoringForm.jsx`, `domain/labels.js` |
+
+### Mutation-kill confirmation (hand-applied, one at a time, each reverted after)
+
+1. `LibraryView.jsx`'s edit button: `openEdit(recipe)` → `openEdit(recipes[0])`. Corrected test failed (expected `RECIPE_B`, got `RECIPE_A`). Reverted.
+2. `LibraryRecipePicker.jsx`'s select button: `onSelect(recipe.id)` → `onSelect(recipes[0].id)`. Corrected test failed (expected `'r-2'`, got `'r-1'`). Reverted.
+3. `LibraryRecipePicker.jsx`: `isSelected = recipe.id === selectedRecipeId` → `isSelected = false`. New test failed (`LIBRARY_PICKER_SELECTED` not found). Reverted.
+
+All three `git diff`-confirmed byte-identical to pre-mutant state after revert.
+
+### Test result
+
+`npx vitest run` — **336/336 passed, 51 files** (335 → 336: 1 new
+selected-state test). `./init.sh` fully green: **808 backend pytest**
+(unchanged), ruff/mypy/prettier/eslint/vitest all pass.
+
+### Real gap found, disclosed not faked (T85, same wall as T82)
+
+The prototype's library card (`Sobremesa.dc.html:234`) has an `r.isAI`
+badge. No equivalent exists in the real system: `Recipe`
+(`backend/core/src/planner_core/domain/recipe.py`) carries no origin field,
+and neither `docs/data_model.md` nor `docs/rest_api_contract.md` persists
+one. Implementing it would mean inventing a data-model field — an
+architecture decision out of this run's authority. Left undone; `tasks.md`
+T85 marked `[x] (Partial)`, same convention as T82.
+
+### Design decisions (disclosed)
+
+1. **`CATEGORY_COLORS`** (new, `domain/labels.js`): a decorative-only
+   category-dot colour per `Recipe.category`, mined from the prototype's
+   `r.catColor`. Only 5 non-neutral accent tokens exist in the 18-colour
+   palette (`terra`, `terraDeep`, `olive`, `aub`, `honey`) for 6 categories —
+   `eggs` reuses the neutral `ink2`. Arbitrary assignment, no domain
+   meaning, stored as token *key names* (not resolved colours) so
+   `domain/labels.js` stays free of a `tokens` dependency.
+2. **Icon-with-text, not icon-only** (`LibraryView.jsx`'s edit/remove
+   buttons): same choice T82 made for `MealCard.jsx` — keeps every existing
+   `MESSAGES.LIBRARY_VIEW_EDIT`/`_REMOVE` text-based assertion valid with no
+   test change needed, and no accessibility surface added (R22 guard).
+3. **`RecipeAuthoringForm.jsx`'s `AiStubFields` left byte-for-byte
+   untouched** — only its tab-bar button (`tabStyle`, now branching on
+   `method === 'ai'` for the `--aub` accent) was touched, per design.md
+   §10.6 and feature 28's split.
+4. Prototype's separate "Ver" button (`Sobremesa.dc.html:239`) not added —
+   the existing click-the-name-to-open-detail handler already satisfies
+   `FR-MENU-05`; a second control doing the same thing would be new
+   behaviour, not styling completion.
+
+### Guard-file fix (mechanical, same class as T84)
+
+`test_all_strings_from_messages.test.js`'s `SAFE_ATTR_NAMES` extended with
+`cx`/`cy`/`r` — `LibraryFilters.jsx`'s new `SearchIcon`'s `<circle>` is the
+first use of these SVG geometry attributes in the codebase; same false
+positive T84 already fixed for `d`/`viewBox`/etc, not a new violation class.
+
+### Mutation-kill confirmation (hand-applied, one at a time, each reverted after)
+
+1. `LibraryView.jsx`'s remove icon-button: `remove(recipe.id)` →
+   `remove(recipes[0].id)` (always removes the first card regardless of
+   which one was clicked). The new "remove icon-button" test failed
+   (`expected … called with ['r-2']`, got `['r-1']`). Reverted, `git diff`
+   confirmed byte-identical.
+2. `RecipeAuthoringForm.jsx`'s tab click: `setMethod(m)` → hardcoded
+   `setMethod('scratch')`. The existing "clicking a tab calls setMethod"
+   test failed (`expected … called with ['ai']`, got `['scratch']`).
+   Reverted, `git diff` confirmed byte-identical.
+
+### Test result
+
+`npx vitest run` — **335/335 passed, 51 files** (330 → 335: 4 new
+`LibraryView.test.jsx` cases exercising the card-grid's openDetail/openEdit/
+remove/openAdd wiring directly via props — mirroring
+`WeekPlannerView.test.jsx`'s pattern, since the file's existing tests only
+exercised the real `useLibrary` hook, not per-recipe click wiring; 1 new
+`RecipeAuthoringForm.test.jsx` T88 guard case). Both `LibraryFilters.test.jsx`
+and `LibraryRecipePicker.test.jsx` passed **unmodified** against the new
+markup (same T80a/T84 outcome — the `<label>`-wraps-`<input>`/`<select>`
+structure was preserved through the restyle, so `getByLabelText`/
+`getByRole('textbox')`/`closest('select')` all still resolve). `npx eslint .`
+clean, `npx prettier --check .` clean (one `--write`, line-wrap only),
+`npx vite build` succeeds. `./init.sh` fully green: 808 backend (untouched),
+ruff/mypy/prettier/eslint/vitest. `tasks.md` T85 (Partial)/T86/T87/T88
+ticked. `feature_list.json` untouched — still `in_progress`. Reviewer next;
+Tier F (T89–T94) awaits a separate implementer run.
+
+## Tier F — summary / shopping / rules / admin (T89–T94) — 2026-09-16, closes the reopen
+
+Scope: only `specs/frontend_spa/tasks.md`'s Tier F section (T89–T94, lines
+529–557) — `SummaryView.jsx`, `ShoppingListView.jsx`, `RulesView.jsx`,
+`AdminAccountsView.jsx`/`AccountRow.jsx`, tests, and the closing `./init.sh`
+gate. Built on the reviewer-approved Tiers A–E. No `R<n>` added (design.md
+§10.0 applies unchanged — pure styling completion).
+
+`SummaryView.jsx`: each definitive-meal row (previously a bare `<p>`+button)
+became a card (`tokens.radius.md`/`shadow.sm`) carrying a "definitiva" pill
+reusing `MESSAGES.WEEK_PLANNER_DEFINITIVE_BADGE` and the same
+`olive`/`oliveSoft` treatment `MealCard.jsx` (T82) uses — unconditional here
+since every summary entry already is the definitive meal (`useSummary.js`'s
+`buildSummaryViewModel`, backend's `candidate.py` only ever returns
+definitives). `ShoppingListView.jsx`: `ItemRow`'s checked style gained
+`textDecoration: 'line-through'` alongside the existing `ink3` dimming; the
+unchecked/checked sections each got a card container
+(`sectionCardStyle`/`sectionHeadingStyle`/`listStyle` constants).
+`RulesView.jsx`: the three rule-type sections (count/pin/disable) each
+wrapped in a card (`ruleGroupStyle`/`ruleGroupHeadingStyle`) — grouping
+extends to the whole section (list + add-controls), not just the list, since
+splitting them would separate a rule's remove control from its own add form
+visually. `AdminAccountsView.jsx`/`AccountRow.jsx`: an avatar-circle
+(2-letter initials, `tokens.radius.pill`, colour keyed off `isAdminRow` —
+`terraSoft`/`terra` for Admin, `oliveSoft`/`olive` for User, no image
+dependency) plus role and pending-reset badges (`badgeStyle` constant,
+`tokens.radius.pill`), replacing the plain-text role/pending spans; each row
+also gained the same card shape as every other restyled list item this
+reopen (`tokens.radius.md`/`shadow.sm`).
+
+### R36/R37 — deliberately untouched
+
+Per the dispatch brief's explicit warning (this exact conditional class has
+surfaced real bugs twice already — Auth screens fix round 1 finding 1, the
+fail-open `isOwnRow` bug): `isOwnRow`/`isAdminRow` in `AccountRow.jsx` were
+read, never edited. `git diff` confirms zero `-`/`+` lines touching either
+`const` or either `{!isOwnRow ? ... }`/`{!isAdminRow ? ... }` guard — only
+style attributes changed around them. All 7 pre-existing `AccountRow.test.jsx`
+cases (including the fail-closed R37 case) pass **unmodified**.
+
+### Handler-binding self-check (T89–T92, mutation-class review)
+
+Every prior Tier F-adjacent round (D, E) found a restyle that silently
+rebound or dropped a handler's argument, always invisible to a test that
+only ever exercised row/item `[0]`. Checked via `git diff` before finishing:
+
+- `SummaryView.jsx`: `onClick={() => openDetail(slotState.candidate)}` —
+  no diff line at all (unaffected by the new wrapping `<div>`'s reindent).
+- `ShoppingListView.jsx`: `onToggle={setChecked}` / `onEdit={openEdit}` /
+  `onRemove={remove}` passed to `ItemRow` — identical before/after, only
+  reindented under the new section `<div>`.
+- `RulesView.jsx`: `onRemove={() => remove(rule)}` on every `RuleRow` call
+  site (×3) — identical before/after, only reindented.
+- `AdminAccountsView.jsx`/`AccountRow.jsx`: zero `onClick`/`onOpen*`/`onSave*`
+  diff lines anywhere — only `style` objects and the new avatar/badge markup
+  were added.
+
+### New tests: SECOND-row/item targeting (not selector-only, disclosed deviation)
+
+`tasks.md` T93's literal text ("selector-only ... no new behavioural
+assertions") is the general Tier F-adjacent convention; the dispatch brief
+overrode it for this tier specifically, citing the repeated wrong-row-bound
+mutant pattern. Added, per restyled list:
+
+- `SummaryView.test.jsx`: two meals in different day/slots; clicking the
+  second calls `openDetail` with that meal, not the first.
+- `ShoppingListView.test.jsx`: two unchecked items; edit/remove on the
+  second `getAllByText(...)` [1] target that item, not the first. Plus a
+  direct `textDecoration` assertion (checked vs. unchecked).
+- `RulesView.test.jsx`: two category-count rules; remove on the second
+  targets that rule, not the first.
+- `AdminAccountsView.test.jsx`: two accounts; rename and remove on the
+  second row each target that account, not the first.
+- `AccountRow.test.jsx`: one structural addition (avatar renders initials);
+  the 7 existing R33/R34/R36/R37 cases untouched.
+
+These test the same requirements (R5, R18, R34) already covered, just with a
+harder 2-row fixture — no new `R<n>` invented.
+
+### Guard-file fix (mechanical, R22)
+
+`AccountRow.jsx`'s avatar span initially carried `aria-hidden="true"` —
+`test_no_extra_accessibility.test.js` (R22, FR-UX-07/G-62: no accessibility
+work beyond browser defaults) correctly flagged it. Removed; the avatar is
+purely decorative styling, the same exclusion `MealCard.jsx`'s icons and
+`DaySlot.jsx`'s status pill already respect.
+
+### Test result
+
+`npx vitest run` — **343/343 passed, 51 files** (336 → 343: 7 new cases —
+1 Summary, 1 Shopping second-row + 1 strikethrough pair, 1 Rules, 2 Admin,
+1 AccountRow avatar). `./init.sh` fully green: 808 backend (untouched),
+ruff/mypy/prettier/eslint/vitest.
+
+### Traceability
+
+| Task | File(s) | `R<n>` |
+|---|---|---|
+| T89 | `SummaryView.jsx` | R5, R21 (styling completion) |
+| T90 | `ShoppingListView.jsx` | R19, R20, R21 (styling completion) |
+| T91 | `RulesView.jsx` | R12, R19 (styling completion) |
+| T92 | `AdminAccountsView.jsx`, `AccountRow.jsx` | R33, R34, R36, R37 (styling completion) |
+| T93 | `frontend/tests/components/{SummaryView,ShoppingListView,RulesView,AdminAccountsView,AccountRow}.test.jsx` | R5, R12, R18, R19, R20, R21, R33, R34, R36, R37 |
+| T94 | `./init.sh` gate | closes T64–T94 |
+
+`tasks.md` T89–T94 all ticked — **this closes the entire 2026-09-16
+reopen (T64–T94)**. `feature_list.json` untouched — still `in_progress`.
+Reviewer next.
+
+## Tier F — fix round (3 reviewer findings, test-coverage only) — 2026-09-16
+
+Scope: the 3 findings on T89–T94's Tier F review — all unguarded per-row
+binding gaps, no source change (reviewer confirmed the handler wiring is
+correct on disk).
+
+1. `AdminAccountsView.test.jsx`: two-account reset-password binding test
+   (R34) — second row's control calls `openReset(accountB)`, not `accountA`.
+2. `ShoppingListView.test.jsx`: two-unchecked-item checkbox binding test —
+   second row's checkbox calls `setChecked(itemB, true)`, not `itemA`.
+3. `RulesView.test.jsx`: pin-rule removal assertion (previously untested) +
+   a second-row `disabledDays` removal test (cheap, done per the brief).
+
+All 3 mutants named in the brief hand-applied, confirmed each new test fails
+alone, reverted (`git diff` on the 3 source files shows no change). `npx
+vitest run` — **347/347 passed, 51 files** (343 → 347). `./init.sh` fully
+green: 808 backend pytest, ruff/mypy/prettier/eslint/vitest all pass. This
+closes the entire T64–T94 reopen. Reviewer next.
+
+## Fix round: unstyled native controls (post-hoc, T64–T94 reopen) — 2026-09-16
+
+Owner's manual browser QA found a gap no automated review round caught: a
+card wrapper got Tier B–F styling but the native controls inside it stayed
+at browser defaults. Not a new task — no `tasks.md` T-number re-ticked, this
+corrects incomplete work already claimed under T89–T92.
+
+Audited beyond the brief's 4 named `<select>` files for the same "container
+styled, controls forgotten" shape across every component. Bugged:
+`RulesView.jsx`, `ShoppingListView.jsx`, `AccountRow.jsx`,
+`AdminAccountsView.jsx`. Already correct (checked, untouched):
+`RecipeAuthoringForm.jsx`, `LibraryFilters.jsx`, and every other component
+with a `<button>`/`<select>` (`LoginView`, `SetPasswordView`,
+`RecipeDetailView`, `LibraryRecipePicker`, `DaySlot`, `SummaryView`,
+`App.jsx`, `MealCard`, `WeekSwitcher`, `ConfirmDialog`, `LibraryView`).
+
+New `frontend/src/domain/controlStyles.js`: `selectStyle`/`inputStyle`
+(alias — prototype line 257-259 gives inputs and selects the same visual
+treatment), `primaryButtonStyle(disabled)`, `secondaryButtonStyle`,
+`ghostButtonStyle`, `dashedAddButtonStyle` (unused this round — no bare "add
+rule" affordance exists on the real `RulesView`, kept for the next file that
+needs it), `listResetStyle`, `listRowStyle`, `accentDotStyle(color)`.
+Consolidates a pattern 4 files needed near-identically, same reasoning as
+`RecipeAuthoringForm.jsx`'s pre-existing local `fieldInputStyle`/
+`rowButtonStyle` constants (left untouched, already correct).
+
+| Value matched | Prototype reference |
+|---|---|
+| `<select>`/input border/background/radius/padding/weight/outline | `Sobremesa.dc.html:257-259` (shopping draft form) |
+| Rule-group `<select>` | `Sobremesa.dc.html:314, 328-336, 350-354` |
+| Primary button (filled `terra`) | `Sobremesa.dc.html:260, 378` |
+| Secondary/cancel button (outlined `line-2`/`ink-2`) | `Sobremesa.dc.html:340` |
+| List row (flex, space-between, `border-top` separator) | `Sobremesa.dc.html:312` |
+| Rule-group accent dot | `Sobremesa.dc.html:310, 323, 347` |
+
+`RulesView.jsx`'s 3 rule-group headings wrapped in a new local
+`RuleGroupHeading` (accent dot + `<h3>`): category-count → `olive`,
+pin → `honey` (matches the prototype's "Comidas fijas de biblioteca" using
+honey), disabled-day → `aub` (exact match, prototype's "Días sin
+generación" group). No exact 9-10px radius or 7-11px padding token exists on
+the 4-step/6-step scales (`design.md` §10.2) — used `radius.sm` (8px) and
+`${space.xs} ${space.sm}` as the nearest fit; no new token added.
+
+Only `style` props added to elements that already had their `value`/
+`onChange`/`onClick`/`disabled` wiring — verified via `git diff` that no
+prop besides `style` changed on any control in the 4 files.
+
+| Requirement | Covered by |
+|---|---|
+| R12 (rules), R19 (rule-type sections) | `RulesView.jsx` restyle, `RulesView.test.jsx` unchanged (all 13 cases still pass — no selector relied on markup shape) |
+| R20, R21 (shopping list) | `ShoppingListView.jsx` restyle, `ShoppingListView.test.jsx` unchanged |
+| R33, R34, R36, R37 (admin accounts) | `AccountRow.jsx`/`AdminAccountsView.jsx` restyle, both test files unchanged (`AdminAccountsView.test.jsx`'s `container.querySelectorAll('input'|'select')` counts unaffected by `style`) |
+
+`npx vitest run` — **347/347 passed, 51 files** (unchanged — pure styling
+pass, no test added/removed/broken). `npx eslint .` clean, `npx prettier
+--check .` clean (one `--write` on `RulesView.jsx`). Backend untouched
+(verified `git status` shows zero `backend/` changes from this round).
+`feature_list.json`/`docs/` untouched. Reviewer next.
+
+## Native-controls restyle — Fix round 2 (8 reviewer findings) — 2026-09-16
+
+| Finding | Fix | File(s) |
+|---|---|---|
+| F1 (real gap, surviving mutant) | New test asserting `savePin` fires on that button's click, not `saveCategoryCount`/`saveDisabledDay`. | `RulesView.test.jsx` |
+| F2 (real gap, surviving mutant) | Extended the single-button disabled assertion to all 3 save buttons (category count, pin, disabled day). | `RulesView.test.jsx` |
+| F3 (real gap, closes FR-SHOP-08 hole) | New test: unchecking an already-checked item calls `setChecked(item, false)`. | `ShoppingListView.test.jsx` |
+| F4 | Local `listStyle` replaced by the shared `listResetStyle` import (already used elsewhere). | `ShoppingListView.jsx` |
+| F5 | New `cardStyle`/`headingStyle` exports; `ruleGroupStyle`/`sectionCardStyle`/`AccountRow`'s `<li>`/`AdminAccountsView`'s create-form `<div>` all spread `cardStyle`; `ruleGroupHeadingStyle`/`sectionHeadingStyle` both replaced by `headingStyle`; `AdminAccountsView`'s account-list `<ul>` spreads `listResetStyle`. | `controlStyles.js`, `RulesView.jsx`, `ShoppingListView.jsx`, `AccountRow.jsx`, `AdminAccountsView.jsx` |
+| F6 | Removed unused `dashedAddButtonStyle` (grep-confirmed zero call sites). | `controlStyles.js` |
+| F7 | Header banner cut to 3 lines, pointing at this section instead of reproducing the prototype line-number table (still in `design.md` §10.6) or the fix history (still above). | `controlStyles.js` |
+| F8 | Relocated `domain/controlStyles.js` → `tokens/controlStyles.js` — `domain/` is vocabulary only (`labels.js`'s role); no existing "shared component style" location outside `tokens/`, so it joins the other per-concern token files there. All 4 importers updated. | `tokens/controlStyles.js` (new), `domain/controlStyles.js` (removed) |
+
+### Mutation-kill confirmation (F1/F2/F3)
+
+Hand-applied each named mutant, confirmed the new/extended test failed, reverted:
+- F1: `onClick={savePin}` → `onClick={saveDisabledDay}` on the pin save
+  button — `'clicking the pin save button…'` failed (`called 0 times`).
+- F2: removed `disabled={!canSavePin}` from the pin save button —
+  `'every save control is disabled…'` failed (`expected false to be true`).
+- F3: `onToggle(item, !item.checked)` → `onToggle(item, true)` — `'toggling
+  an already-checked item…'` failed (asserted `false`, got `true`).
+
+### Test result
+
+`npx vitest run` — **349/349 passed, 51 files** (347 → 349: the 2 new tests
+above; F2 extends an existing test, no new file). `npx eslint .` clean,
+`npx prettier --check .` clean. `./init.sh` §5 fully green — 809 backend
+pytest (unchanged, no `backend/` file touched), ruff/mypy/prettier/eslint/
+vitest all pass. §4's "2 features in in_progress" failure (`ai_lambda`,
+`frontend_spa`) predates this round and is outside its scope — no
+`feature_list.json` edit made.

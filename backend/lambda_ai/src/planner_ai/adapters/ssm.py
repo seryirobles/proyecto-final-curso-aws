@@ -13,7 +13,7 @@ from typing import Any
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 
-_REGION = os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
+_REGION = os.environ.get("AWS_DEFAULT_REGION", "eu-south-2")
 _TTL_SECONDS = 5.0
 
 

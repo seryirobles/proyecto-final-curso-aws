@@ -1,8 +1,8 @@
-"""`AiProvider` backed by AWS Bedrock + Anthropic Claude (docs/architecture.md
-section 1.2.6). Renders the prompt value object to the Anthropic messages format,
-calls `bedrock-runtime:InvokeModel`, and parses the JSON recipe block the model
-returns into a `RawRecipeOutput`. A parse or call failure raises `AiProviderError`
-(specs/ai_lambda/design.md section 4)."""
+"""`AiProvider` backed by AWS Bedrock + OpenAI GPT-5.6 Terra (docs/architecture.md
+section 1.2.6). Renders the prompt value object to a plain text instruction,
+calls `bedrock-runtime:Converse` (this model has no InvokeModel support), and
+parses the JSON recipe block the model returns into a `RawRecipeOutput`. A parse
+or call failure raises `AiProviderError` (specs/ai_lambda/design.md section 4)."""
 
 from __future__ import annotations
 
@@ -17,13 +17,13 @@ from planner_core.domain.ai_output import RawIngredient, RawRecipeOutput
 from planner_core.domain.ai_prompt import CategoryPrompt, ReferencePrompt, SpecificationPrompt
 from planner_core.ports.ai_provider import AiPrompt, AiProviderError
 
-BEDROCK_MODEL_ID = "anthropic.claude-sonnet-5"
-"""Bedrock's `anthropic.` prefix; Sonnet to start (architecture.md section 1.2.6).
-Overridable by AI_MODEL_ID so the Haiku evaluation needs no code change (design.md section 10)."""
+BEDROCK_MODEL_ID = "global.openai.gpt-5.6-terra"
+"""The Global cross-Region inference profile id (architecture.md section
+1.2.6) - eu-south-2 supports no In-Region/Geo profile for this model.
+Overridable by AI_MODEL_ID (design.md section 10)."""
 
-_ANTHROPIC_VERSION = "bedrock-2023-05-31"
 _MAX_TOKENS = 4096
-_REGION = os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
+_REGION = os.environ.get("AWS_DEFAULT_REGION", "eu-south-2")
 
 
 def _model_id() -> str:
@@ -62,10 +62,12 @@ def _render(prompt: AiPrompt) -> str:
     return "\n".join(lines)
 
 
-def _extract_text(response_body: dict[str, Any]) -> str:
-    blocks = response_body.get("content", [])
+def _extract_text(response: dict[str, Any]) -> str:
+    # Converse's response shape: output.message.content is a list of blocks,
+    # each keyed by content type - not the Anthropic 'type'/'text' discriminator.
+    blocks = response.get("output", {}).get("message", {}).get("content", [])
     for block in blocks:
-        if block.get("type") == "text" and isinstance(block.get("text"), str):
+        if isinstance(block.get("text"), str):
             return str(block["text"])
     raise AiProviderError("no text block in the model response")
 
@@ -108,16 +110,13 @@ class BedrockAiProvider:
         return self._client or boto3.client("bedrock-runtime", region_name=_REGION)
 
     def generate(self, prompt: AiPrompt) -> RawRecipeOutput:
-        body = json.dumps(
-            {
-                "anthropic_version": _ANTHROPIC_VERSION,
-                "max_tokens": _MAX_TOKENS,
-                "messages": [{"role": "user", "content": _render(prompt)}],
-            }
-        )
+        messages = [{"role": "user", "content": [{"text": _render(prompt)}]}]
         try:
-            response = self._bedrock().invoke_model(modelId=_model_id(), body=body)
-            payload = json.loads(response["body"].read())
-        except (BotoCoreError, ClientError, ValueError, KeyError) as exc:
+            response = self._bedrock().converse(
+                modelId=_model_id(),
+                messages=messages,
+                inferenceConfig={"maxTokens": _MAX_TOKENS},
+            )
+        except (BotoCoreError, ClientError) as exc:
             raise AiProviderError(f"Bedrock invocation failed: {exc}") from exc
-        return _parse_recipe(_extract_text(payload))
+        return _parse_recipe(_extract_text(response))
