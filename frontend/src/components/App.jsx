@@ -33,10 +33,31 @@ const NAV_LABELS = {
   summary: MESSAGES.NAV_SUMMARY,
 };
 
+// T71 (design.md section 10.5): the app-wide type/colour foundation - every
+// descendant inherits fontFamily/color through normal CSS inheritance.
+function rootShellStyle() {
+  return {
+    fontFamily: tokens.fontFamily.body,
+    background: tokens.color.paper,
+    color: tokens.color.ink,
+    minHeight: '100vh',
+  };
+}
+
 function navButtonStyle(isActive) {
   return {
     padding: tokens.space.sm,
+    borderRadius: tokens.radius.pill,
     backgroundColor: isActive ? tokens.color.terraSoft : tokens.color.surface,
+    border: `1px solid ${tokens.color.line}`,
+  };
+}
+
+function logoutButtonStyle() {
+  return {
+    padding: tokens.space.sm,
+    borderRadius: tokens.radius.pill,
+    backgroundColor: tokens.color.surface,
     border: `1px solid ${tokens.color.line}`,
   };
 }
@@ -47,6 +68,9 @@ function headerStyle() {
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: tokens.space.md,
+    backgroundColor: tokens.color.surface,
+    borderBottom: `1px solid ${tokens.color.line}`,
+    boxShadow: tokens.shadow.sm,
   };
 }
 
@@ -79,12 +103,12 @@ export function App() {
 
   if (isAdmin) {
     return (
-      <div style={{ backgroundColor: tokens.color.paper, minHeight: '100vh' }}>
+      <div style={rootShellStyle()}>
         <div style={headerStyle()}>
           <h1 style={{ margin: tokens.space.none, color: tokens.color.ink }}>
             {MESSAGES.APP_TITLE}
           </h1>
-          <button type="button" onClick={logout}>
+          <button type="button" onClick={logout} style={logoutButtonStyle()}>
             {MESSAGES.APP_LOGOUT}
           </button>
         </div>
@@ -106,12 +130,12 @@ export function App() {
     }[activeView].connectionLost;
 
     return (
-      <div style={{ backgroundColor: tokens.color.paper, minHeight: '100vh' }}>
+      <div style={rootShellStyle()}>
         <div style={headerStyle()}>
           <h1 style={{ margin: tokens.space.none, color: tokens.color.ink }}>
             {MESSAGES.APP_TITLE}
           </h1>
-          <button type="button" onClick={logout}>
+          <button type="button" onClick={logout} style={logoutButtonStyle()}>
             {MESSAGES.APP_LOGOUT}
           </button>
         </div>

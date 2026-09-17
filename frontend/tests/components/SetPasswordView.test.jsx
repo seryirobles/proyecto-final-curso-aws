@@ -2,7 +2,7 @@
 // T53 (R26): renders only while status === "passwordResetPending"; new +
 // confirm fields, mismatch copy, inline error, Cancelar control.
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { SetPasswordView } from '../../src/components/SetPasswordView.jsx';
 import { MESSAGES } from '../../src/messages/index.js';
 
@@ -71,5 +71,23 @@ describe('SetPasswordView', () => {
     render(<SetPasswordView {...baseProps({ canSubmit: false })} />);
 
     expect(screen.getByText(MESSAGES.SET_PASSWORD_SUBMIT).closest('button').disabled).toBe(true);
+  });
+
+  it('clicking the submit control invokes submit when enabled', () => {
+    const submit = vi.fn();
+    render(<SetPasswordView {...baseProps({ canSubmit: true, submit })} />);
+
+    fireEvent.click(screen.getByText(MESSAGES.SET_PASSWORD_SUBMIT));
+
+    expect(submit).toHaveBeenCalledTimes(1);
+  });
+
+  it('clicking Cancelar invokes cancel (R28: the only way out of a forced reset)', () => {
+    const cancel = vi.fn();
+    render(<SetPasswordView {...baseProps({ cancel })} />);
+
+    fireEvent.click(screen.getByText(MESSAGES.SET_PASSWORD_CANCEL));
+
+    expect(cancel).toHaveBeenCalledTimes(1);
   });
 });

@@ -135,4 +135,23 @@ describe('SummaryView', () => {
 
     expect(screen.getByText('No se pudo cargar.')).not.toBeNull();
   });
+
+  it('with two meals, clicking the second one opens ITS detail, not the first (T89 card restyle)', () => {
+    const mealA = candidate();
+    const mealB = { ...candidate(), id: 'c2', recipe: { ...candidate().recipe, name: 'Tortilla' } };
+    const days = emptyDays();
+    days[0].slots[0] = { day: 1, slot: 1, candidate: mealA };
+    days[4].slots[1] = { day: 5, slot: 2, candidate: mealB };
+    const openDetail = vi.fn();
+
+    render(
+      <SummaryView
+        {...baseProps({ summary: { weekId: '2026-W34', days, isEmpty: false }, openDetail })}
+      />,
+    );
+    fireEvent.click(screen.getByText('Tortilla'));
+
+    expect(openDetail).toHaveBeenCalledWith(mealB);
+    expect(openDetail).not.toHaveBeenCalledWith(mealA);
+  });
 });

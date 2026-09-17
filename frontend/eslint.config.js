@@ -30,6 +30,8 @@ export default [
         fetch: 'readonly',
         Event: 'readonly',
         Headers: 'readonly',
+        FontFace: 'readonly',
+        URL: 'readonly',
       },
     },
     settings: {

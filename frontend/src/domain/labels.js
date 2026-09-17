@@ -25,6 +25,18 @@ export const CATEGORY_LABELS = {
   eggs: 'Huevos',
 };
 
+// Decorative-only category dot (T85, design.md 10.6) - arbitrary assignment
+// across 6 categories (5 accent tokens + `eggs`'s neutral `ink2`), no domain
+// meaning; a category is domain vocabulary, not a design token.
+export const CATEGORY_COLORS = {
+  meat: 'terra',
+  fish: 'aub',
+  carbohydrate: 'honey',
+  legume: 'olive',
+  vegetable: 'terraDeep',
+  eggs: 'ink2',
+};
+
 // Intl has no concept of "lunch/dinner" (design.md section 3) - the one pair
 // of literal labels the fixed slot wire codes need.
 export const SLOT_LABELS = {

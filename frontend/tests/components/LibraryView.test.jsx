@@ -25,6 +25,35 @@ function fetchResponse(recipes) {
   };
 }
 
+// Direct-props baseline (T85 card-grid restyle), mirroring
+// WeekPlannerView.test.jsx's pattern - proves each card's click handlers
+// still reach the right recipe after the plain-list -> card-grid rewrite.
+const RECIPE_A = { id: 'r-1', name: 'Lentejas al curry', category: 'legume', author: 'Marta' };
+const RECIPE_B = { id: 'r-2', name: 'Tortilla', category: 'eggs', author: 'Diego' };
+
+function baseProps(overrides = {}) {
+  return {
+    recipes: [RECIPE_A, RECIPE_B],
+    filters: { name: '', category: '' },
+    setName: vi.fn(),
+    setCategory: vi.fn(),
+    isLoading: false,
+    isAuthoringOpen: false,
+    authoring: {},
+    openAdd: vi.fn(),
+    openEdit: vi.fn(),
+    closeAuthoring: vi.fn(),
+    remove: vi.fn(),
+    confirm: { pending: null, confirm: vi.fn(), cancel: vi.fn() },
+    openDetail: vi.fn(),
+    detail: null,
+    detailError: null,
+    closeDetail: vi.fn(),
+    error: null,
+    ...overrides,
+  };
+}
+
 describe('LibraryView', () => {
   it('keeps the search input mounted and its value intact across every keystroke (F1)', async () => {
     globalThis.fetch = vi
@@ -72,5 +101,41 @@ describe('LibraryView', () => {
     render(<Wrapper />);
 
     expect(await screen.findByText(MESSAGES.LIBRARY_VIEW_EMPTY)).not.toBeNull();
+  });
+
+  it('clicking a card name calls openDetail with that recipe (T85 card-grid restyle)', () => {
+    const openDetail = vi.fn();
+    render(<LibraryView {...baseProps({ openDetail })} />);
+
+    fireEvent.click(screen.getByText('Tortilla'));
+
+    expect(openDetail).toHaveBeenCalledWith(RECIPE_B);
+  });
+
+  it('clicking a card edit icon-button calls openEdit with that recipe (T85 card-grid restyle)', () => {
+    const openEdit = vi.fn();
+    render(<LibraryView {...baseProps({ openEdit })} />);
+
+    fireEvent.click(screen.getAllByText(MESSAGES.LIBRARY_VIEW_EDIT)[1]);
+
+    expect(openEdit).toHaveBeenCalledWith(RECIPE_B);
+  });
+
+  it('clicking a card remove icon-button calls remove with that recipe id (T85 card-grid restyle)', () => {
+    const remove = vi.fn();
+    render(<LibraryView {...baseProps({ remove })} />);
+
+    fireEvent.click(screen.getAllByText(MESSAGES.LIBRARY_VIEW_REMOVE)[1]);
+
+    expect(remove).toHaveBeenCalledWith('r-2');
+  });
+
+  it('clicking "Añadir receta" calls openAdd, unaffected by the T85 restyle', () => {
+    const openAdd = vi.fn();
+    render(<LibraryView {...baseProps({ openAdd })} />);
+
+    fireEvent.click(screen.getByText(MESSAGES.LIBRARY_VIEW_ADD));
+
+    expect(openAdd).toHaveBeenCalledTimes(1);
   });
 });

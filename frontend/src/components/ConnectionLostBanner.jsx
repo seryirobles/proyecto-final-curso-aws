@@ -11,8 +11,11 @@ export function ConnectionLostBanner({ connectionLost }) {
   return (
     <p
       style={{
+        fontFamily: tokens.fontFamily.body,
         backgroundColor: tokens.color.honeySoft,
         color: tokens.color.ink,
+        borderLeft: `4px solid ${tokens.color.honey}`,
+        borderRadius: tokens.radius.sm,
         padding: tokens.space.md,
         margin: tokens.space.none,
       }}

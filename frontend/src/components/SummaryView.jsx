@@ -9,6 +9,10 @@ import { LoadingState } from './LoadingState.jsx';
 import { DAY_LABELS, SLOT_LABELS } from '../domain/labels.js';
 import { MESSAGES } from '../messages/index.js';
 
+// T89 (design.md 10.6): per-meal card shape + a "definitive" pill matching
+// MealCard's (T82) treatment - every entry here already is the definitive
+// meal, so the badge is unconditional rather than gated on `isDefinitive`.
+
 export function SummaryView({
   week,
   summary,
@@ -24,7 +28,15 @@ export function SummaryView({
   return (
     <div>
       {error ? <p style={{ color: tokens.color.ink, padding: tokens.space.md }}>{error}</p> : null}
-      <h2 style={{ margin: tokens.space.none }}>{MESSAGES.SUMMARY_VIEW_TITLE}</h2>
+      <h2
+        style={{
+          margin: tokens.space.none,
+          fontFamily: tokens.fontFamily.heading,
+          fontSize: tokens.fontSize.xl,
+        }}
+      >
+        {MESSAGES.SUMMARY_VIEW_TITLE}
+      </h2>
       {week ? <WeekLabel designation="current" monday={week.monday} sunday={week.sunday} /> : null}
       {summary.isEmpty ? (
         <EmptyState message={MESSAGES.SUMMARY_VIEW_EMPTY} />
@@ -38,17 +50,38 @@ export function SummaryView({
           }}
         >
           {summary.days.map((day) => (
-            <div
-              key={day.day}
-              style={{ padding: tokens.space.sm, border: `1px solid ${tokens.color.line2}` }}
-            >
-              <p style={{ margin: tokens.space.none, color: tokens.color.ink }}>
+            <div key={day.day} style={{ padding: tokens.space.sm }}>
+              <p
+                style={{
+                  margin: tokens.space.none,
+                  fontFamily: tokens.fontFamily.heading,
+                  color: tokens.color.ink,
+                }}
+              >
                 {DAY_LABELS[day.day]}
               </p>
               {day.slots.map((slotState) =>
                 slotState.candidate ? (
-                  <div key={slotState.slot} style={{ marginTop: tokens.space.sm }}>
-                    <p style={{ margin: tokens.space.none, color: tokens.color.ink2 }}>
+                  <div
+                    key={slotState.slot}
+                    style={{
+                      marginTop: tokens.space.sm,
+                      padding: tokens.space.sm,
+                      backgroundColor: tokens.color.surface,
+                      border: `1px solid ${tokens.color.line}`,
+                      borderRadius: tokens.radius.md,
+                      boxShadow: tokens.shadow.sm,
+                    }}
+                  >
+                    <p
+                      style={{
+                        margin: tokens.space.none,
+                        fontFamily: tokens.fontFamily.label,
+                        fontSize: tokens.fontSize.xs,
+                        textTransform: 'uppercase',
+                        color: tokens.color.ink2,
+                      }}
+                    >
                       {SLOT_LABELS[slotState.slot]}
                     </p>
                     <button
@@ -59,10 +92,26 @@ export function SummaryView({
                         backgroundColor: 'transparent',
                         border: 'none',
                         padding: tokens.space.none,
+                        fontFamily: tokens.fontFamily.heading,
+                        fontSize: tokens.fontSize.sm,
                       }}
                     >
                       {slotState.candidate.recipe.name}
                     </button>
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        marginTop: tokens.space.xs,
+                        fontSize: tokens.fontSize.xs,
+                        fontWeight: 700,
+                        color: tokens.color.olive,
+                        backgroundColor: tokens.color.oliveSoft,
+                        borderRadius: tokens.radius.pill,
+                        padding: `${tokens.space.xs} ${tokens.space.sm}`,
+                      }}
+                    >
+                      {MESSAGES.WEEK_PLANNER_DEFINITIVE_BADGE}
+                    </span>
                   </div>
                 ) : null,
               )}

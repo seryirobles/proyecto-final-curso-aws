@@ -5,6 +5,28 @@
 import { tokens } from '../tokens/index.js';
 import { MESSAGES } from '../messages/index.js';
 import { ROLE_LABELS } from '../domain/labels.js';
+import {
+  inputStyle,
+  primaryButtonStyle,
+  secondaryButtonStyle,
+  ghostButtonStyle,
+  cardStyle,
+} from '../tokens/controlStyles.js';
+
+// T92 (design.md 10.6): avatar-circle (initials, no image dependency) plus
+// role/status pill badges. Purely presentational - the R36/R37 gating below
+// is untouched.
+function initials(username) {
+  return username.slice(0, 2).toUpperCase();
+}
+
+const badgeStyle = {
+  display: 'inline-block',
+  fontSize: tokens.fontSize.xs,
+  fontWeight: 700,
+  borderRadius: tokens.radius.pill,
+  padding: `${tokens.space.xs} ${tokens.space.sm}`,
+};
 
 export function AccountRow({
   account,
@@ -31,11 +53,52 @@ export function AccountRow({
   const isAdminRow = account.role === 'Admin'; // R36
 
   return (
-    <li style={{ padding: tokens.space.sm, display: 'flex', gap: tokens.space.sm }}>
+    <li
+      style={{
+        ...cardStyle,
+        display: 'flex',
+        alignItems: 'center',
+        gap: tokens.space.sm,
+      }}
+    >
+      <span
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '2.25rem',
+          height: '2.25rem',
+          borderRadius: tokens.radius.pill,
+          backgroundColor: isAdminRow ? tokens.color.terraSoft : tokens.color.oliveSoft,
+          color: isAdminRow ? tokens.color.terra : tokens.color.olive,
+          fontFamily: tokens.fontFamily.label,
+          fontSize: tokens.fontSize.xs,
+          fontWeight: 700,
+          flex: 'none',
+        }}
+      >
+        {initials(account.username)}
+      </span>
       <span>{account.username}</span>
-      <span>{ROLE_LABELS[account.role] ?? account.role}</span>
+      <span
+        style={{
+          ...badgeStyle,
+          color: isAdminRow ? tokens.color.terra : tokens.color.olive,
+          backgroundColor: isAdminRow ? tokens.color.terraSoft : tokens.color.oliveSoft,
+        }}
+      >
+        {ROLE_LABELS[account.role] ?? account.role}
+      </span>
       {account.passwordResetRequired ? (
-        <span style={{ color: tokens.color.ink2 }}>{MESSAGES.ADMIN_ACCOUNTS_PENDING_BADGE}</span>
+        <span
+          style={{
+            ...badgeStyle,
+            color: tokens.color.honey,
+            backgroundColor: tokens.color.honeySoft,
+          }}
+        >
+          {MESSAGES.ADMIN_ACCOUNTS_PENDING_BADGE}
+        </span>
       ) : null}
 
       {isRenaming ? (
@@ -44,16 +107,22 @@ export function AccountRow({
             type="text"
             value={renameDraft}
             onChange={(e) => onRenameDraftChange(e.target.value)}
+            style={inputStyle}
           />
-          <button type="button" onClick={onSaveRename} disabled={!canSaveRename}>
+          <button
+            type="button"
+            onClick={onSaveRename}
+            disabled={!canSaveRename}
+            style={primaryButtonStyle(!canSaveRename)}
+          >
             {MESSAGES.ADMIN_ACCOUNTS_RENAME}
           </button>
-          <button type="button" onClick={onCancelRename}>
+          <button type="button" onClick={onCancelRename} style={secondaryButtonStyle}>
             {MESSAGES.ADMIN_ACCOUNTS_CANCEL}
           </button>
         </>
       ) : (
-        <button type="button" onClick={onOpenRename}>
+        <button type="button" onClick={onOpenRename} style={secondaryButtonStyle}>
           {MESSAGES.ADMIN_ACCOUNTS_RENAME}
         </button>
       )}
@@ -65,23 +134,29 @@ export function AccountRow({
               type="password"
               value={resetDraft}
               onChange={(e) => onResetDraftChange(e.target.value)}
+              style={inputStyle}
             />
-            <button type="button" onClick={onSaveReset} disabled={!canSaveReset}>
+            <button
+              type="button"
+              onClick={onSaveReset}
+              disabled={!canSaveReset}
+              style={primaryButtonStyle(!canSaveReset)}
+            >
               {MESSAGES.ADMIN_ACCOUNTS_RESET_PASSWORD}
             </button>
-            <button type="button" onClick={onCancelReset}>
+            <button type="button" onClick={onCancelReset} style={secondaryButtonStyle}>
               {MESSAGES.ADMIN_ACCOUNTS_CANCEL}
             </button>
           </>
         ) : (
-          <button type="button" onClick={onOpenReset}>
+          <button type="button" onClick={onOpenReset} style={secondaryButtonStyle}>
             {MESSAGES.ADMIN_ACCOUNTS_RESET_PASSWORD}
           </button>
         )
       ) : null}
 
       {!isAdminRow ? (
-        <button type="button" onClick={onRemove}>
+        <button type="button" onClick={onRemove} style={ghostButtonStyle}>
           {MESSAGES.ADMIN_ACCOUNTS_REMOVE}
         </button>
       ) : null}

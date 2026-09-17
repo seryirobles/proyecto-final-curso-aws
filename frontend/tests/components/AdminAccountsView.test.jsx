@@ -2,7 +2,7 @@
 // T57 (R19, R20, R33, R35): loading/empty states, the create form's exactly
 // two fields (no role selector), a fixture list renders one row per account.
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { AdminAccountsView } from '../../src/components/AdminAccountsView.jsx';
 import { MESSAGES } from '../../src/messages/index.js';
 
@@ -91,5 +91,52 @@ describe('AdminAccountsView', () => {
     render(<AdminAccountsView {...baseProps({ canCreate: false })} />);
 
     expect(screen.getByText(MESSAGES.ADMIN_ACCOUNTS_CREATE).closest('button').disabled).toBe(true);
+  });
+
+  it('with two accounts, opening rename on the SECOND row targets that account (T92 card restyle)', () => {
+    const openRename = vi.fn();
+    const accountA = account('u-1', { username: 'ana' });
+    const accountB = account('u-2', { username: 'bea' });
+    render(<AdminAccountsView {...baseProps({ accounts: [accountA, accountB], openRename })} />);
+
+    const renameButtons = screen.getAllByText(MESSAGES.ADMIN_ACCOUNTS_RENAME);
+    fireEvent.click(renameButtons[1]);
+
+    expect(openRename).toHaveBeenCalledWith(accountB);
+    expect(openRename).not.toHaveBeenCalledWith(accountA);
+  });
+
+  it('with two accounts, removing the SECOND row targets that account, not the first', () => {
+    const remove = vi.fn();
+    const accountA = account('u-1', { username: 'ana' });
+    const accountB = account('u-2', { username: 'bea' });
+    render(<AdminAccountsView {...baseProps({ accounts: [accountA, accountB], remove })} />);
+
+    const removeButtons = screen.getAllByText(MESSAGES.ADMIN_ACCOUNTS_REMOVE);
+    fireEvent.click(removeButtons[1]);
+
+    expect(remove).toHaveBeenCalledWith(accountB);
+    expect(remove).not.toHaveBeenCalledWith(accountA);
+  });
+
+  it('with two accounts, opening reset-password on the SECOND row targets that account, not the first (R34)', () => {
+    const openReset = vi.fn();
+    const accountA = account('u-1', { username: 'ana' });
+    const accountB = account('u-2', { username: 'bea' });
+    render(
+      <AdminAccountsView
+        {...baseProps({
+          accounts: [accountA, accountB],
+          actingUserId: 'admin-other',
+          openReset,
+        })}
+      />,
+    );
+
+    const resetButtons = screen.getAllByText(MESSAGES.ADMIN_ACCOUNTS_RESET_PASSWORD);
+    fireEvent.click(resetButtons[1]);
+
+    expect(openReset).toHaveBeenCalledWith(accountB);
+    expect(openReset).not.toHaveBeenCalledWith(accountA);
   });
 });

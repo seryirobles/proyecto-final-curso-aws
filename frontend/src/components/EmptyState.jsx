@@ -5,5 +5,18 @@
 import { tokens } from '../tokens/index.js';
 
 export function EmptyState({ message }) {
-  return <p style={{ color: tokens.color.ink2, padding: tokens.space.md }}>{message}</p>;
+  return (
+    <p
+      style={{
+        fontFamily: tokens.fontFamily.body,
+        color: tokens.color.ink2,
+        padding: tokens.space.md,
+        border: `1px dashed ${tokens.color.line}`,
+        borderRadius: tokens.radius.md,
+        textAlign: 'center',
+      }}
+    >
+      {message}
+    </p>
+  );
 }

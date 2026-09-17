@@ -171,4 +171,15 @@ describe('RecipeAuthoringForm', () => {
 
     expect(submit).toHaveBeenCalledTimes(1);
   });
+
+  // T88 guard: AiStubFields hardcodes `disabled` regardless of canSubmit
+  // (T22, design.md section 1.3) - `canSubmit: true` here still must not
+  // enable it, protecting the stub from a future T87-style restyle regression.
+  it('the ai tab stub submit stays disabled even when canSubmit is true (T88)', () => {
+    render(<RecipeAuthoringForm {...baseProps({ method: 'ai', canSubmit: true })} />);
+
+    expect(screen.getByText(MESSAGES.RECIPE_AUTHORING_SUBMIT).closest('button').disabled).toBe(
+      true,
+    );
+  });
 });

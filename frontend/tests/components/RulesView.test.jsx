@@ -85,11 +85,30 @@ describe('RulesView', () => {
     expect(screen.getByText('lunes · Comida · Tortilla')).not.toBeNull();
   });
 
-  it('the category-count save control is disabled until canSaveCategoryCount is true', () => {
+  it('every save control is disabled until its own canSave* flag is true', () => {
     render(<RulesView {...baseProps()} />);
 
     const saveButtons = screen.getAllByText(MESSAGES.RULES_SAVE);
-    expect(saveButtons[0].disabled).toBe(true);
+    expect(saveButtons[0].disabled).toBe(true); // category count
+    expect(saveButtons[1].disabled).toBe(true); // pin
+    expect(saveButtons[2].disabled).toBe(true); // disabled day
+  });
+
+  it('clicking the pin save button calls savePin, not the other save handlers', () => {
+    const savePin = vi.fn();
+    const saveCategoryCount = vi.fn();
+    const saveDisabledDay = vi.fn();
+    render(
+      <RulesView
+        {...baseProps({ savePin, saveCategoryCount, saveDisabledDay, canSavePin: true })}
+      />,
+    );
+
+    fireEvent.click(screen.getAllByText(MESSAGES.RULES_SAVE)[1]);
+
+    expect(savePin).toHaveBeenCalledTimes(1);
+    expect(saveCategoryCount).not.toHaveBeenCalled();
+    expect(saveDisabledDay).not.toHaveBeenCalled();
   });
 
   it("the pin field embeds LibraryRecipePicker - same shared component as T27/T31's sites (R12)", () => {
@@ -164,6 +183,29 @@ describe('RulesView', () => {
     expect(screen.getByText('lunes · Comida · Tortilla')).not.toBeNull();
   });
 
+  it('with two category-count rules, removing the SECOND row targets it, not the first (T91 card restyle)', () => {
+    const remove = vi.fn();
+    const ruleA = { type: 'categoryCount', category: 'meat', count: 2 };
+    const ruleB = { type: 'categoryCount', category: 'fish', count: 1 };
+    render(<RulesView {...baseProps({ categoryCounts: [ruleA, ruleB], remove })} />);
+
+    const removeButtons = screen.getAllByText(MESSAGES.RULES_REMOVE);
+    fireEvent.click(removeButtons[1]);
+
+    expect(remove).toHaveBeenCalledWith(ruleB);
+    expect(remove).not.toHaveBeenCalledWith(ruleA);
+  });
+
+  it('removes a pin rule through remove()', () => {
+    const remove = vi.fn();
+    const pinRule = { type: 'pin', day: 1, slot: 1, recipeId: 'r-1', recipeName: 'Tortilla' };
+    render(<RulesView {...baseProps({ pins: [pinRule], remove })} />);
+
+    fireEvent.click(screen.getByText(MESSAGES.RULES_REMOVE));
+
+    expect(remove).toHaveBeenCalledWith(pinRule);
+  });
+
   it('renders a disabled-day rule and removes it through remove()', () => {
     const remove = vi.fn();
     render(
@@ -173,6 +215,19 @@ describe('RulesView', () => {
     fireEvent.click(screen.getByText(MESSAGES.RULES_REMOVE));
 
     expect(remove).toHaveBeenCalledWith({ type: 'disabledDay', day: 7 });
+  });
+
+  it('with two disabled-day rules, removing the SECOND row targets it, not the first', () => {
+    const remove = vi.fn();
+    const ruleA = { type: 'disabledDay', day: 6 };
+    const ruleB = { type: 'disabledDay', day: 7 };
+    render(<RulesView {...baseProps({ disabledDays: [ruleA, ruleB], remove })} />);
+
+    const removeButtons = screen.getAllByText(MESSAGES.RULES_REMOVE);
+    fireEvent.click(removeButtons[1]);
+
+    expect(remove).toHaveBeenCalledWith(ruleB);
+    expect(remove).not.toHaveBeenCalledWith(ruleA);
   });
 
   it('renders the caught error text (R15)', () => {

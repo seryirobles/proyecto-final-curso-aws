@@ -24,6 +24,7 @@ describe('ConfirmDialog', () => {
       />,
     );
 
+    expect(screen.getByTestId('confirm-dialog-backdrop')).not.toBeNull();
     expect(screen.queryByText('¿Eliminar la receta?')).not.toBeNull();
 
     fireEvent.click(screen.getByText(MESSAGES.CONFIRM_DIALOG_CONFIRM));

@@ -5,6 +5,17 @@
 import { tokens } from '../tokens/index.js';
 import { MESSAGES } from '../messages/index.js';
 import { UNIT_LABELS } from '../domain/labels.js';
+import {
+  selectStyle,
+  inputStyle,
+  primaryButtonStyle,
+  secondaryButtonStyle,
+  ghostButtonStyle,
+  listRowStyle,
+  listResetStyle,
+  cardStyle,
+  headingStyle,
+} from '../tokens/controlStyles.js';
 import { EmptyState } from './EmptyState.jsx';
 import { LoadingState } from './LoadingState.jsx';
 import { ConfirmDialog } from './ConfirmDialog.jsx';
@@ -12,26 +23,33 @@ import { WeekLabel } from './WeekLabel.jsx';
 
 function ItemRow({ item, onToggle, onEdit, onRemove }) {
   return (
-    <li style={item.checked ? { color: tokens.color.ink3 } : undefined}>
+    <li
+      style={{
+        ...listRowStyle,
+        ...(item.checked ? { color: tokens.color.ink3, textDecoration: 'line-through' } : null),
+      }}
+    >
       <input
         type="checkbox"
         checked={item.checked}
         onChange={() => onToggle(item, !item.checked)}
       />
-      <span>
+      <span style={{ flex: 1 }}>
         {item.name} · {item.quantity} {UNIT_LABELS[item.unit] ?? item.unit}
       </span>
       {!item.checked ? (
-        <button type="button" onClick={() => onEdit(item)}>
+        <button type="button" onClick={() => onEdit(item)} style={ghostButtonStyle}>
           {MESSAGES.SHOPPING_LIST_EDIT}
         </button>
       ) : null}
-      <button type="button" onClick={() => onRemove(item.id)}>
+      <button type="button" onClick={() => onRemove(item.id)} style={ghostButtonStyle}>
         {MESSAGES.SHOPPING_LIST_REMOVE}
       </button>
     </li>
   );
 }
+
+const sectionCardStyle = { ...cardStyle, marginTop: tokens.space.md };
 
 function ResyncScope({ liveWeeks, isResyncing, resync }) {
   return (
@@ -52,7 +70,12 @@ function ResyncScope({ liveWeeks, isResyncing, resync }) {
           />
         </>
       ) : null}
-      <button type="button" onClick={resync} disabled={isResyncing}>
+      <button
+        type="button"
+        onClick={resync}
+        disabled={isResyncing}
+        style={primaryButtonStyle(isResyncing)}
+      >
         {MESSAGES.SHOPPING_LIST_RESYNC}
       </button>
       {isResyncing ? <LoadingState message={MESSAGES.SHOPPING_LIST_RESYNC_IN_PROGRESS} /> : null}
@@ -62,13 +85,23 @@ function ResyncScope({ liveWeeks, isResyncing, resync }) {
 
 function ItemForm({ isEditing, draft, updateDraftField, canSaveItem, saveItem, closeForm }) {
   return (
-    <div style={{ padding: tokens.space.md, backgroundColor: tokens.color.surface }}>
+    <div
+      style={{
+        padding: tokens.space.md,
+        backgroundColor: tokens.color.surface,
+        border: `1px solid ${tokens.color.line}`,
+        borderRadius: tokens.radius.md,
+        boxShadow: tokens.shadow.sm,
+        marginTop: tokens.space.md,
+      }}
+    >
       <label>
         {MESSAGES.SHOPPING_LIST_NAME_LABEL}
         <input
           type="text"
           value={draft.name}
           onChange={(e) => updateDraftField('name', e.target.value)}
+          style={inputStyle}
         />
       </label>
       <label>
@@ -77,11 +110,16 @@ function ItemForm({ isEditing, draft, updateDraftField, canSaveItem, saveItem, c
           type="number"
           value={draft.quantity}
           onChange={(e) => updateDraftField('quantity', e.target.value)}
+          style={inputStyle}
         />
       </label>
       <label>
         {MESSAGES.SHOPPING_LIST_UNIT_LABEL}
-        <select value={draft.unit} onChange={(e) => updateDraftField('unit', e.target.value)}>
+        <select
+          value={draft.unit}
+          onChange={(e) => updateDraftField('unit', e.target.value)}
+          style={selectStyle}
+        >
           <option value="">{MESSAGES.SHOPPING_LIST_UNIT_PLACEHOLDER}</option>
           {Object.entries(UNIT_LABELS).map(([code, label]) => (
             <option key={code} value={code}>
@@ -91,10 +129,15 @@ function ItemForm({ isEditing, draft, updateDraftField, canSaveItem, saveItem, c
         </select>
       </label>
       <div style={{ display: 'flex', gap: tokens.space.sm, marginTop: tokens.space.md }}>
-        <button type="button" onClick={saveItem} disabled={!canSaveItem}>
+        <button
+          type="button"
+          onClick={saveItem}
+          disabled={!canSaveItem}
+          style={primaryButtonStyle(!canSaveItem)}
+        >
           {isEditing ? MESSAGES.SHOPPING_LIST_SAVE_EDIT : MESSAGES.SHOPPING_LIST_SAVE_ADD}
         </button>
-        <button type="button" onClick={closeForm}>
+        <button type="button" onClick={closeForm} style={secondaryButtonStyle}>
           {MESSAGES.SHOPPING_LIST_CANCEL}
         </button>
       </div>
@@ -129,12 +172,24 @@ export function ShoppingListView({
 
   return (
     <div>
-      <h2 style={{ margin: tokens.space.none }}>{MESSAGES.SHOPPING_LIST_VIEW_TITLE}</h2>
+      <h2
+        style={{
+          margin: tokens.space.none,
+          fontFamily: tokens.fontFamily.heading,
+          fontSize: tokens.fontSize.xl,
+        }}
+      >
+        {MESSAGES.SHOPPING_LIST_VIEW_TITLE}
+      </h2>
       {error ? <p style={{ color: tokens.color.ink, padding: tokens.space.md }}>{error}</p> : null}
 
       <ResyncScope liveWeeks={liveWeeks} isResyncing={isResyncing} resync={resync} />
 
-      <button type="button" onClick={openAdd}>
+      <button
+        type="button"
+        onClick={openAdd}
+        style={{ ...primaryButtonStyle(false), marginTop: tokens.space.sm }}
+      >
         {MESSAGES.SHOPPING_LIST_ADD}
       </button>
 
@@ -142,35 +197,35 @@ export function ShoppingListView({
         <EmptyState message={MESSAGES.SHOPPING_LIST_VIEW_EMPTY} />
       ) : (
         <>
-          <h3 style={{ margin: tokens.space.none }}>
-            {MESSAGES.SHOPPING_LIST_UNCHECKED_SECTION_TITLE}
-          </h3>
-          <ul>
-            {uncheckedItems.map((item) => (
-              <ItemRow
-                key={item.id}
-                item={item}
-                onToggle={setChecked}
-                onEdit={openEdit}
-                onRemove={remove}
-              />
-            ))}
-          </ul>
+          <div style={sectionCardStyle}>
+            <h3 style={headingStyle}>{MESSAGES.SHOPPING_LIST_UNCHECKED_SECTION_TITLE}</h3>
+            <ul style={listResetStyle}>
+              {uncheckedItems.map((item) => (
+                <ItemRow
+                  key={item.id}
+                  item={item}
+                  onToggle={setChecked}
+                  onEdit={openEdit}
+                  onRemove={remove}
+                />
+              ))}
+            </ul>
+          </div>
 
-          <h3 style={{ margin: tokens.space.none }}>
-            {MESSAGES.SHOPPING_LIST_CHECKED_SECTION_TITLE}
-          </h3>
-          <ul>
-            {checkedItems.map((item) => (
-              <ItemRow
-                key={item.id}
-                item={item}
-                onToggle={setChecked}
-                onEdit={openEdit}
-                onRemove={remove}
-              />
-            ))}
-          </ul>
+          <div style={sectionCardStyle}>
+            <h3 style={headingStyle}>{MESSAGES.SHOPPING_LIST_CHECKED_SECTION_TITLE}</h3>
+            <ul style={listResetStyle}>
+              {checkedItems.map((item) => (
+                <ItemRow
+                  key={item.id}
+                  item={item}
+                  onToggle={setChecked}
+                  onEdit={openEdit}
+                  onRemove={remove}
+                />
+              ))}
+            </ul>
+          </div>
         </>
       )}
 

@@ -645,3 +645,219 @@ of whole views.
   `SetPasswordView.jsx` for a call to `apiFetch` targeting
   `/v1/session/password` — fails if any other component calls it, proving
   the only path to changing a password is the forced set-password screen.
+
+## 10. Reopened scope (2026-09-16) — completing the visual design system
+
+> Reopen trigger: the owner viewed the rendered app in a real browser for
+> the first time — every prior check was a jsdom unit test or `vite build`,
+> never a rendered pixel — and found it does not follow
+> `prototypes/wireframe/Sobremesa.dc.html`'s visual design language.
+> `docs/frontend_prototype.md` §2.4 already flagged this for two of four
+> token axes: colour was lifted verbatim (`tokens/colors.js`), font-size and
+> spacing were redesigned into real scales (`typography.js`, `spacing.js`).
+> **Font-family and border-radius/shadow were never designed at all**, and
+> even the tokens that do exist are barely referenced by most components
+> (audit in §10.6).
+
+### 10.0 No new `FR-*` / `R<n>`
+
+This reopen adds no requirement id. Feature 20's own, already-approved
+`feature_list.json` acceptance criterion 3 already asks to mine
+`prototypes/wireframe/` "for the 18 colour tokens, the es-ES strings, the
+screen inventory and the handler names — NOT the type/spacing scale ... and
+NOT as portable code." Font-family and radius/shadow are the same
+design-language axis that criterion already covers, just never finished.
+Every task below extends `docs/conventions.md`'s "Design tokens are
+centralised" rule (`architecture.md` §1.1, already decided, not reopened
+here) rather than implementing new behaviour, so none carries an `R<n>` —
+same convention `tasks.md` already uses for T1/T41 ("plumbing" tasks with no
+`R<n>`). `requirements.md` is unchanged by this section.
+
+### 10.1 Font family
+
+The prototype's intent (§2.4): three distinct type roles — Baloo 2
+(headings), Nunito (body), DM Mono (labels/metadata) — not one system font
+doing all three jobs. A system-font-only fallback would collapse that
+distinction: the hierarchy leans on a rounded display face reading as
+visually distinct from body text, and a monospaced face marking
+labels/metadata as distinct again, and no single system stack fills both
+roles consistently across `FR-UX-02`'s browser/OS matrix (Windows has no
+bundled rounded display face, so "headings look different from body text"
+would silently disappear on the most common desktop OS). Decision: **keep
+the three-typeface intent, self-hosted**, rather than degrade to a system
+stack.
+
+```js
+// frontend/src/tokens/fontFamily.js
+export const FONT_FAMILY = {
+  heading: '"Baloo 2", ui-rounded, "Segoe UI", sans-serif',
+  body: '"Nunito", "Segoe UI", ui-sans-serif, sans-serif',
+  label: '"DM Mono", ui-monospace, "Cascadia Mono", monospace',
+};
+```
+
+Each entry keeps a real fallback stack so text renders immediately in a
+system font before, or if, the self-hosted face finishes loading — no
+invisible text.
+
+**Self-hosted, not the Google Fonts CDN.** `docs/frontend_prototype.md`
+line 131 already flags the prototype's Google-Fonts `<link>` as a gap; its
+§3 separately lists a runtime CDN fetch (`support.js` pulling React/Babel
+from unpkg) as the prototype's #1 non-reusable blocker — no integrity
+pinning, fails on a network partition, an extra origin on every page load.
+The same reasoning applies to fonts. Two `.woff2` files per family
+(regular + one heavier weight; DM Mono needs only one) live under
+`frontend/src/assets/fonts/` — Google Fonts' own OFL-licensed static files,
+fetched once at build/asset time, never from a CDN at runtime — and are
+registered with the **CSS Font Loading API**, not a `<link>` tag and not a
+stylesheet:
+
+```js
+// frontend/src/fonts.js
+const FACES = [
+  ['Baloo 2', '/src/assets/fonts/baloo2-600.woff2', '600'],
+  ['Baloo 2', '/src/assets/fonts/baloo2-700.woff2', '700'],
+  ['Nunito', '/src/assets/fonts/nunito-400.woff2', '400'],
+  ['Nunito', '/src/assets/fonts/nunito-600.woff2', '600'],
+  ['DM Mono', '/src/assets/fonts/dmmono-400.woff2', '400'],
+];
+
+export function loadSelfHostedFonts() {
+  FACES.forEach(([family, url, weight]) => {
+    const face = new FontFace(family, `url(${url})`, { weight });
+    face.load().then((loaded) => document.fonts.add(loaded)).catch(() => {
+      // The fallback stack in fontFamily.js already covers a failed load —
+      // this is a network/format failure, not a user-facing error.
+    });
+  });
+}
+```
+
+`main.jsx` calls `loadSelfHostedFonts()` once, before
+`createRoot(...).render(...)`. **Why the Font Loading API instead of an
+`@font-face` block**: `docs/architecture.md` §1.1 / `conventions.md` ban a
+stylesheet for this project's styling. `@font-face` cannot be expressed as
+an element's `style` attribute — it registers a family, not a rule for one
+node — so using it would need a `<link>`/`<style>` block in `index.html`,
+the exact "external stylesheet" this project has deliberately avoided
+everywhere else. The Font Loading API sidesteps the question entirely: it
+is plain JS with no CSS surface at all, keeping "no stylesheet" literally
+true instead of carving out a one-line exception for it.
+
+### 10.2 Border-radius scale
+
+Same treatment `typography.js`'s own header comment already describes for
+font-size: "roughly six sizes ... reading the prototype for intent, not for
+values." The prototype has 19 distinct `border-radius` values
+(`docs/frontend_prototype.md` §2.4's table); read for intent rather than
+copied, they cluster into four visual roles: no radius, a small radius for
+controls (inputs, small buttons, chips), a larger radius for
+container-level shapes (cards, dialogs), and a fully-round pill for badges
+and icon buttons.
+
+```js
+// frontend/src/tokens/borderRadius.js
+export const RADIUS = {
+  none: '0',
+  sm: '8px',      // inputs, small buttons, chip-shaped controls
+  md: '16px',     // cards, day cells, dialogs, sheets
+  lg: '24px',     // large surfaces: bottom sheets, modal panels
+  pill: '999px',  // badges, circular icon buttons (WeekSwitcher arrows)
+};
+```
+
+Four named steps plus `none`, not six like `FONT_SIZE`/`SPACE` — a fifth
+step read from the prototype's own values would fall between two roles that
+already render indistinguishably at this scale (a card and a dialog need no
+visually distinct radius), so adding one would reintroduce exactly the
+"drift, not a system" problem `frontend_prototype.md` §2.4 warns about.
+Four steps map every one of the file's 19 raw numbers to a role without an
+unused one.
+
+### 10.3 Shadow / elevation scale
+
+Same method again. The prototype layers shadows loosely by how "raised" an
+element reads: flat elements (inline text, plain rows), a subtle lift for
+cards sitting on the paper background, and a stronger lift for anything
+floating above the whole layout (toasts, the mobile bottom sheet, dialogs).
+Shadow colour is derived from the existing `ink` token (`tokens/colors.js`,
+`#28331F`) at low alpha, not a generic black, so it reads warm and
+consistent with the rest of the palette instead of a default browser-grey
+shadow bolted onto a warm paper/surface scheme.
+
+```js
+// frontend/src/tokens/shadow.js
+export const SHADOW = {
+  none: 'none',
+  sm: '0 1px 3px rgba(40, 51, 31, 0.12)',   // cards, day cells, rows
+  md: '0 6px 16px rgba(40, 51, 31, 0.16)',  // dropdowns, popovers, dialogs
+  lg: '0 16px 40px rgba(40, 51, 31, 0.22)', // bottom sheets, toasts
+};
+```
+
+Three steps plus `none` — the prototype's own seven motion keyframes
+(§2.4) group into the same three visual weights; a fourth would not map to
+anything the prototype actually distinguishes.
+
+### 10.4 Wiring into the tokens module
+
+`frontend/src/tokens/index.js` gains three lines (`fontFamily: FONT_FAMILY`,
+`radius: RADIUS`, `shadow: SHADOW`) alongside the existing four entries —
+same shape, no change to how a component already consumes `tokens`.
+
+### 10.5 Global application (no stylesheet)
+
+`frontend/index.html`'s `<body>` currently sets nothing — no `background`,
+no `font-family` (read in full: a 12-line shell unchanged since feature 1's
+scaffold). Two places apply the foundation, neither one a stylesheet:
+
+- `index.html`'s `<body>` keeps a **minimal inline `style` attribute**
+  (`background-color` plus a generic `sans-serif` fallback only — static
+  HTML cannot import a JS token) so the page is never unstyled white during
+  the JS-parse window before React mounts.
+- `App.jsx`'s single root wrapper element sets the real foundation through
+  its own inline `style` object — the same mechanism every other component
+  already uses: `{ fontFamily: tokens.fontFamily.body, background:
+  tokens.color.paper, color: tokens.color.ink, minHeight: '100vh' }`. Every
+  descendant inherits `font-family`/`color` through normal CSS inheritance
+  from that one inline style, not a global rule; headings and labels still
+  opt into `tokens.fontFamily.heading`/`.label` individually, same as every
+  other per-component token reference.
+
+### 10.6 Per-component application (drives `tasks.md`)
+
+A full audit (already performed, not repeated in prose here) found the
+existing colour/spacing tokens themselves under-applied, not only the two
+new axes — `tasks.md`'s Tier B–F tasks fix both in the same pass per
+component, since reopening each file twice would be wasted diff churn. Not
+reopened: `RecipeAuthoringForm`'s AI-tab stub content/behaviour (feature 28,
+`pending`, deliberate split — `progress/current.md` 2026-09-06) and the
+archive screen (no component exists, §1.3). Only the `--aub` accent's
+near-total absence from already-existing AI-related markup, and that file's
+non-AI styling, are in scope.
+
+### 10.7 Rejected alternatives
+
+**A system-font-only stack** (no self-hosting, no distinct heading/label
+faces), matching zero new asset files and zero `FontFace` code. Rejected:
+it collapses the prototype's three-role type intent (§10.1) into one,
+exactly the kind of design-language regression this reopen exists to fix,
+saving an amount of implementation effort (three font files, one loader
+function) too small to trade against losing the intent entirely.
+
+**Loading the three fonts from the Google Fonts CDN at runtime** (a `<link
+href="https://fonts.googleapis.com/...">` in `index.html`), instead of
+self-hosting. Rejected on the same grounds `frontend_prototype.md` §3
+already rejected `support.js`'s unpkg fetch: an extra runtime origin, no
+integrity pinning, and a failure mode (DNS/network partition) that degrades
+the whole app's typography, for no benefit over bundling the same files as
+static assets once at build time.
+
+**A CSS custom-property scale** (`:root { --radius-md: ... }`) instead of a
+plain JS token module, for `borderRadius.js`/`shadow.js`. Rejected: every
+other token (`colors.js`, `spacing.js`, `typography.js`) is a plain
+exported JS object consumed by name in an inline `style` object; a
+`var(--radius-md)` value would need a `:root` rule declared somewhere — the
+same "needs a stylesheet" problem as §10.1's `@font-face` question — for no
+benefit, since a component already imports `tokens` and would read
+`tokens.radius.md` exactly like it reads `tokens.space.md`.

@@ -2,6 +2,10 @@
 // tabs plus manual-form fields, pure function of useRecipeAuthoring's return
 // shape. See progress/impl_frontend_spa.md, "The shared authoring flow".
 
+// Non-AI parts styled off tokens; `AiStubFields` stays untouched - feature
+// 28's territory (T87, design.md 10.6). See progress/impl_frontend_spa.md,
+// "Tier E - library".
+
 import { tokens } from '../tokens/index.js';
 import { MESSAGES } from '../messages/index.js';
 import { CATEGORY_LABELS, UNIT_LABELS } from '../domain/labels.js';
@@ -13,13 +17,83 @@ const METHOD_LABELS = {
   ai: MESSAGES.RECIPE_AUTHORING_METHOD_AI,
 };
 
-function tabStyle(isActive) {
+function tabStyle(isActive, method) {
+  if (method === 'ai') {
+    return {
+      padding: `${tokens.space.xs} ${tokens.space.md}`,
+      backgroundColor: isActive ? tokens.color.aub : tokens.color.aubSoft,
+      color: isActive ? tokens.color.surface : tokens.color.aub,
+      border: `1px solid ${tokens.color.aub}`,
+      borderRadius: tokens.radius.pill,
+      fontWeight: 700,
+      fontSize: tokens.fontSize.sm,
+    };
+  }
   return {
-    padding: tokens.space.sm,
+    padding: `${tokens.space.xs} ${tokens.space.md}`,
     backgroundColor: isActive ? tokens.color.terraSoft : tokens.color.surface,
+    color: isActive ? tokens.color.terraDeep : tokens.color.ink2,
     border: `1px solid ${tokens.color.line}`,
+    borderRadius: tokens.radius.pill,
+    fontWeight: 700,
+    fontSize: tokens.fontSize.sm,
   };
 }
+
+const fieldLabelStyle = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: tokens.space.xs,
+  fontFamily: tokens.fontFamily.label,
+  fontSize: tokens.fontSize.xs,
+  color: tokens.color.ink2,
+  marginBottom: tokens.space.sm,
+};
+
+const fieldInputStyle = {
+  border: `1px solid ${tokens.color.line2}`,
+  backgroundColor: tokens.color.surface2,
+  borderRadius: tokens.radius.sm,
+  padding: `${tokens.space.xs} ${tokens.space.sm}`,
+  color: tokens.color.ink,
+  fontSize: tokens.fontSize.sm,
+};
+
+const sectionHeaderStyle = {
+  margin: `${tokens.space.md} 0 ${tokens.space.sm}`,
+  fontFamily: tokens.fontFamily.heading,
+  fontSize: tokens.fontSize.sm,
+  color: tokens.color.ink,
+};
+
+const rowButtonStyle = {
+  border: `1px solid ${tokens.color.line2}`,
+  backgroundColor: tokens.color.surface2,
+  color: tokens.color.ink2,
+  borderRadius: tokens.radius.sm,
+  padding: `${tokens.space.xs} ${tokens.space.sm}`,
+  fontSize: tokens.fontSize.xs,
+};
+
+const addRowButtonStyle = {
+  border: `1px dashed ${tokens.color.line2}`,
+  backgroundColor: 'transparent',
+  color: tokens.color.terra,
+  borderRadius: tokens.radius.sm,
+  padding: tokens.space.xs,
+  fontSize: tokens.fontSize.xs,
+  width: '100%',
+};
+
+const submitButtonStyle = {
+  border: 'none',
+  backgroundColor: tokens.color.terra,
+  color: tokens.color.surface,
+  borderRadius: tokens.radius.sm,
+  padding: `${tokens.space.sm} ${tokens.space.md}`,
+  fontWeight: 700,
+  fontSize: tokens.fontSize.sm,
+};
 
 function ScratchFields({
   form,
@@ -38,17 +112,22 @@ function ScratchFields({
 }) {
   return (
     <div>
-      <label>
+      <label style={fieldLabelStyle}>
         {MESSAGES.RECIPE_AUTHORING_NAME_LABEL}
         <input
           type="text"
           value={form.name}
           onChange={(e) => updateField('name', e.target.value)}
+          style={fieldInputStyle}
         />
       </label>
-      <label>
+      <label style={fieldLabelStyle}>
         {MESSAGES.RECIPE_AUTHORING_CATEGORY_LABEL}
-        <select value={form.category} onChange={(e) => updateField('category', e.target.value)}>
+        <select
+          value={form.category}
+          onChange={(e) => updateField('category', e.target.value)}
+          style={fieldInputStyle}
+        >
           <option value="">{MESSAGES.RECIPE_AUTHORING_CATEGORY_PLACEHOLDER}</option>
           {Object.entries(CATEGORY_LABELS).map(([code, label]) => (
             <option key={code} value={code}>
@@ -57,41 +136,49 @@ function ScratchFields({
           ))}
         </select>
       </label>
-      <label>
+      <label style={fieldLabelStyle}>
         {MESSAGES.RECIPE_AUTHORING_SERVINGS_LABEL}
         <input
           type="text"
           value={form.servings}
           onChange={(e) => updateField('servings', e.target.value)}
+          style={fieldInputStyle}
         />
       </label>
-      <label>
+      <label style={fieldLabelStyle}>
         {MESSAGES.RECIPE_AUTHORING_ESTIMATED_TIME_LABEL}
         <input
           type="text"
           value={form.estimatedTime}
           onChange={(e) => updateField('estimatedTime', e.target.value)}
+          style={fieldInputStyle}
         />
       </label>
 
-      <h3 style={{ margin: tokens.space.none }}>{MESSAGES.RECIPE_AUTHORING_INGREDIENTS_LABEL}</h3>
+      <h3 style={sectionHeaderStyle}>{MESSAGES.RECIPE_AUTHORING_INGREDIENTS_LABEL}</h3>
       {form.ingredients.map((ingredient, index) => (
-        <div key={index} style={{ display: 'flex', gap: tokens.space.sm }}>
+        <div
+          key={index}
+          style={{ display: 'flex', gap: tokens.space.sm, marginBottom: tokens.space.xs }}
+        >
           <input
             type="text"
             placeholder={MESSAGES.RECIPE_AUTHORING_INGREDIENT_NAME_LABEL}
             value={ingredient.name}
             onChange={(e) => updateIngredient(index, 'name', e.target.value)}
+            style={fieldInputStyle}
           />
           <input
             type="number"
             placeholder={MESSAGES.RECIPE_AUTHORING_INGREDIENT_QUANTITY_LABEL}
             value={ingredient.quantity}
             onChange={(e) => updateIngredient(index, 'quantity', e.target.value)}
+            style={{ ...fieldInputStyle, width: '80px' }}
           />
           <select
             value={ingredient.unit}
             onChange={(e) => updateIngredient(index, 'unit', e.target.value)}
+            style={fieldInputStyle}
           >
             <option value="">{MESSAGES.RECIPE_AUTHORING_UNIT_PLACEHOLDER}</option>
             {Object.entries(UNIT_LABELS).map(([code, label]) => (
@@ -100,47 +187,59 @@ function ScratchFields({
               </option>
             ))}
           </select>
-          <button type="button" onClick={() => removeIngredient(index)}>
+          <button type="button" onClick={() => removeIngredient(index)} style={rowButtonStyle}>
             {MESSAGES.RECIPE_AUTHORING_REMOVE_INGREDIENT}
           </button>
         </div>
       ))}
-      <button type="button" onClick={addIngredient}>
+      <button type="button" onClick={addIngredient} style={addRowButtonStyle}>
         {MESSAGES.RECIPE_AUTHORING_ADD_INGREDIENT}
       </button>
 
-      <h3 style={{ margin: tokens.space.none }}>{MESSAGES.RECIPE_AUTHORING_TOOLS_LABEL}</h3>
+      <h3 style={sectionHeaderStyle}>{MESSAGES.RECIPE_AUTHORING_TOOLS_LABEL}</h3>
       {form.tools.map((tool, index) => (
-        <div key={index} style={{ display: 'flex', gap: tokens.space.sm }}>
-          <input type="text" value={tool} onChange={(e) => updateTool(index, e.target.value)} />
-          <button type="button" onClick={() => removeTool(index)}>
+        <div
+          key={index}
+          style={{ display: 'flex', gap: tokens.space.sm, marginBottom: tokens.space.xs }}
+        >
+          <input
+            type="text"
+            value={tool}
+            onChange={(e) => updateTool(index, e.target.value)}
+            style={fieldInputStyle}
+          />
+          <button type="button" onClick={() => removeTool(index)} style={rowButtonStyle}>
             {MESSAGES.RECIPE_AUTHORING_REMOVE_TOOL}
           </button>
         </div>
       ))}
-      <button type="button" onClick={addTool}>
+      <button type="button" onClick={addTool} style={addRowButtonStyle}>
         {MESSAGES.RECIPE_AUTHORING_ADD_TOOL}
       </button>
 
-      <h3 style={{ margin: tokens.space.none }}>{MESSAGES.RECIPE_AUTHORING_PROCEDURE_LABEL}</h3>
+      <h3 style={sectionHeaderStyle}>{MESSAGES.RECIPE_AUTHORING_PROCEDURE_LABEL}</h3>
       {form.procedure.map((step, index) => (
-        <div key={index} style={{ display: 'flex', gap: tokens.space.sm }}>
+        <div
+          key={index}
+          style={{ display: 'flex', gap: tokens.space.sm, marginBottom: tokens.space.xs }}
+        >
           <input
             type="text"
             value={step}
             onChange={(e) => updateProcedureStep(index, e.target.value)}
+            style={fieldInputStyle}
           />
-          <button type="button" onClick={() => removeProcedureStep(index)}>
+          <button type="button" onClick={() => removeProcedureStep(index)} style={rowButtonStyle}>
             {MESSAGES.RECIPE_AUTHORING_REMOVE_STEP}
           </button>
         </div>
       ))}
-      <button type="button" onClick={addProcedureStep}>
+      <button type="button" onClick={addProcedureStep} style={addRowButtonStyle}>
         {MESSAGES.RECIPE_AUTHORING_ADD_STEP}
       </button>
 
       <div style={{ marginTop: tokens.space.md }}>
-        <button type="button" onClick={submit} disabled={!canSubmit}>
+        <button type="button" onClick={submit} disabled={!canSubmit} style={submitButtonStyle}>
           {MESSAGES.RECIPE_AUTHORING_SUBMIT}
         </button>
       </div>
@@ -205,7 +304,7 @@ function LibraryMethodFields({
         onSelect={selectLibraryRecipe}
       />
       <div style={{ marginTop: tokens.space.md }}>
-        <button type="button" onClick={submit} disabled={!canSubmit}>
+        <button type="button" onClick={submit} disabled={!canSubmit} style={submitButtonStyle}>
           {MESSAGES.RECIPE_AUTHORING_SUBMIT}
         </button>
       </div>
@@ -217,10 +316,23 @@ export function RecipeAuthoringForm(props) {
   const { methods, method, setMethod } = props;
 
   return (
-    <div style={{ padding: tokens.space.lg, backgroundColor: tokens.color.surface }}>
-      <div style={{ display: 'flex', gap: tokens.space.sm }}>
+    <div
+      style={{
+        padding: tokens.space.lg,
+        backgroundColor: tokens.color.surface,
+        border: `1px solid ${tokens.color.line}`,
+        borderRadius: tokens.radius.md,
+        boxShadow: tokens.shadow.sm,
+      }}
+    >
+      <div style={{ display: 'flex', gap: tokens.space.sm, marginBottom: tokens.space.md }}>
         {methods.map((m) => (
-          <button key={m} type="button" onClick={() => setMethod(m)} style={tabStyle(m === method)}>
+          <button
+            key={m}
+            type="button"
+            onClick={() => setMethod(m)}
+            style={tabStyle(m === method, m)}
+          >
             {METHOD_LABELS[m]}
           </button>
         ))}

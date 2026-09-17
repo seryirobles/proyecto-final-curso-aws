@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { WeekPlannerView } from '../../src/components/WeekPlannerView.jsx';
 import { MESSAGES } from '../../src/messages/index.js';
+import { DAY_LABELS } from '../../src/domain/labels.js';
 
 // `vite.config.js` sets `globals: false`, so @testing-library/react's
 // auto-cleanup (which hooks a global `afterEach`) never registers - every
@@ -47,6 +48,14 @@ describe('WeekPlannerView', () => {
 
     expect(screen.getAllByText(MESSAGES.WEEK_PLANNER_EMPTY_SLOT)).toHaveLength(14);
     expect(screen.getAllByText(MESSAGES.WEEK_PLANNER_ADD_CANDIDATE)).toHaveLength(14);
+  });
+
+  it('renders each of the seven day cards with its own distinct day label (day-indexing)', () => {
+    render(<WeekPlannerView {...baseProps()} />);
+
+    for (let day = 1; day <= 7; day += 1) {
+      expect(screen.getByText(DAY_LABELS[day])).not.toBeNull();
+    }
   });
 
   it('renders the same component tree shape for a current and a next fixture (R3)', () => {

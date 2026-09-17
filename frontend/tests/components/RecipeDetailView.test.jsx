@@ -53,4 +53,13 @@ describe('RecipeDetailView', () => {
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it('calls onClose when the close control is clicked in the error branch (R15)', () => {
+    const onClose = vi.fn();
+    render(<RecipeDetailView recipe={null} error="No existe la receta." onClose={onClose} />);
+
+    fireEvent.click(screen.getByText(MESSAGES.RECIPE_DETAIL_CLOSE));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });

@@ -369,3 +369,192 @@
 
 - [x] T63 — `./init.sh` green (ruff, mypy, pytest — untouched by this
   feature — plus frontend lint/format/test); update `progress/current.md`.
+
+## Reopened scope (2026-09-16) — visual design system completion
+
+> No new `R<n>` (design.md §10.0 — this reopen elaborates feature 20's own
+> acceptance criterion 3, not a new requirement). Each task cites the
+> `R<n>`/`FR-*` the *component itself* already implements — the work is a
+> styling-completeness fix, not new behaviour, so "Covers" names what the
+> component already is, never a requirement newly gained.
+
+### Tier A — foundation tokens
+
+- [x] T64 — Add `frontend/src/tokens/fontFamily.js`: `FONT_FAMILY.heading/
+  body/label`, each with a real fallback stack (design.md §10.1). No `R<n>`.
+- [x] T65 — Add the three self-hosted `.woff2` files under
+  `frontend/src/assets/fonts/` (Baloo 2 600/700, Nunito 400/600, DM Mono
+  400 — OFL-licensed Google Fonts static files, not their CDN) and
+  `frontend/src/fonts.js`'s `loadSelfHostedFonts()` (design.md §10.1, CSS
+  Font Loading API — no `@font-face`, no stylesheet). No `R<n>`. The 5 real
+  `.woff2` binaries were fetched directly from `fonts.gstatic.com`'s
+  "latin" static subset (build-time asset fetch, not the runtime CDN
+  `<link>` design.md rejects) — see progress/impl_frontend_spa.md for the
+  exact URLs. `fonts.js` resolves each asset via `new URL(path,
+  import.meta.url)` rather than design.md's literal `/src/assets/fonts/...`
+  string, since a literal path only resolves in Vite dev and breaks after
+  `vite build` hashes/moves the asset — a Vite-correctness fix, not a
+  design change.
+- [x] T66 — Call `loadSelfHostedFonts()` once from `frontend/src/main.jsx`,
+  before `createRoot(...).render(...)`. No `R<n>`.
+- [x] T67 — Add `frontend/src/tokens/borderRadius.js`: `RADIUS.none/sm/md/
+  lg/pill` (design.md §10.2). No `R<n>`.
+- [x] T68 — Add `frontend/src/tokens/shadow.js`: `SHADOW.none/sm/md/lg`,
+  colour derived from `tokens.color.ink` (design.md §10.3). No `R<n>`.
+- [x] T69 — Extend `frontend/src/tokens/index.js` to export `fontFamily`,
+  `radius`, `shadow` alongside the existing four token groups (design.md
+  §10.4). No `R<n>`.
+- [x] T70 — Add a minimal inline `style` attribute to `frontend/index.html`'s
+  `<body>` (background colour + generic `sans-serif` fallback only,
+  design.md §10.5) — the one literal, non-token colour value this reopen
+  permits, since static HTML cannot import a JS token; matched to
+  `tokens.color.paper`'s literal value with a `// keep in sync with
+  tokens/colors.js` comment. No `R<n>`.
+- [x] T71 — Apply the foundation to `App.jsx`'s root wrapper element:
+  `fontFamily: tokens.fontFamily.body`, `background: tokens.color.paper`,
+  `color: tokens.color.ink`, full-height (design.md §10.5). No `R<n>`
+  (extends the existing App-shell tasks T42/T58 — no new behaviour).
+  Factored as a shared `rootShellStyle()` helper reused by both the Admin
+  and User shell branches (the two existing root `<div>`s) — the
+  `loading`/`anonymous`/`passwordResetPending` early returns are untouched,
+  since restructuring those into the same wrapper is Tier C's `LoginView`/
+  `SetPasswordView` card styling (T79/T80), not this task.
+
+### Tier B — shared primitives
+
+- [x] T72 — Style `EmptyState.jsx`/`LoadingState.jsx`: dashed-border card
+  idiom for the empty state (`tokens.radius.md`, `tokens.color.line`),
+  `tokens.fontFamily.body`; a loading-shimmer treatment reusing
+  `tokens.color.surface2`/`surface` for the sweep, driven by a state tick
+  in the existing hook (no CSS `@keyframes` — unavailable under the
+  no-stylesheet rule). Covers: R19, R20 (styling completion — behaviour
+  unchanged).
+- [x] T73 — Style `ConfirmDialog.jsx`: backdrop (`tokens.color.ink` at low
+  alpha) plus card shape (`tokens.radius.lg`, `tokens.shadow.lg`),
+  `tokens.fontFamily.heading` for the prompt title. Covers: R18 (styling
+  completion).
+- [x] T74 — Style `ConnectionLostBanner.jsx`: correct palette —
+  `tokens.color.honey`/`honeySoft` (warning accent) instead of the current
+  mismatched colours; `tokens.radius.sm`. Covers: no new `R<n>` (consumes
+  `FR-RT-03`, feature 26 — styling completion only).
+- [x] T75 — Style `WeekLabel.jsx`: two-tier hierarchy — designation
+  (current/next) in `tokens.fontFamily.heading`, the Monday–Sunday range in
+  `tokens.fontFamily.label` beneath it (mined from the prototype's
+  two-line week header). Covers: R16, R21 (styling completion).
+- [x] T76 — Style `WeekSwitcher.jsx`: circular arrow buttons
+  (`tokens.radius.pill`, fixed square dimensions) replacing the current
+  plain rectangles. Covers: R2, R3 (styling completion).
+- [x] T77 — Style `App.jsx`'s nav shell: header background/border/shadow
+  (`tokens.color.surface`, `tokens.shadow.sm`), pill-shaped nav buttons
+  (`tokens.radius.pill`) for the five-view nav strip and the logout
+  control. Covers: no new `R<n>` (R30/R31/R32 already covered — styling
+  completion).
+- [x] T78 — `frontend/tests/components/*` (extend, Tier B): the shimmer
+  tick in `LoadingState` is asserted through its exposed state, not a
+  snapshot (`conventions.md` "Testing"); every other Tier B component test
+  keeps the same props-in/markup-out assertions already proven in
+  T10/T12/T44/T59, updated only where a structural change (e.g.
+  `WeekSwitcher`'s button becoming a fixed-size circular element) makes an
+  existing selector stale — no new behavioural assertions.
+
+### Tier C — auth
+
+- [x] T79 — Style `LoginView.jsx`: card container (`tokens.radius.md`,
+  `tokens.shadow.md`), real input/button styling off tokens (currently
+  unstyled native controls). Covers: R24, R25, R29 (styling completion).
+- [x] T80 — Style `SetPasswordView.jsx`: same card treatment as T79.
+  Covers: R26, R27, R28 (styling completion).
+- [x] T80a — `frontend/tests/components/LoginView.test.jsx`,
+  `SetPasswordView.test.jsx` (extend): selector-only updates for the new
+  card markup — no new behavioural assertions.
+
+### Tier D — planning
+
+- [x] T81 — Style `WeekPlannerView.jsx`/`DaySlot.jsx`: day-card shape
+  (`tokens.radius.md`, `tokens.shadow.sm`) per day cell, a status-badge
+  treatment (`tokens.radius.pill`) for empty/has-candidates/has-definitive
+  states. Covers: R1, R19, R20 (styling completion).
+- [x] T82 (Partial) — Style `MealCard.jsx`: card shape (`tokens.radius.md`,
+  `tokens.shadow.sm`) and icon-button treatment for its action controls
+  done. The "IA" badge is **not implemented**: neither `docs/data_model.md`
+  nor `docs/rest_api_contract.md` persists a candidate-origin field once an
+  AI-generated recipe is accepted — `Candidate.author` is always the
+  accepting human (`backend/core/src/planner_core/domain/candidate.py`),
+  never a distinguishable "IA" marker, unlike the prototype's own
+  `meal.author='IA'` idiom. See `progress/impl_frontend_spa.md`, Tier D.
+  Covers: R4, R5 (styling completion, partial).
+- [x] T83 — Style `RecipeDetailView.jsx`: slide-up-sheet shape
+  (`tokens.radius.lg`, `tokens.shadow.lg`), pill badges for metadata, a
+  numbered-step treatment for the procedure list (mined from the
+  prototype's detail sheet). Covers: R4, R5 (styling completion).
+- [x] T84 — `frontend/tests/components/*` (extend, Tier D): both existing
+  files (`WeekPlannerView.test.jsx`, `RecipeDetailView.test.jsx`) passed
+  **unmodified** against the new *markup* (same T80a outcome). That masked a
+  real gap: T81's `dayStatus()` (three branches plus a definitive-over-
+  candidates precedence rule) and its 3 new `WEEK_PLANNER_DAY_STATUS_*`
+  message keys were new derived behaviour with zero test coverage, not mere
+  restyling. Closed in the Tier D fix round: new `DaySlot.test.jsx` (all
+  three branches + the precedence case), a promote-button and a
+  day-indexing assertion added to `WeekPlannerView.test.jsx`, and an
+  error-branch close-button assertion added to `RecipeDetailView.test.jsx`.
+  `test_all_strings_from_messages.test.js`'s `SAFE_ATTR_NAMES` extended with
+  SVG geometry attributes (a real false positive on the first inline `<svg>`
+  icons this codebase has used, not a behavioural assertion).
+
+### Tier E — library
+
+- [x] T85 (Partial) — Style `LibraryView.jsx`/`LibraryRecipePicker.jsx`:
+  card-grid layout (`tokens.radius.md`, `tokens.shadow.sm` per recipe card),
+  a `tokens.radius.pill` category-color dot (new `CATEGORY_COLORS` in
+  `domain/labels.js`), icon-button edit/remove row, instead of a plain list.
+  The "IA" badge is **not implemented** — same wall as T82: no `Recipe`
+  field distinguishes an AI-authored entry
+  (`backend/core/src/planner_core/domain/recipe.py`). Covers: R9, R10, R11,
+  R12 (styling completion, partial).
+- [x] T86 — Style `LibraryFilters.jsx`: apply the token module at all
+  (currently zero token references) — search input and category `<select>`
+  styled off `tokens.color`/`tokens.space`/`tokens.radius.sm`. Covers: R11,
+  R13, R14 (styling completion).
+- [x] T87 — Style `RecipeAuthoringForm.jsx`'s non-AI parts only (`scratch`
+  and `library` methods; the `ai` tab's stub content/behaviour stays
+  untouched — feature 28's scope, design.md §10.6): form-field styling off
+  tokens, an `--aub`-accented selector chip on the `ai` method tab so the
+  disabled stub still reads as the AI path. Covers: R6, R7, R8 (styling
+  completion).
+- [x] T88 — `frontend/tests/components/*` (extend, Tier E): selector-only
+  updates as T78/T84, plus one guard assertion that
+  `RecipeAuthoringForm`'s `ai` tab still renders `canSubmit: false`
+  (protects T22's stub logic from an accidental styling-pass regression).
+
+### Tier F — summary / shopping / rules / admin
+
+- [x] T89 — Style `SummaryView.jsx`: card shape (`tokens.radius.md`,
+  `tokens.shadow.sm`) per definitive-meal row, pill-badge treatment
+  consistent with T82. Covers: R5, R21 (styling completion).
+- [x] T90 — Style `ShoppingListView.jsx`: checked items get a strikethrough
+  (`textDecoration: 'line-through'`) alongside the existing `tokens.
+  color.ink3` dimming (`FR-SHOP-08`'s "greyed out" wording is already met;
+  the strikethrough is additional visual clarity mined from the prototype,
+  not a new requirement), plus a card container per section
+  (`tokens.radius.md`). Covers: R19, R20, R21 (styling completion; consumes
+  `FR-SHOP-08`, feature 8).
+- [x] T91 — Style `RulesView.jsx`: group rules by type (count/pin/disable)
+  under `tokens.fontFamily.heading` section headers with a card container
+  (`tokens.radius.md`) per group. Covers: R12, R19 (styling completion).
+- [x] T92 — Style `AdminAccountsView.jsx`/`AccountRow.jsx`: an avatar-circle
+  treatment (`tokens.radius.pill`, initials-based, no image dependency) per
+  row, role/status badges (`tokens.radius.pill`, `tokens.color.terraSoft`/
+  `honeySoft`) replacing the current plain text. Covers: R33, R34, R36,
+  R37 (styling completion).
+- [x] T93 — `frontend/tests/components/*` (extend, Tier F): selector-only
+  updates as T78/T84/T88, plus one same-row-not-first-row targeting test per
+  restyled list (Summary/Shopping/Rules/Admin) — every prior Tier F-adjacent
+  round caught a handler misbound to the wrong row, so this tier adds that
+  guard rather than relying on selector-only coverage alone.
+
+### Gate
+
+- [x] T94 — `./init.sh` green (frontend lint/format/test; `ruff`/`mypy`/
+  `pytest` untouched by this reopen); update `progress/current.md`. This
+  is the closing gate for the reopened scope — T63 remains the record of
+  the original cycle's gate.

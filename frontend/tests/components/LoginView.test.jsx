@@ -2,7 +2,7 @@
 // T51 (R24, R29): renders username + password + submit, an inline error, and
 // crucially no registration control anywhere on the screen.
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { LoginView } from '../../src/components/LoginView.jsx';
 import { MESSAGES } from '../../src/messages/index.js';
 
@@ -41,6 +41,15 @@ describe('LoginView', () => {
     render(<LoginView {...baseProps({ error: 'Usuario o contraseña incorrectos.' })} />);
 
     expect(screen.getByText('Usuario o contraseña incorrectos.')).not.toBeNull();
+  });
+
+  it('clicking the submit control invokes submit (security-relevant: login must fire)', () => {
+    const submit = vi.fn();
+    render(<LoginView {...baseProps({ submit })} />);
+
+    fireEvent.click(screen.getByText(MESSAGES.LOGIN_SUBMIT));
+
+    expect(submit).toHaveBeenCalledTimes(1);
   });
 
   it('offers no registration control anywhere on the screen (R29)', () => {

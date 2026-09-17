@@ -27,4 +27,7 @@ export const COLORS = {
   aubSoft: '#F0E1F3',
   honey: '#D28E2B',
   honeySoft: '#F8E9C6',
+  // Not part of the 18-colour lift above: `ink` at low alpha, same
+  // derivation `tokens/shadow.js` already uses (fix round, 2026-09-16).
+  backdrop: 'rgba(40, 51, 31, 0.45)',
 };

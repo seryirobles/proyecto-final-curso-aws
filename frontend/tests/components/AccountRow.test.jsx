@@ -114,4 +114,10 @@ describe('AccountRow', () => {
 
     expect(screen.getByText(MESSAGES.ADMIN_ACCOUNTS_REMOVE)).not.toBeNull();
   });
+
+  it('renders an avatar with the username initials (T92 restyle)', () => {
+    render(<AccountRow {...baseProps({ account: account({ username: 'bea' }) })} />);
+
+    expect(screen.getByText('BE')).not.toBeNull();
+  });
 });

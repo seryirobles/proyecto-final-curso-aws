@@ -9,28 +9,49 @@ export function ConfirmDialog({ pending, onConfirm, onCancel }) {
 
   return (
     <div
+      data-testid="confirm-dialog-backdrop"
       style={{
-        padding: tokens.space.lg,
-        backgroundColor: tokens.color.surface,
-        color: tokens.color.ink,
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: tokens.color.backdrop,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
       }}
     >
-      <p style={{ margin: tokens.space.none }}>{pending.message}</p>
-      <div style={{ display: 'flex', gap: tokens.space.sm, marginTop: tokens.space.md }}>
-        <button type="button" onClick={onCancel} style={{ padding: tokens.space.sm }}>
-          {MESSAGES.CONFIRM_DIALOG_CANCEL}
-        </button>
-        <button
-          type="button"
-          onClick={onConfirm}
-          style={{
-            padding: tokens.space.sm,
-            backgroundColor: tokens.color.terra,
-            color: tokens.color.surface,
-          }}
-        >
-          {MESSAGES.CONFIRM_DIALOG_CONFIRM}
-        </button>
+      <div
+        style={{
+          padding: tokens.space.lg,
+          backgroundColor: tokens.color.surface,
+          color: tokens.color.ink,
+          borderRadius: tokens.radius.lg,
+          boxShadow: tokens.shadow.lg,
+        }}
+      >
+        <p style={{ margin: tokens.space.none, fontFamily: tokens.fontFamily.heading }}>
+          {pending.message}
+        </p>
+        <div style={{ display: 'flex', gap: tokens.space.sm, marginTop: tokens.space.md }}>
+          <button
+            type="button"
+            onClick={onCancel}
+            style={{ padding: tokens.space.sm, borderRadius: tokens.radius.sm }}
+          >
+            {MESSAGES.CONFIRM_DIALOG_CANCEL}
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            style={{
+              padding: tokens.space.sm,
+              backgroundColor: tokens.color.terra,
+              color: tokens.color.surface,
+              borderRadius: tokens.radius.sm,
+            }}
+          >
+            {MESSAGES.CONFIRM_DIALOG_CONFIRM}
+          </button>
+        </div>
       </div>
     </div>
   );

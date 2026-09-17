@@ -4,6 +4,12 @@
 
 import { tokens } from '../tokens/index.js';
 import { MESSAGES } from '../messages/index.js';
+import {
+  inputStyle,
+  primaryButtonStyle,
+  cardStyle,
+  listResetStyle,
+} from '../tokens/controlStyles.js';
 import { EmptyState } from './EmptyState.jsx';
 import { LoadingState } from './LoadingState.jsx';
 import { ConfirmDialog } from './ConfirmDialog.jsx';
@@ -41,13 +47,32 @@ export function AdminAccountsView({
 
   return (
     <div>
-      <h2 style={{ margin: tokens.space.none }}>{MESSAGES.ADMIN_ACCOUNTS_VIEW_TITLE}</h2>
+      <h2
+        style={{
+          margin: tokens.space.none,
+          fontFamily: tokens.fontFamily.heading,
+          fontSize: tokens.fontSize.xl,
+        }}
+      >
+        {MESSAGES.ADMIN_ACCOUNTS_VIEW_TITLE}
+      </h2>
       {error ? <p style={{ color: tokens.color.ink, padding: tokens.space.md }}>{error}</p> : null}
 
-      <div style={{ display: 'flex', gap: tokens.space.sm }}>
+      <div
+        style={{
+          ...cardStyle,
+          display: 'flex',
+          gap: tokens.space.sm,
+        }}
+      >
         <label>
           {MESSAGES.ADMIN_ACCOUNTS_NEW_USERNAME_LABEL}
-          <input type="text" value={newUsername} onChange={(e) => setNewUsername(e.target.value)} />
+          <input
+            type="text"
+            value={newUsername}
+            onChange={(e) => setNewUsername(e.target.value)}
+            style={inputStyle}
+          />
         </label>
         <label>
           {MESSAGES.ADMIN_ACCOUNTS_TEMP_PASSWORD_LABEL}
@@ -55,9 +80,15 @@ export function AdminAccountsView({
             type="password"
             value={newTemporaryPassword}
             onChange={(e) => setNewTemporaryPassword(e.target.value)}
+            style={inputStyle}
           />
         </label>
-        <button type="button" onClick={create} disabled={!canCreate}>
+        <button
+          type="button"
+          onClick={create}
+          disabled={!canCreate}
+          style={primaryButtonStyle(!canCreate)}
+        >
           {MESSAGES.ADMIN_ACCOUNTS_CREATE}
         </button>
       </div>
@@ -65,7 +96,15 @@ export function AdminAccountsView({
       {accounts.length === 0 ? (
         <EmptyState message={MESSAGES.ADMIN_ACCOUNTS_VIEW_EMPTY} />
       ) : (
-        <ul>
+        <ul
+          style={{
+            ...listResetStyle,
+            margin: `${tokens.space.md} 0 0`,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: tokens.space.sm,
+          }}
+        >
           {accounts.map((account) => (
             <AccountRow
               key={account.userId}

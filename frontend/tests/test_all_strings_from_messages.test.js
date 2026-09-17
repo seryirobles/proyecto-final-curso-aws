@@ -34,6 +34,20 @@ const SAFE_ATTR_NAMES = new Set([
   'role',
   'designation',
   'value',
+  // SVG icon geometry (T82/T83, design.md 10.6) - numeric/keyword, never copy.
+  'width',
+  'height',
+  'viewBox',
+  'fill',
+  'stroke',
+  'strokeWidth',
+  'strokeLinecap',
+  'strokeLinejoin',
+  'd',
+  // SearchIcon's <circle> (T86, design.md 10.6) - same class as the above.
+  'cx',
+  'cy',
+  'r',
 ]);
 const ATTR_ASSIGNMENT = /([A-Za-z][\w-]*)\s*=\s*("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g;
 // A string literal counts as a rendered branch/fallback only right after one

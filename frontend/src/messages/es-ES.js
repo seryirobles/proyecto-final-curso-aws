@@ -25,6 +25,10 @@ export const MESSAGES = {
   WEEK_PLANNER_DEFINITIVE_BADGE: 'Definitivo',
   CONFIRM_REPLACE_DEFINITIVE: '¿Reemplazar el plato definitivo de este hueco?',
   CONFIRM_CLEAR_DEFINITIVE: '¿Quitar el plato definitivo de este hueco?',
+  // Day-card status pill (feature 20 T81, design.md 10.6)
+  WEEK_PLANNER_DAY_STATUS_EMPTY: 'Sin platos',
+  WEEK_PLANNER_DAY_STATUS_CANDIDATES: 'Con candidatas',
+  WEEK_PLANNER_DAY_STATUS_DEFINITIVE: 'Definitiva lista',
 
   // Recipe detail (feature 20 T18-T21)
   RECIPE_DETAIL_CLOSE: 'Cerrar',
@@ -132,6 +136,8 @@ export const MESSAGES = {
   LOGIN_USERNAME_LABEL: 'Usuario',
   LOGIN_PASSWORD_LABEL: 'Contraseña',
   LOGIN_SUBMIT: 'Entrar',
+  // Auth screens - card styling reopen (feature 20 T79-T80, design.md 10.6)
+  LOGIN_NO_REGISTRATION_NOTE: 'Sin registro público. Las cuentas las crea el administrador.',
   SET_PASSWORD_VIEW_TITLE: 'Nueva contraseña',
   SET_PASSWORD_NEW_LABEL: 'Nueva contraseña',
   SET_PASSWORD_CONFIRM_LABEL: 'Confirmar contraseña',

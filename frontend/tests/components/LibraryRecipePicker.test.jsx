@@ -60,9 +60,16 @@ describe('LibraryRecipePicker', () => {
     const onSelect = vi.fn();
     render(<LibraryRecipePicker {...baseProps({ onSelect })} />);
 
-    fireEvent.click(screen.getAllByText(MESSAGES.LIBRARY_PICKER_SELECT)[0]);
+    fireEvent.click(screen.getAllByText(MESSAGES.LIBRARY_PICKER_SELECT)[1]);
 
-    expect(onSelect).toHaveBeenCalledWith('r-1');
+    expect(onSelect).toHaveBeenCalledWith('r-2');
+  });
+
+  it('shows the selected state on the matching card only (selectedRecipeId)', () => {
+    render(<LibraryRecipePicker {...baseProps({ selectedRecipeId: 'r-2' })} />);
+
+    expect(screen.getByText(MESSAGES.LIBRARY_PICKER_SELECTED)).not.toBeNull();
+    expect(screen.getAllByText(MESSAGES.LIBRARY_PICKER_SELECT)).toHaveLength(1);
   });
 
   it('renders EmptyState guidance when no recipe matches the filters', () => {

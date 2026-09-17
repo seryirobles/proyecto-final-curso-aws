@@ -2,6 +2,9 @@
 // function of `useWeekPlanner`'s return shape - the App shell (a later
 // section) is what wires `<WeekPlannerView {...useWeekPlanner()} />`.
 
+// Fluid day-card grid (T81, design.md 10.6): `auto-fill`/`minmax` so
+// DaySlot's card shape collapses gracefully - no fixed breakpoint added.
+
 import { tokens } from '../tokens/index.js';
 import { WeekSwitcher } from './WeekSwitcher.jsx';
 import { DaySlot } from './DaySlot.jsx';
@@ -29,12 +32,23 @@ export function WeekPlannerView({
 
   return (
     <div>
-      {error ? <p style={{ color: tokens.color.ink, padding: tokens.space.md }}>{error}</p> : null}
+      {error ? (
+        <p
+          style={{
+            color: tokens.color.honey,
+            backgroundColor: tokens.color.honeySoft,
+            borderRadius: tokens.radius.sm,
+            padding: tokens.space.md,
+          }}
+        >
+          {error}
+        </p>
+      ) : null}
       <WeekSwitcher liveWeeks={liveWeeks} designation={designation} onSwitch={switchWeek} />
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 260px), 1fr))',
           gap: tokens.space.md,
           marginTop: tokens.space.md,
         }}

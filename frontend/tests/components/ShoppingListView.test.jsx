@@ -97,11 +97,19 @@ describe('ShoppingListView', () => {
     expect(within(checkedList).queryByText('arroz · 500 g')).toBeNull();
   });
 
-  it('a checked item is greyed out via tokens.color.ink3', () => {
+  it('a checked item is greyed out via tokens.color.ink3 and struck through (T90)', () => {
     render(<ShoppingListView {...baseProps({ checkedItems: [item('s-2', { checked: true })] })} />);
 
     const row = screen.getByText('arroz · 500 g').closest('li');
     expect(row.style.color).toBe('rgb(144, 153, 125)'); // #90997D
+    expect(row.style.textDecoration).toBe('line-through');
+  });
+
+  it('an unchecked item has no strikethrough', () => {
+    render(<ShoppingListView {...baseProps({ uncheckedItems: [item('s-1')] })} />);
+
+    const row = screen.getByText('arroz · 500 g').closest('li');
+    expect(row.style.textDecoration).toBe('');
   });
 
   it('remove routes through useConfirm (R18)', () => {
@@ -122,6 +130,19 @@ describe('ShoppingListView', () => {
     expect(setChecked).toHaveBeenCalledWith(item('s-1'), true);
   });
 
+  it('toggling an already-checked item calls setChecked with false', () => {
+    const setChecked = vi.fn();
+    render(
+      <ShoppingListView
+        {...baseProps({ checkedItems: [item('s-1', { checked: true })], setChecked })}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('checkbox'));
+
+    expect(setChecked).toHaveBeenCalledWith(item('s-1', { checked: true }), false);
+  });
+
   it('clicking edit opens the item for editing', () => {
     const openEdit = vi.fn();
     render(<ShoppingListView {...baseProps({ uncheckedItems: [item('s-1')], openEdit })} />);
@@ -129,6 +150,39 @@ describe('ShoppingListView', () => {
     fireEvent.click(screen.getByText(MESSAGES.SHOPPING_LIST_EDIT));
 
     expect(openEdit).toHaveBeenCalledWith(item('s-1'));
+  });
+
+  it('with two unchecked items, editing/removing the SECOND row targets it, not the first (T90 card restyle)', () => {
+    const openEdit = vi.fn();
+    const remove = vi.fn();
+    const itemA = item('s-1', { name: 'arroz' });
+    const itemB = item('s-2', { name: 'lentejas' });
+    render(
+      <ShoppingListView {...baseProps({ uncheckedItems: [itemA, itemB], openEdit, remove })} />,
+    );
+
+    const editButtons = screen.getAllByText(MESSAGES.SHOPPING_LIST_EDIT);
+    fireEvent.click(editButtons[1]);
+    expect(openEdit).toHaveBeenCalledWith(itemB);
+    expect(openEdit).not.toHaveBeenCalledWith(itemA);
+
+    const removeButtons = screen.getAllByText(MESSAGES.SHOPPING_LIST_REMOVE);
+    fireEvent.click(removeButtons[1]);
+    expect(remove).toHaveBeenCalledWith('s-2');
+    expect(remove).not.toHaveBeenCalledWith('s-1');
+  });
+
+  it('with two unchecked items, checking the SECOND row targets it, not the first', () => {
+    const setChecked = vi.fn();
+    const itemA = item('s-1', { name: 'arroz' });
+    const itemB = item('s-2', { name: 'lentejas' });
+    render(<ShoppingListView {...baseProps({ uncheckedItems: [itemA, itemB], setChecked })} />);
+
+    const checkboxes = screen.getAllByRole('checkbox');
+    fireEvent.click(checkboxes[1]);
+
+    expect(setChecked).toHaveBeenCalledWith(itemB, true);
+    expect(setChecked).not.toHaveBeenCalledWith(itemA, true);
   });
 
   it('an in-flight resync renders LoadingState (R20)', () => {
@@ -141,14 +195,16 @@ describe('ShoppingListView', () => {
   it('the resync affordance renders a scoped intro, both WeekLabels and a connector between them (R21, decision 2)', () => {
     render(<ShoppingListView {...baseProps()} />);
 
-    const currentExpected = `${MESSAGES.WEEK_LABEL_CURRENT} · ${formatDate(new Date(LIVE_WEEKS.current.monday))}–${formatDate(new Date(LIVE_WEEKS.current.sunday))}`;
-    const nextExpected = `${MESSAGES.WEEK_LABEL_NEXT} · ${formatDate(new Date(LIVE_WEEKS.next.monday))}–${formatDate(new Date(LIVE_WEEKS.next.sunday))}`;
-    // The intro text scopes "desde hoy" - the current-week label's full
-    // Monday-Sunday range never stands alone implying it's all in scope.
+    const currentRange = `${formatDate(new Date(LIVE_WEEKS.current.monday))}–${formatDate(new Date(LIVE_WEEKS.current.sunday))}`;
+    const nextRange = `${formatDate(new Date(LIVE_WEEKS.next.monday))}–${formatDate(new Date(LIVE_WEEKS.next.sunday))}`;
+    // Two-tier WeekLabel (T75): designation and range are separate text
+    // nodes for each week, not one joined string.
     expect(screen.getByText(MESSAGES.SHOPPING_LIST_RESYNC_SCOPE_LABEL)).not.toBeNull();
-    expect(screen.getByText(currentExpected)).not.toBeNull();
+    expect(screen.getByText(MESSAGES.WEEK_LABEL_CURRENT)).not.toBeNull();
+    expect(screen.getByText(currentRange)).not.toBeNull();
     expect(screen.getByText(MESSAGES.SHOPPING_LIST_RESYNC_SCOPE_CONNECTOR)).not.toBeNull();
-    expect(screen.getByText(nextExpected)).not.toBeNull();
+    expect(screen.getByText(MESSAGES.WEEK_LABEL_NEXT)).not.toBeNull();
+    expect(screen.getByText(nextRange)).not.toBeNull();
   });
 
   it('clicking resync calls resync', () => {
