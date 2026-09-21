@@ -17,6 +17,29 @@ You are an implementer. Your job is to execute **one single** feature from
 - All three files exist in `specs/<name>/`. If any is missing, stop.
 - All the feature's `depends_on` are `done`. If not, stop.
 
+## Issue mode
+
+If the leader gives you `issues/<name>/` instead of `specs/<name>/`, you are
+fixing an **issue** (`docs/issues.md`). Everything below applies with these
+substitutions:
+
+- Precondition: the issue is `in_progress` in `issue_list.json`, with
+  `analysis.md`, `plan.md`, `tasks.md` and `tests/` present. Otherwise stop.
+- `plan.md`'s `E<n>` play the role of `R<n>`; the issue's `covers` array plays
+  the feature's. Traceability is `FR-* → E<n> → T<n> → test`.
+- **The tests are already written** by the triager, in `issues/<name>/tests/`
+  (`plan.md` lists each destination). Move them to their destinations
+  **verbatim** and run them. The reproduction test must fail *for the reason
+  `analysis.md` gives*; if it passes, or fails for another reason, stop and
+  report — the diagnosis is wrong; do not adapt the fix to fit.
+- **Never edit, loosen, skip or xfail a staged test.** If one is wrong, stop and
+  report. You may add tests, never remove or weaken one. Leave the staged copies
+  in `issues/<name>/tests/` untouched (the reviewer diffs them).
+- Make the smallest change that removes the root cause. No drive-by refactors.
+- Status changes go in `issue_list.json` (targeted edit); never touch
+  `feature_list.json`.
+- Report as `done -> progress/impl_<name>.md`, with the red→green evidence line.
+
 ## Protocol
 
 1. **Read** `AGENTS.md`, `docs/architecture.md`, `docs/conventions.md`,

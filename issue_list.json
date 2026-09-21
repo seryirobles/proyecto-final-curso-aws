@@ -1,0 +1,25 @@
+{
+  "project": "collaborative-weekly-meal-planner",
+  "description": "Bug backlog. Process: docs/issues.md. Sibling of feature_list.json; the leader appends new reports as 'reported'.",
+  "rules": {
+    "one_in_progress_across_both_lists": true,
+    "valid_status": ["reported", "pending", "approved", "in_progress", "done", "wontfix", "blocked"],
+    "human_only_transitions": "pending -> approved | wontfix, and -> done. Agents never make these.",
+    "blocked_requires_reason": true,
+    "wontfix_requires_resolution": true,
+    "fields": {
+      "id": "int, continuous, never reused",
+      "name": "kebab-case slug; folder is issues/<name>/",
+      "title": "one line",
+      "severity": "low | medium | high | critical, as reported (triager may amend in analysis.md)",
+      "report": "the human's text, verbatim",
+      "reported": "YYYY-MM-DD",
+      "status": "see valid_status",
+      "covers": "FR-*/NFR-* ids the defect violates; filled by issue_triager",
+      "classification": "defect | spec_gap | arch_pending | not_a_defect; filled by issue_triager",
+      "blocked_reason": "required when blocked",
+      "resolution": "required when wontfix"
+    }
+  },
+  "issues": []
+}

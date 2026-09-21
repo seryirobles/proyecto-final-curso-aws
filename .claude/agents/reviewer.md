@@ -83,6 +83,25 @@ than they find.
 12. Walk `CHECKPOINTS.md`. Mark `[x]` what holds, `[ ]` what does not.
 13. Issue the verdict.
 
+## Issue mode
+
+If the work is an **issue** (`in_progress` in `issue_list.json`, folder
+`issues/<name>/`, see `docs/issues.md`), run the same protocol with these
+substitutions: `plan.md`'s `E<n>` replace `R<n>` in steps 3–4, the issue's
+`covers` array replaces the feature's, and `tasks.md` is the issues one. Then
+add three checks:
+
+- **Fix reverted → reproduction fails.** Mutate the fix itself (revert or
+  neuter the root-cause change named in `analysis.md`) and confirm the
+  reproduction test goes red. Green means it never proved the bug.
+- **Tests untouched**: each staged file in `issues/<name>/tests/` is
+  byte-identical to its copy at the destination (`diff`). Any edit, skip or
+  xfail -> reject. Extra tests are fine.
+- **Scope**: the diff touches only what `plan.md` names. Extra refactors or a
+  changed status in `feature_list.json` → reject.
+
+The verdict header reads `# Review — issue <id> (<name>)`.
+
 ## Mutation testing
 
 **This is yours.** Not the implementer's, not the leader's. It is the one part

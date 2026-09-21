@@ -82,8 +82,8 @@ fi
 echo ""
 echo "── 2. Harness base files ───────────────────────────────"
 
-for f in AGENTS.md CLAUDE.md CHECKPOINTS.md feature_list.json progress/current.md \
-         docs/architecture.md docs/conventions.md docs/specs.md docs/verification.md; do
+for f in AGENTS.md CLAUDE.md CHECKPOINTS.md feature_list.json issue_list.json progress/current.md \
+         docs/architecture.md docs/conventions.md docs/specs.md docs/issues.md docs/verification.md; do
   if [ ! -f "$f" ]; then
     fail "Missing base file: $f"
     EXIT_CODE=1
@@ -209,6 +209,48 @@ for rid in sorted(req_ids - covered - removed_ids):
 for rid in sorted(covered - req_ids):
     FAILURES.append(f"covers cites unknown requirement id {rid} (typo?)")
 
+# Guardrail: issue_list.json (docs/issues.md). Same shape of checks as features.
+issue_valid = {"reported", "pending", "approved", "in_progress", "done", "wontfix", "blocked"}
+issue_needs_plan = {"pending", "approved", "in_progress", "done"}
+issues = []
+if os.path.isfile("issue_list.json"):
+    try:
+        with open("issue_list.json", encoding="utf-8") as fh:
+            issues = json.load(fh).get("issues", [])
+    except Exception as exc:  # noqa: BLE001 - startup check, any failure is fatal
+        FAILURES.append(f"issue_list.json is unreadable: {exc}")
+else:
+    FAILURES.append("Missing base file: issue_list.json")
+
+feature_ids_in_progress = [f["name"] for f in in_progress]
+issue_ids = [i["id"] for i in issues]
+if len(issue_ids) != len(set(issue_ids)):
+    FAILURES.append("issue_list.json has duplicate issue ids")
+issues_in_progress = [i["name"] for i in issues if i["status"] == "in_progress"]
+if len(issues_in_progress) + len(feature_ids_in_progress) > 1:
+    FAILURES.append(
+        "more than one item in_progress across both lists: "
+        + ", ".join(feature_ids_in_progress + issues_in_progress)
+    )
+for i in issues:
+    iid, iname, istatus = i["id"], i["name"], i["status"]
+    if istatus not in issue_valid:
+        FAILURES.append(f"issue {iid} ({iname}): invalid status '{istatus}'")
+        continue
+    if istatus == "blocked" and not i.get("blocked_reason", "").strip():
+        FAILURES.append(f"issue {iid} ({iname}): blocked without a blocked_reason")
+    if istatus == "wontfix" and not i.get("resolution", "").strip():
+        FAILURES.append(f"issue {iid} ({iname}): wontfix without a resolution")
+    if istatus in issue_needs_plan:
+        for fname in ("analysis.md", "plan.md", "tasks.md"):
+            if not os.path.isfile(os.path.join("issues", iname, fname)):
+                FAILURES.append(
+                    f"issue {iid} ({iname}) is {istatus} but issues/{iname}/{fname} is missing"
+                )
+    for rid in i.get("covers", []):
+        if rid not in req_ids:
+            FAILURES.append(f"issue {iid} ({iname}): covers unknown requirement id {rid}")
+
 if FAILURES:
     for message in FAILURES:
         print(f"[FAIL]  {message}")
@@ -233,6 +275,18 @@ if nxt:
     print(f"[OK]    Next actionable feature: {nxt['id']} - {nxt['name']}")
 else:
     print("[WARN]  No actionable pending feature (all blocked or done)")
+
+icounts = {}
+for i in issues:
+    icounts[i["status"]] = icounts.get(i["status"], 0) + 1
+isummary = ", ".join(f"{k}: {v}" for k, v in sorted(icounts.items())) or "empty"
+print(f"[OK]    issue_list.json valid ({len(issues)} issues - {isummary})")
+untriaged = [i for i in issues if i["status"] == "reported"]
+if untriaged:
+    print(f"[OK]    Issues awaiting triage: {', '.join(str(i['id']) for i in untriaged)}")
+queued = sorted((i for i in issues if i["status"] == "approved"), key=lambda x: x["id"])
+if queued:
+    print(f"[OK]    Next approved issue: {queued[0]['id']} - {queued[0]['name']}")
 PY
 
 if [ $? -ne 0 ]; then EXIT_CODE=1; fi

@@ -34,6 +34,8 @@ assignment*.
 
 Specs go to `specs/<feature>/`; the subagent returns the path, not the content.
 
+Issue analyses go to `issues/<name>/` (`docs/issues.md`); same rule.
+
 **Reviews do not go to files at all** (owner directive, 2026-08-24). A reviewer
 returns its verdict and surviving findings in its result message; fold anything
 durable into `progress/current.md`. Implementation reports stay short — a

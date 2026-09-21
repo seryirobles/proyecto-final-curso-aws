@@ -65,6 +65,9 @@ pending decision, you **stop** — you do not choose for them.
 | File / folder | What it holds | When to read it |
 |---|---|---|
 | `feature_list.json` | Backlog with status (`pending` / `spec_ready` / `in_progress` / `done` / `blocked`) | Always, at the start |
+| `issue_list.json` | Bug backlog with status (`reported` / `pending` / `approved` / `in_progress` / `done` / `wontfix` / `blocked`) | When the owner hands you issues, or one is not `done` |
+| `issues/<name>/` | `analysis.md` + `plan.md` + `tasks.md` + `tests/` (the staged tests that define "solved") for one issue | Before fixing an issue |
+| `docs/issues.md` | The issue workflow: states, the go/no-go gate, the three files | Before triaging or fixing an issue |
 | `progress/current.md` | State of the active session | Always, at the start |
 | `progress/history.md` | Append-only log of previous sessions | When you need historical context |
 | `specs/<feature>/` | `requirements.md` + `design.md` + `tasks.md` (Kiro-style) | Before implementing any `"sdd": true` feature |
@@ -76,7 +79,7 @@ pending decision, you **stop** — you do not choose for them.
 | `docs/specs.md` | SDD process: EARS notation, the 3 files, the human approval gate | Before writing or reading a spec |
 | `docs/verification.md` | How to prove your work functions (incl. FR traceability) | Before declaring anything `done` |
 | `CHECKPOINTS.md` | Objective criteria for "correct final state" | To self-evaluate |
-| `.claude/agents/` | Subagent definitions (`leader`, `spec_author`, `implementer`, `reviewer`) | If you orchestrate work |
+| `.claude/agents/` | Subagent definitions (`leader`, `spec_author`, `issue_triager`, `implementer`, `reviewer`) | If you orchestrate work |
 | `prototypes/wireframe/` | The **Claude design prototype**. **Read-only reference material, outside every toolchain root**: never edit it, never lint it, never port it, and never let a build reach it | Only through `docs/frontend_prototype.md` |
 | `docs/frontend_prototype.md` | Analysis of the prototype in `prototypes/wireframe/`. Executable wireframe: read it, mine it, **do not port it**. **§4 lists eleven places where it contradicts the frozen requirements** | Before writing any spec or code for a UI-facing feature |
 
@@ -201,6 +204,17 @@ pending → [spec_author] → spec_ready → ⏸ HUMAN → in_progress → [impl
 
 `docs/specs.md` owns the detail: the three files, EARS notation, and the human
 approval gate. The `done` mark and the commit are the human's alone.
+
+### Workflow (issues)
+
+```
+reported → [issue_triager] → pending → ⏸ HUMAN go/no-go → approved → in_progress → [implementer → reviewer] → done
+```
+
+Bugs in built code follow the same machinery with a different front end;
+`docs/issues.md` owns the detail. The go/no-go can be all, some or none of the
+triaged issues. **One `in_progress` across `feature_list.json` and
+`issue_list.json` combined.** `done` and `wontfix` are the human's alone.
 
 ### The traceability chain
 

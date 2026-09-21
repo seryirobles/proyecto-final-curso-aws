@@ -46,7 +46,11 @@ FILE_PATTERNS="*.py,*.ts,*.tsx,*.js,*.jsx"
 # "prototypes/*" excludes the read-only design prototype (prototypes/wireframe/):
 # generated, unmaintainable-by-design build artifacts that never ship. Reviewing
 # them produces only false findings — see prototypes/wireframe/README.md.
-EXCLUDE_PATTERNS="*.test.ts,*.spec.ts,*.test.tsx,*.spec.tsx,*.d.ts,prototypes/*"
+#
+# "issues/*" excludes the staged issue tests (issues/<name>/tests/): they are
+# reviewed where they land, under backend/ or frontend/, once the implementer
+# moves them (docs/issues.md). Staged copies stay behind and would be reviewed twice.
+EXCLUDE_PATTERNS="*.test.ts,*.spec.ts,*.test.tsx,*.spec.tsx,*.d.ts,prototypes/*,issues/*"
 
 # File containing code review rules
 # Default: AGENTS.md

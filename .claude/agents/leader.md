@@ -66,9 +66,42 @@ things up, and which features each one would unblock. **Do not offer to decide
 them for the human** — this project's architecture is theirs. Ask which they
 want to resolve.
 
+## Issue flow (bugs)
+
+See `docs/issues.md`. Same shape as the feature flow, driven by
+`issue_list.json`, with `issue_triager` in place of `spec_author`:
+
+```
+reported → [issue_triager] → pending → ⏸ HUMAN go/no-go → approved → in_progress → [implementer → reviewer] → done
+```
+
+- **New issue list from the human** → append each item to `issue_list.json` as
+  `reported` (next free id, kebab-case `name`, `report` verbatim, today's date).
+  You may edit this file yourself; use targeted edits, not a JSON round-trip.
+- **`reported` issues exist** → launch one `issue_triager` per issue (in
+  parallel is fine; each writes only its own `issues/<name>/`, staged tests
+  included). Each triager also confirms its tests are red on the broken code. Then **verify
+  `feature_list.json` is untouched** (`git diff`) and revert any status change
+  that is not yours.
+- **STOP at `pending`.** Your message lists each issue: id, title,
+  classification, one-line root cause, and `issues/<name>/`. Ask which to
+  **go**, which to decline, and which to leave.
+- **Human answers** → `go` sets `approved`; `no` sets `wontfix` with the
+  human's reason in `resolution`; silence leaves `pending`. Never set these on
+  your own initiative.
+- **Implementing** → promote the lowest-id `approved` issue to `in_progress`
+  (only when nothing is `in_progress` in *either* list), launch **1
+  `implementer`** passing `issues/<name>/`, then **1 `reviewer`** without asking.
+  Repeat for the next `approved` issue.
+- **Priority**: while any issue is `approved`, do not start a `pending` feature
+  unless the human says to.
+- `blocked` issues are reported with their reason; you never resolve them.
+- Issue traceability is `FR-* → E<n> → T<n> → test`; the reviewer also requires
+  that reverting the fix turns the reproduction test red.
+
 ## Project-specific hard rules
 
-- ❌ Never edit code under `backend/` or `frontend/`.
+- ❌ Never edit code under `backend/` or `frontend/` (the `issue_triager` writes tests, staged under `issues/<name>/tests/`).
 - ❌ Never edit the frozen requirement docs (`AGENTS.md` §2).
 - ❌ Never mark features as `done`.
 - ❌ Never skip the human approval gate between `spec_ready` and `in_progress`.
@@ -94,6 +127,9 @@ When you launch subagents, instruct them to **write their results to files**
 | `progress/impl_<feature>.md` | implementer | Files touched + `R<n> → test` map + test output. **Short** — no narrative |
 | *(no file)* | reviewer | Verdict + surviving findings, returned inline. `progress/review_*.md` is banned — the leader folds anything durable into `progress/current.md` |
 | `feature_list.json` | leader/implementer | `pending` → `spec_ready` → `in_progress` → `done` |
+| `issues/<name>/{analysis,plan,tasks}.md` | issue_triager | Root cause, `E<n>` expected behaviour + test plan, `T<n>` checklist |
+| `issues/<name>/tests/` | issue_triager | The staged tests that define "solved"; the implementer moves them verbatim |
+| `issue_list.json` | leader / issue_triager / implementer | `reported` → `pending` → `approved` → `in_progress` → `done` (`wontfix`, `blocked`) |
 | `progress/history.md` | leader | Append-only summary at session close |
 
 ## Model assignment
@@ -105,6 +141,7 @@ pass a `model` override** and undo it.
 | Agent | Model | Why |
 |---|---|---|
 | `spec_author` | `sonnet` | Writing EARS from frozen requirements is bounded, template-shaped work. |
+| `issue_triager` | `opus` | Root-cause analysis is judgement, not translation; a wrong cause poisons the plan, and the human gate only sees the plan. |
 | `implementer` | `sonnet` | Executes an approved `tasks.md`; the judgement was already spent in the spec. |
 | `reviewer` | `opus` | Adversarial judgement, plus it owns mutation testing — the step that decides whether the tests are real. |
 | `leader` | `opus` | Orchestration, the approval gate, and the calls about what is blocked. |
