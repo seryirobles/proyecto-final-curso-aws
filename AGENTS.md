@@ -93,7 +93,7 @@ The source tree — `backend/core`, the two Lambda packages, `backend/tests/cont
 | `docs/requirements.md` | The ~90 numbered requirements (`FR-*`, `NFR-*`). **The contract.** |
 | `docs/app_user_stories.md` | The 27 original user stories (`US1`–`US27`) |
 | `docs/coverage_analysis.md` | Story→requirement coverage audit |
-| `docs/gaps_and_resolutions.md` | `G-01`–`G-81`, Parts A–Q: every ambiguity and *why* it was resolved that way |
+| `docs/gaps_and_resolutions.md` | `G-01`–`G-89`, Parts A–Y: every ambiguity and *why* it was resolved that way |
 | `docs/gaps_pending_stakeholders.md` | `PEND-01`–`PEND-15`, all closed — historical record |
 
 These five files are the frozen output of a completed requirements phase.

@@ -17,6 +17,15 @@
 `<name>` is the issue's `name` slug in `issue_list.json`. The human hands over
 issues in batches; the `leader` appends them to `issue_list.json` as `reported`.
 
+## One triager for the whole batch
+
+A single `issue_triager` agent processes every `reported` issue, one after
+another, and creates each issue's own `issues/<name>/`. Never one agent per
+issue and never in parallel: each cold start re-reads `docs/` and the same code,
+which is where the tokens go (owner directive, 2026-09-21). Issues sharing a
+cause are diagnosed together, then each still gets its own analysis
+cross-reference, plan and tests, so each can be approved or declined alone.
+
 ## Issue states
 
 | State | Meaning |

@@ -78,11 +78,13 @@ reported → [issue_triager] → pending → ⏸ HUMAN go/no-go → approved →
 - **New issue list from the human** → append each item to `issue_list.json` as
   `reported` (next free id, kebab-case `name`, `report` verbatim, today's date).
   You may edit this file yourself; use targeted edits, not a JSON round-trip.
-- **`reported` issues exist** → launch one `issue_triager` per issue (in
-  parallel is fine; each writes only its own `issues/<name>/`, staged tests
-  included). Each triager also confirms its tests are red on the broken code. Then **verify
-  `feature_list.json` is untouched** (`git diff`) and revert any status change
-  that is not yours.
+- **`reported` issues exist** → launch **exactly one `issue_triager`** for the
+  whole batch, in a single call. **Never one triager per issue, never triagers
+  in parallel** (owner directive, 2026-09-21: ten parallel triagers burned his
+  weekly usage). It creates each `issues/<name>/` with its staged tests and
+  confirms they are red on the broken code. Brief it with the ids to triage and
+  the files it must open, nothing more. Then **verify `feature_list.json` is
+  untouched** (`git diff`) and revert any status change that is not yours.
 - **STOP at `pending`.** Your message lists each issue: id, title,
   classification, one-line root cause, and `issues/<name>/`. Ask which to
   **go**, which to decline, and which to leave.

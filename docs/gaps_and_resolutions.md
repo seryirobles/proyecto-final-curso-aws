@@ -1188,3 +1188,51 @@ model before recording the decision.
   claimed no new read patterns, which was true only for the pre-decision
   state; polling adds `AP29` and amends three existing whole-partition
   reads. Supersedes nothing.
+
+## Part Y — Recipe sections become mandatory: ingredients, tools and procedure (2026-09-22)
+
+Directed by the requirements owner, in the same manner as Parts I through X.
+Raised triaging issue 8 (`recipe-saved-without-required-sections`) in the new
+issue workflow (`docs/issues.md`): the `issue_triager` found the reported
+behaviour was undecided, not a defect — `specs/recipe_model/design.md` §8
+rejected alternative **G** had already declined exactly this rule as
+invention, for want of a requirement — and stopped at `blocked` pending this
+lift, per `docs/specs.md`'s "never invent a requirement" rule.
+
+### G-89 · A recipe's ingredients, tools and procedure had no minimum content (amends FR-LIB-03, FR-AI-12)
+
+- **Gap:** `FR-LIB-03` enumerates what a recipe stores — name, ingredients,
+  tools, procedure, category, time, servings — but states no minimum count for
+  the three list-shaped fields. Nothing in the chain (the authoring form's
+  `canSubmit`, the wire boundary's `decode_recipe`, the `Recipe` domain type)
+  rejects a save with zero ingredients, zero tools or zero procedure steps.
+  Part H's negative space (§ *Examined and rejected in this sweep*) delegates
+  **field-level validation minutiae** — name lengths, quantity bounds, item
+  ordering — to implementation; the **cardinality of a recipe's sections** was
+  not among those and was not decided anywhere, which is why
+  `specs/recipe_model/design.md` §8 correctly declined to invent the rule at
+  the time.
+- **Decision:** A recipe's `ingredients`, `tools` (**utensilios**) and
+  `procedure` (**elaboración**) lists shall each contain **at least one item**.
+  This applies uniformly to every recipe-authoring flow — write-from-scratch
+  and AI-generated, targeting a candidate or the library (`FR-CAND-03`) — and
+  is enforced at the write boundary: a save with any of the three lists empty
+  is rejected with a friendly Castilian-Spanish message (`FR-UX-03`), never
+  silently dropped or truncated. **Utensilios is included**: the owner ruled
+  all three sections mandatory, closing the question the triager raised (a
+  dish needing no tool is plausible in principle, but the product wants the
+  field filled regardless).
+- **Reasoning:** The report describes a reasonable product expectation —
+  nobody meant to allow a recipe that is only a name — and the earlier
+  rejection, while procedurally correct (no requirement backed it), left a
+  real gap once surfaced as a user-facing defect. The rule is enforced at the
+  wire boundary rather than as a `Recipe.__post_init__` invariant so that any
+  recipe already persisted empty in the running dev environment stays
+  readable; a constructor-level invariant would make every read of that old
+  data raise. The AI path is folded into the existing per-slot failure
+  mechanism (`G-66`) rather than a new error shape, since generation already
+  distinguishes a clean result from a surfaced failure.
+- **Requirements:** `FR-LIB-03` (amended — minimum one item per section).
+  `FR-AI-12` (amended — AI output with any of the three sections empty
+  surfaces as a per-slot failure, the same path `G-66` established for an
+  insufficient library, never a raise).
