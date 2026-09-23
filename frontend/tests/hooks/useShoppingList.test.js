@@ -25,7 +25,12 @@ function item(id, overrides = {}) {
 }
 
 function pollSnapshot(items) {
-  return { data: { items }, connectionLost: false, applyMutationMarker: vi.fn() };
+  return {
+    data: { items },
+    connectionLost: false,
+    applyMutationMarker: vi.fn(),
+    refetchNow: vi.fn(), // issue ui-not-reflecting-mutations
+  };
 }
 
 describe('useShoppingList', () => {
@@ -54,7 +59,12 @@ describe('useShoppingList', () => {
   });
 
   it('polls before the first data arrives (R20)', () => {
-    usePolling.mockReturnValue({ data: null, connectionLost: false, applyMutationMarker: vi.fn() });
+    usePolling.mockReturnValue({
+      data: null,
+      connectionLost: false,
+      applyMutationMarker: vi.fn(),
+      refetchNow: vi.fn(), // issue ui-not-reflecting-mutations
+    });
     apiFetch.mockResolvedValue(LIVE_WEEKS);
     const { result } = renderHook(() => useShoppingList());
 

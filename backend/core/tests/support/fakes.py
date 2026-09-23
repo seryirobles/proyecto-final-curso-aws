@@ -407,10 +407,12 @@ class FakeGenerationQueue:
 
 
 def _default_ai_output() -> RawRecipeOutput:
+    # Non-empty tools (issue recipe-saved-without-required-sections, G-89):
+    # feeds every week-generation success test via FakeAiProvider.
     return RawRecipeOutput(
         name="Ensalada templada de lentejas",
         ingredients=(RawIngredient(name="lentejas", quantity=200.0, unit="g"),),
-        tools=(),
+        tools=("bol",),
         procedure=("Cocer las lentejas y servir templadas.",),
         category="legume",
     )

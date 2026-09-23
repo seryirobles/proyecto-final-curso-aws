@@ -4,6 +4,7 @@ Spanish stored attributes and the English domain value objects."""
 
 from __future__ import annotations
 
+from decimal import InvalidOperation
 from typing import Any
 
 from planner_core.domain.ingredient_category import IngredientCategory, parse_category
@@ -21,7 +22,7 @@ def content_attrs(
     procedure: tuple[str, ...],
     category: IngredientCategory,
     servings: int | None,
-    estimated_time: str | None,
+    estimated_time: int | None,
 ) -> dict[str, Any]:
     return {
         "nombrePlato": name,
@@ -73,6 +74,13 @@ def read_servings(item: dict[str, Any]) -> int | None:
     return None if value is None else int(_table.decode_number(value))
 
 
-def read_estimated_time(item: dict[str, Any]) -> str | None:
+def read_estimated_time(item: dict[str, Any]) -> int | None:
+    """A `tiempo` written before G-90 as free text reads back as absent
+    instead of raising (issue tiempo-estimado-numeric-minutes)."""
     value = item.get("tiempo")
-    return None if value is None else str(value)
+    if value is None:
+        return None
+    try:
+        return int(_table.decode_number(value))
+    except InvalidOperation:
+        return None

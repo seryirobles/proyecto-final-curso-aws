@@ -35,7 +35,7 @@ describe('useRecipeAuthoring', () => {
     act(() => result.current.updateField('name', 'Lentejas al curry'));
     act(() => result.current.updateField('category', 'legume'));
     act(() => result.current.updateField('servings', '4'));
-    act(() => result.current.updateField('estimatedTime', '45 min'));
+    act(() => result.current.updateField('estimatedTime', '45'));
     act(() => result.current.addIngredient());
     act(() => result.current.updateIngredient(0, 'name', 'lentejas'));
     act(() => result.current.updateIngredient(0, 'quantity', '300'));
@@ -52,8 +52,8 @@ describe('useRecipeAuthoring', () => {
       recipe: {
         name: 'Lentejas al curry',
         category: 'legume',
-        servings: '4',
-        estimatedTime: '45 min',
+        servings: 4,
+        estimatedTime: 45,
         ingredients: [{ name: 'lentejas', quantity: 300, unit: 'g' }],
         tools: ['olla'],
         procedure: ['Sofreír la cebolla.'],

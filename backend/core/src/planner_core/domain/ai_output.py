@@ -7,7 +7,20 @@ from enum import StrEnum
 
 from planner_core.domain.calendar import SlotRef
 from planner_core.domain.ingredient_category import UnknownIngredientCategory, parse_category
-from planner_core.domain.recipe import Ingredient, Recipe
+from planner_core.domain.recipe import (
+    Ingredient,
+    InvalidEstimatedTime,
+    InvalidIngredientQuantity,
+    InvalidServings,
+    MissingIngredients,
+    MissingProcedure,
+    MissingTools,
+    Recipe,
+    parse_estimated_minutes,
+    parse_quantity,
+    parse_servings_count,
+    require_recipe_sections,
+)
 from planner_core.domain.units import UnknownUnit, parse_unit
 from planner_core.messages import (
     AI_GENERATION_INSUFFICIENT_LIBRARY_RECIPES,
@@ -35,28 +48,36 @@ class RawRecipeOutput:
     procedure: tuple[str, ...]
     category: str
     servings: int | None = None
-    estimated_time: str | None = None
+    estimated_time: int | str | None = None
 
 
 def validate_ai_recipe_output(raw: RawRecipeOutput) -> Recipe:
     """Resolve raw's unit and category strings against the fixed vocabularies (G-48).
 
     Raises UnknownUnit or UnknownIngredientCategory rather than building a
-    Recipe from unresolved data. servings and estimated_time carry through
-    unchanged and unvalidated (G-85) - their absence is not a failure.
+    Recipe from unresolved data. Each ingredient's quantity is resolved
+    through parse_quantity (issue negative-ingredient-quantity): a
+    non-positive value raises InvalidIngredientQuantity. servings is resolved
+    through parse_servings_count (G-91, amending G-85): a non-positive value
+    raises InvalidServings; absence is not a failure. estimated_time is
+    resolved through parse_estimated_minutes (G-90): free text or an
+    out-of-range value raises InvalidEstimatedTime rather than persisting.
     """
     ingredients = tuple(
-        Ingredient(name=item.name, quantity=item.quantity, unit=parse_unit(item.unit))
+        Ingredient(
+            name=item.name, quantity=parse_quantity(item.quantity), unit=parse_unit(item.unit)
+        )
         for item in raw.ingredients
     )
+    require_recipe_sections(ingredients, raw.tools, raw.procedure)  # G-89, Part Y
     return Recipe(
         name=raw.name,
         ingredients=ingredients,
         tools=raw.tools,
         procedure=raw.procedure,
         category=parse_category(raw.category),
-        servings=raw.servings,
-        estimated_time=raw.estimated_time,
+        servings=parse_servings_count(raw.servings),
+        estimated_time=parse_estimated_minutes(raw.estimated_time),
     )
 
 
@@ -125,7 +146,16 @@ def validate_and_preview(raw: RawRecipeOutput) -> GenerationOutcome:
     """Validate raw and surface the result as a value, never a propagated raise (G-48)."""
     try:
         recipe = validate_ai_recipe_output(raw)
-    except (UnknownUnit, UnknownIngredientCategory):
+    except (
+        UnknownUnit,
+        UnknownIngredientCategory,
+        InvalidEstimatedTime,
+        InvalidIngredientQuantity,
+        InvalidServings,
+        MissingIngredients,
+        MissingTools,
+        MissingProcedure,
+    ):
         return build_generation_failure(GenerationFailureReason.INVALID_OUTPUT)
     return GenerationSuccess(preview=new_preview(recipe))
 

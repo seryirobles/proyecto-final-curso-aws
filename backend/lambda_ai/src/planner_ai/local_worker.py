@@ -12,7 +12,7 @@ from typing import Any
 
 import boto3
 from botocore.config import Config
-from botocore.exceptions import ClientError, NoCredentialsError, ProfileNotFound
+from botocore.exceptions import ClientError, ProfileNotFound
 
 from planner_ai.adapters.dynamo._table import create_data_table
 from planner_ai.handler import handle
@@ -31,8 +31,7 @@ _CONFIG = (
     if _ENDPOINT_URL
     else None
 )
-# ClientError codes botocore raises for a misconfigured/expired credential,
-# as opposed to the zero-credentials case NoCredentialsError already covers.
+# ClientError codes botocore raises for a misconfigured/expired credential.
 _AUTH_ERROR_CODES = {"UnrecognizedClientException", "InvalidClientTokenId", "ExpiredToken"}
 
 
@@ -52,10 +51,42 @@ def _require_local_env() -> None:
         raise SystemExit(1)
 
 
+def _require_bedrock_auth() -> None:
+    """Bedrock is the one call that leaves this machine; it needs a bearer API
+    key or the AWS credential chain, checked before either client is built
+    (E4, issues/debug-requires-aws-credentials/analysis.md)."""
+    if os.environ.get("AWS_BEARER_TOKEN_BEDROCK"):
+        return
+    if boto3.Session().get_credentials() is not None:
+        return
+    logger.error(
+        "No Bedrock authentication configured. Set AWS_BEARER_TOKEN_BEDROCK "
+        "(a Bedrock API key) or configure a real AWS credential chain (aws "
+        "configure, environment variables, or SSO) before running the local "
+        "worker."
+    )
+    raise SystemExit(1)
+
+
+def _local_credentials() -> dict[str, str]:
+    """Placeholder credentials for local-emulator traffic only, when an endpoint
+    override is set (E1, issues/debug-requires-aws-credentials/analysis.md).
+    Read at call time, like `_ENDPOINT_URL`, so tests patching it take effect."""
+    if not _ENDPOINT_URL:
+        return {}
+    return {"aws_access_key_id": "local", "aws_secret_access_key": "local"}
+
+
 def _sqs() -> Any:
     # boto3 ships no type stubs, so the client handle is untyped
     # (docs/conventions.md — no bare `Any` without a justification).
-    return boto3.client("sqs", region_name=_REGION, endpoint_url=_ENDPOINT_URL, config=_CONFIG)
+    return boto3.client(
+        "sqs",
+        region_name=_REGION,
+        endpoint_url=_ENDPOINT_URL,
+        config=_CONFIG,
+        **_local_credentials(),
+    )
 
 
 def _queue_url() -> str:
@@ -90,19 +121,10 @@ def _poll_once(sqs: Any, queue_url: str) -> None:
 def main() -> None:
     logging.basicConfig(level=logging.INFO)
     _require_local_env()
+    _require_bedrock_auth()
     try:
         sqs = _sqs()
         create_data_table()  # convenience for a fresh DynamoDB Local container
-    except NoCredentialsError:
-        # boto3 always needs credential-shaped values to sign a request, even
-        # to a local endpoint — real AWS credentials are required here so
-        # bedrock.py's client (never given a local override) can reach Bedrock.
-        logger.error(
-            "No AWS credentials found. Configure real AWS credentials (aws "
-            "configure, environment variables, or SSO) before running the "
-            "local worker — Bedrock requires them regardless of local mode."
-        )
-        raise SystemExit(1) from None
     except ProfileNotFound as error:
         logger.error("%s — fix AWS_PROFILE before running the local worker.", error)
         raise SystemExit(1) from None

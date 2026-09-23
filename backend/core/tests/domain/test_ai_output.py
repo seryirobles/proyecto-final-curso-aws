@@ -160,7 +160,7 @@ def test_validate_ai_recipe_output_does_not_raise_when_both_fields_are_absent() 
 
 def test_validate_ai_recipe_output_copies_servings_and_estimated_time_when_present() -> None:
     """recipe_metadata_fields R14, R15."""
-    raw = dataclasses.replace(_make_raw(), servings=4, estimated_time="30 min")
+    raw = dataclasses.replace(_make_raw(), servings=4, estimated_time=30)
 
     recipe = validate_ai_recipe_output(raw)
 

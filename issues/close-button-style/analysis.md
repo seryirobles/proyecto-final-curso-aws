@@ -95,6 +95,21 @@ No other caller renders this close control: `closeAuthoring` is produced by
 `useLibrary.js:68` and consumed only at `LibraryView.jsx:207`. The candidate
 authoring flow reuses `RecipeAuthoringForm` but not this button.
 
+**Correction (2026-09-23, scope extension).** The scan above was wrong about
+the candidate flow. `MESSAGES.RECIPE_DETAIL_CLOSE` labels three buttons:
+
+| Site | Status |
+|---|---|
+| `LibraryView.jsx:213` | fixed (E1-E3), now `{ ...secondaryButtonStyle, marginTop: tokens.space.sm }` |
+| `CandidateAuthoring.jsx:23-25` | **unstyled** — plain `<button type="button" onClick={onClose}>`; the week view's "Añadir plato" panel (header comment, `:1-4`). Added as **E4/E5**. |
+| `RecipeDetailView.jsx:98` | styled (`CloseButton` treatment, detail sheet); not reported, out of scope |
+
+`CandidateAuthoring.jsx` postdates this triage (issue `add-dish-button-inert`,
+same day), which is why the scan missed it. It is the likelier referent of
+"recipe creation menu": the owner reported it still broken after E1-E3
+landed. Reproduced by the staged `CandidateAuthoring.closeButton.test.jsx`
+(E4 red, every treatment property `""`).
+
 Regression risk of the fix is limited to the same element's click behaviour,
 which `E3` pins.
 

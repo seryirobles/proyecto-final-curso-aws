@@ -251,6 +251,21 @@ describe('createPollingEngine', () => {
     expect(fetchResource).toHaveBeenCalledTimes(1); // no second, post-dispose fetch
   });
 
+  it('queues refetchNow() called mid-flight instead of dropping it (fix round 2)', async () => {
+    let resolveFirst;
+    const fetchResource = vi.fn(() => new Promise((resolve) => (resolveFirst = resolve)));
+    const engine = engineWith(fetchResource);
+
+    engine.start(); // first poll() begins, still in flight
+    engine.refetchNow(); // arrives while inFlight - must not be silently dropped
+    resolveFirst({ status: 304, marker: null, body: null });
+    await flush();
+
+    expect(fetchResource).toHaveBeenCalledTimes(2); // the queued forced refetch ran
+    expect(fetchResource.mock.calls[1][0]).toBe(null); // unconditional, not the held marker
+    engine.dispose();
+  });
+
   it('applyMutationMarker discards a mismatched marker and triggers a refetch', async () => {
     const fetchResource = vi.fn().mockResolvedValue({ status: 200, marker: 5, body: {} });
     const engine = engineWith(fetchResource);

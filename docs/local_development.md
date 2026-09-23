@@ -98,19 +98,21 @@ export GENERATION_QUEUE_URL=http://localhost:9324/000000000000/generation-queue
 export AWS_DEFAULT_REGION=eu-south-2
 export AI_MODEL_ID=global.openai.gpt-5.6-terra
 
-# Do NOT set AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY here to fake values —
-# this process's Bedrock client needs real AWS auth. Prefer a scoped
-# Bedrock API key over full IAM access keys (NFR-SEC-01, least privilege):
-# generate one in the Bedrock console, then:
+# Do NOT set AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY here — the local
+# DynamoDB/SQS clients sign with their own built-in placeholder credentials
+# whenever the endpoint overrides above are set, and only the Bedrock call
+# needs real auth. Prefer a scoped Bedrock API key over full IAM access keys
+# (NFR-SEC-01, least privilege): generate one in the Bedrock console, then:
 export AWS_BEARER_TOKEN_BEDROCK=<your Bedrock API key>
 # `boto3` reads this env var natively — no code change, works with
 # `.converse()`. It authorizes Bedrock/Bedrock Runtime actions only,
 # unlike an IAM access key pair which may carry whatever else that
 # identity has. If you'd rather use your normal AWS credential chain
 # instead (`aws configure` / SSO / a named profile), that still works —
-# just don't hardcode IAM access keys here for this process specifically.
-# DynamoDB/SQS still route locally via the endpoint overrides above either
-# way; only the Bedrock call itself reaches real AWS.
+# a Bedrock API key alone is sufficient either way, no generic AWS
+# credential is required. DynamoDB/SQS still route locally via the
+# endpoint overrides above either way; only the Bedrock call itself
+# reaches real AWS.
 
 uv run python -m planner_ai.local_worker
 ```
@@ -130,17 +132,19 @@ subscription/access error, not the credentials error covered above.
 See `docs/architecture.md` §1.2.6 for the full provider decision (why
 `Converse`/`eu-south-2`/no EU data-residency guarantee for this model).
 
-Fails with one clear log line (not a raw traceback) if no AWS credentials
-are configured at all, if your AWS profile/token is invalid, **or if
+Fails with one clear log line (not a raw traceback) if **neither**
+`AWS_BEARER_TOKEN_BEDROCK` **nor** a resolvable AWS credential chain is
+configured (checked once, at startup, before either emulator client is
+built), if your AWS profile/token is invalid, or if
 `DYNAMODB_ENDPOINT_URL`/`SQS_ENDPOINT_URL`/`GENERATION_QUEUE_URL` aren't all
-set** — this script only ever supports local-emulator mode, deliberately,
-with no override. Since it carries real AWS credentials (for Bedrock),
-letting it silently fall through to real AWS DynamoDB/SQS on a missing env
-var would be a real hazard, unlike the `api` side's fake `local`/`local`
-credentials, which AWS itself would reject. A generation request that
-reaches the Bedrock call without real Bedrock access will fail there
-specifically, logged and skipped, same as any other per-record failure —
-the rest of the app keeps working regardless.
+set — this script only ever supports local-emulator mode, deliberately,
+with no override. Its DynamoDB/SQS clients sign with their own built-in
+placeholder credentials whenever the endpoint overrides are set, same as the
+`api` side's fake `local`/`local` credentials, so a Bedrock API key alone is
+enough to run the whole local stack. A generation request that reaches the
+Bedrock call without real Bedrock access will fail there specifically,
+logged and skipped, same as any other per-record failure — the rest of the
+app keeps working regardless.
 
 ## 4. Seed test accounts
 
@@ -207,7 +211,9 @@ SPA)"** compound runs everything above from one Run & Debug entry: `docker
 compose up -d` (§1) → seed the 4 test accounts (§4) → debug
 `local_server.py` and `local_worker.py` with breakpoints in the real
 handler/authorizer/generation code → launch the SPA in a debuggable Chrome
-instance proxied to it. `.vscode/` is gitignored, so its env values are
+instance proxied to it — Chrome waits (task `dev: frontend ready`) until both
+Vite and the API on port 8080 answer, failing after ~3 min if the API never
+comes up. `.vscode/` is gitignored, so its env values are
 yours to edit freely — see the comments in `launch.json` for switching to
 real-AWS-table mode, and note the "ai: local worker" config deliberately
 carries no fake AWS credentials (§3) — configure your real ones on your

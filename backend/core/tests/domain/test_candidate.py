@@ -293,7 +293,7 @@ def test_to_library_entry_does_not_warn_without_a_collision() -> None:
 
 def test_to_library_entry_copies_servings_and_estimated_time_when_set() -> None:
     """specs/recipe_metadata_fields/requirements.md R16, R17."""
-    meal = dataclasses.replace(_meal("Pisto"), servings=4, estimated_time="45 min")
+    meal = dataclasses.replace(_meal("Pisto"), servings=4, estimated_time=45)
 
     result = to_library_entry(meal, existing_names=())
 

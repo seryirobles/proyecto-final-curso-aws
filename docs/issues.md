@@ -32,11 +32,19 @@ cross-reference, plan and tests, so each can be approved or declined alone.
 |---|---|
 | `reported` | Raw report, untriaged. `issue_triager` acts first. |
 | `pending` | Triaged: `issues/<name>/` written. **Awaiting the human's go / no-go. No code is touched.** |
-| `approved` | Human said go. Queued; the `leader` promotes one at a time. |
-| `in_progress` | `implementer` working from `plan.md` + `tasks.md`. |
+| `approved` | Human said go. Queued for the batch. |
+| `in_progress` | Part of the current batch: implemented, and either awaiting the batched review or already `APPROVED` by it. Stays `in_progress` through an `APPROVED` review too — the reviewer's verdict is not the human's `done` mark. |
 | `done` | Fix green, `reviewer` approved, session closed. Human-only mark. |
 | `wontfix` | Human said no. Reason in `resolution`. Only the human sets it. |
 | `blocked` | Stuck. Reason in `blocked_reason` and `progress/current.md`. |
+
+An `in_progress` issue the reviewer has `APPROVED` gets `reviewed: true` (leader,
+targeted edit) — owner directive, 2026-09-22, so a batch does not stall on the
+human's `done` click between issues. There is **no cap among issues**: a whole
+approved batch may sit `in_progress` together, implemented by **one
+implementer run** and reviewed by **one batched reviewer call**, not one pair
+per issue (same directive). A feature and an issue batch still never run at
+the same time — that cap remains.
 
 ```
 reported → [issue_triager] → pending → ⏸ HUMAN go/no-go → approved → in_progress → [implementer → reviewer] → done
@@ -55,6 +63,21 @@ without asking.
 **One `in_progress` across both lists.** An issue and a feature are never
 in progress together. While any issue is `approved`, the `leader` does not start
 a `pending` feature unless the human says to.
+
+## Blast radius wider than the report — ask, don't assume (owner directive, 2026-09-22)
+
+A report describes what the human could observe or test. Root-cause analysis
+sometimes finds the **same cause** breaking other operations the report never
+mentions — often because the reported one was the only one reachable to test
+(e.g. an add button that doesn't work makes edit/remove of the same thing
+untestable too). When this happens the triager does **neither**: it does not
+silently narrow the fix to just what was reported, and it does not silently
+broaden it to everything the cause touches. It states the finding plainly in
+`analysis.md` § *Blast radius* and flags it as an open scope question, and the
+`leader` surfaces it explicitly at the gate as a question needing an answer —
+**general fix (all affected operations) or specific fix (only what was
+reported, the rest as a separate issue)** — not folded into the ordinary
+pending-issue summary as an FYI.
 
 ## analysis.md
 

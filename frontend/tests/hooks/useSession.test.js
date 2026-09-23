@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 // T47 (R23, R25, R26, R27, R32): every mount-time probe outcome, login's two
 // branches by passwordResetRequired, setPassword's re-probe, logout's reset.
+// Login fixtures carry the wire role the API actually sends ("user"/"admin",
+// backend Role StrEnum) - issue blank-screen-after-login, E1/E2.
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -72,7 +74,7 @@ describe('useSession', () => {
   it('login with passwordResetRequired true routes to passwordResetPending, not the returned role (R25, R26)', async () => {
     apiFetch.mockImplementation((url) =>
       url === '/v1/session'
-        ? Promise.resolve({ role: 'User', passwordResetRequired: true })
+        ? Promise.resolve({ role: 'user', passwordResetRequired: true })
         : Promise.reject(sessionExpired()),
     );
     const { result } = renderHook(() => useSession());
@@ -90,7 +92,7 @@ describe('useSession', () => {
   it('login with passwordResetRequired false authenticates with the returned role (R25)', async () => {
     apiFetch.mockImplementation((url) =>
       url === '/v1/session'
-        ? Promise.resolve({ role: 'Admin', passwordResetRequired: false })
+        ? Promise.resolve({ role: 'admin', passwordResetRequired: false })
         : Promise.reject(sessionExpired()),
     );
     const { result } = renderHook(() => useSession());
@@ -101,10 +103,33 @@ describe('useSession', () => {
     expect(result.current.session).toEqual({ status: 'authenticated', role: 'Admin' });
   });
 
+  it('login and the mount probe agree on the role of the same User account (E1)', async () => {
+    apiFetch.mockResolvedValue(LIVE_WEEKS);
+    const { result: probed } = renderHook(() => useSession());
+    await waitFor(() => expect(probed.current.session.status).toBe('authenticated'));
+    const probedRole = probed.current.session.role;
+
+    apiFetch.mockImplementation((url) =>
+      url === '/v1/session'
+        ? Promise.resolve({ userId: 'u-1', role: 'user', passwordResetRequired: false })
+        : Promise.reject(sessionExpired()),
+    );
+    const { result } = renderHook(() => useSession());
+    await waitFor(() => expect(result.current.session.status).toBe('anonymous'));
+
+    await act(async () => result.current.login('ana', 'secret'));
+
+    expect(result.current.session).toEqual({
+      status: 'authenticated',
+      role: probedRole,
+      userId: 'u-1',
+    });
+  });
+
   it('login also carries the response userId through (R37 - AdminAccountsView self-row)', async () => {
     apiFetch.mockImplementation((url) =>
       url === '/v1/session'
-        ? Promise.resolve({ userId: 'admin-1', role: 'Admin', passwordResetRequired: false })
+        ? Promise.resolve({ userId: 'admin-1', role: 'admin', passwordResetRequired: false })
         : Promise.reject(sessionExpired()),
     );
     const { result } = renderHook(() => useSession());

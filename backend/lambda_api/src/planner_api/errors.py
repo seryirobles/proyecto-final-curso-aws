@@ -14,10 +14,27 @@ from planner_core.domain.authentication_guards import PasswordResetPending
 from planner_core.domain.authorization import Forbidden
 from planner_core.domain.calendar import InvalidIsoWeek
 from planner_core.domain.candidate import CandidateNotFound
-from planner_core.domain.errors import PlannerError
+from planner_core.domain.errors import (
+    EmptyCategory,
+    EmptyIngredientName,
+    EmptyMeasure,
+    EmptyName,
+    EmptyProcedureStep,
+    EmptyQuantity,
+    EmptyTool,
+    PlannerError,
+)
 from planner_core.domain.ingredient_category import UnknownIngredientCategory
 from planner_core.domain.login_policy import InvalidCredentials
 from planner_core.domain.password_policy import PasswordTooShort
+from planner_core.domain.recipe import (
+    InvalidEstimatedTime,
+    InvalidIngredientQuantity,
+    InvalidServings,
+    MissingIngredients,
+    MissingProcedure,
+    MissingTools,
+)
 from planner_core.domain.rules import (
     InvalidRuleId,
     InvalidWeekday,
@@ -85,6 +102,32 @@ _TABLE: dict[type[Exception], _ErrorSpec] = {
     UsernameReserved: _ErrorSpec(422, "USERNAME_RESERVED", messages.USERNAME_RESERVED),
     PasswordTooShort: _ErrorSpec(422, "PASSWORD_TOO_SHORT", messages.PASSWORD_TOO_SHORT),
     UnknownUnit: _ErrorSpec(422, "UNKNOWN_UNIT", messages.UNKNOWN_UNIT),
+    # One row per field (R17: detail is always a static messages constant,
+    # never composed here) - issue empty-field-error-messages.
+    EmptyName: _ErrorSpec(422, "EMPTY_FIELD", messages.EMPTY_NAME),
+    EmptyCategory: _ErrorSpec(422, "EMPTY_FIELD", messages.EMPTY_CATEGORY),
+    EmptyIngredientName: _ErrorSpec(422, "EMPTY_FIELD", messages.EMPTY_INGREDIENT_NAME),
+    EmptyQuantity: _ErrorSpec(422, "EMPTY_FIELD", messages.EMPTY_QUANTITY),
+    EmptyMeasure: _ErrorSpec(422, "EMPTY_FIELD", messages.EMPTY_UNIT),
+    EmptyTool: _ErrorSpec(422, "EMPTY_FIELD", messages.EMPTY_TOOL),
+    EmptyProcedureStep: _ErrorSpec(422, "EMPTY_FIELD", messages.EMPTY_PROCEDURE_STEP),
+    # G-90: a well-formed but out-of-range estimated_time, rejected the way
+    # an empty required field is - issue tiempo-estimado-numeric-minutes.
+    InvalidEstimatedTime: _ErrorSpec(
+        422, "INVALID_ESTIMATED_TIME", messages.INVALID_ESTIMATED_TIME
+    ),
+    # Issue negative-ingredient-quantity: well-formed but non-positive,
+    # rejected the way an empty required field is (Part H, G-91/Part AA).
+    InvalidIngredientQuantity: _ErrorSpec(
+        422, "INVALID_INGREDIENT_QUANTITY", messages.INVALID_INGREDIENT_QUANTITY
+    ),
+    InvalidServings: _ErrorSpec(422, "INVALID_SERVINGS", messages.INVALID_SERVINGS),
+    # Issue recipe-saved-without-required-sections (G-89, Part Y): one row
+    # per section, each with its own static message (no shared-mechanism
+    # change, same reasoning issue empty-field-error-messages used).
+    MissingIngredients: _ErrorSpec(422, "MISSING_INGREDIENTS", messages.RECIPE_WITHOUT_INGREDIENTS),
+    MissingTools: _ErrorSpec(422, "MISSING_TOOLS", messages.RECIPE_WITHOUT_TOOLS),
+    MissingProcedure: _ErrorSpec(422, "MISSING_PROCEDURE", messages.RECIPE_WITHOUT_PROCEDURE),
     UnknownIngredientCategory: _ErrorSpec(
         422, "UNKNOWN_INGREDIENT_CATEGORY", messages.UNKNOWN_INGREDIENT_CATEGORY
     ),

@@ -3,8 +3,15 @@
 ## Defect, one sentence
 
 No entry point between the recipe form and storage constrains an ingredient
-quantity, so a negative amount is accepted, persisted, and later **subtracted**
-from what the shopping list says the week requires.
+quantity or a servings count (*Comensales*), so a zero or negative value of
+either is accepted and persisted — and a negative ingredient quantity is later
+**subtracted** from what the shopping list says the week requires.
+
+The servings half was added on 2026-09-23 (owner, via the leader); its
+requirements lift, `G-91` (Part AA), landed the same day — see "Scope
+extension: servings" below.
+Everything above that section is the original ingredient-quantity triage,
+unchanged.
 
 ## Reproduction
 
@@ -120,6 +127,82 @@ Adjacent but **out of scope**: `ShoppingItem.quantity`
 manual `-1 g` shopping item is accepted. Different type, different entry point,
 and outside this report ("Unidad in ingredientes"). Recorded here so it is not
 lost; it needs its own report.
+
+## Scope extension: servings (2026-09-23)
+
+### Reproduction
+
+```
+decode_recipe({... 'servings': -4})          -> Recipe(..., servings=-4)   # accepted
+decode_recipe({... 'servings': 0})           -> Recipe(..., servings=0)    # accepted
+validate_ai_recipe_output(RawRecipeOutput(..., servings=0))  -> servings=0 # accepted
+```
+
+Frontend: the *Comensales* input (`RecipeAuthoringForm.jsx:140-147`) is
+`type="number" step="1"` with no `min`, so its stepper walks below zero, and
+`canSubmit` is `true` for `scratch` regardless of the form. Confirmed red by
+the staged servings tests — `plan.md`, "Red result for E7–E12".
+
+### `parse_servings` does not validate the value
+
+`serialization.py:167-175` checks the **JSON type only** (`int` or `null`,
+`bool` excluded -> `MalformedRequest`, 400) and returns any integer unchanged.
+That is by design: issue 4 built it to exactly what `FR-LIB-03` allows.
+
+### Root cause
+
+Same shape as the ingredient half — no value check at the entry points — but
+here the absence is **required by the frozen text**, not an oversight:
+
+| `file:line` | What is missing |
+|---|---|
+| `backend/lambda_api/src/planner_api/serialization.py:167-175` | `parse_servings` accepts any integer. It is the only servings entry for manual library create/update (`routing.py:530`), manual candidate create/update (`routing.py:356`, `:413`) and single-recipe AI-preview accept (`routing.py:365`, which re-decodes the stored preview through `decode_recipe`). |
+| `backend/core/src/planner_core/domain/ai_output.py:65` | `validate_ai_recipe_output` carries `raw.servings` through untouched (its docstring cites G-85). This is the only check on the **whole-week** AI path (`application/week_generation.py:101` -> `validate_and_preview`), which never passes `decode_recipe`. |
+| `frontend/src/components/RecipeAuthoringForm.jsx:140-147`, `frontend/src/hooks/useRecipeAuthoring.js` `canSubmit` | No `min`, no warning, no submit guard. |
+
+### Requirement basis — `G-91` (Part AA), landed 2026-09-23
+
+**No longer a `spec_gap`.** `G-91` amends `G-85`/`FR-LIB-03` (and `FR-AI-13`):
+"`servings` becomes a strictly positive integer (`>= 1`) or absent/`null`",
+enforced "at the write boundary and in AI-output validation, not as a
+domain-level invariant", with a UI control whose "minimum is 0 and shows an
+inline warning if the user reaches 0 or a negative value". The staged `E7`–`E12`
+tests assume exactly this (reject `-4`/`-1`/`0`; accept `1`, `4`, absent;
+`min="0"`; es-ES warning; `Recipe` constructor left permissive) — no re-cut.
+Live `RecipeAuthoringForm.servings.test.jsx` (`no min or max`, G-85) is now
+superseded by `G-91` and is replaced per `plan.md`.
+
+Before the lift, the frozen requirement **forbade** the bound (kept for the
+record):
+
+- `FR-LIB-03`: "Servings ... remain freeform and purely informational — **no
+  validation beyond a numeric wire type**, no dropdown constraint, no
+  downstream logic (G-85)."
+- `G-85`: both fields purely informational, "**no validation**".
+- `G-90` (Part Z) lifted this for `tiempo` only and says so: "Scoping the
+  reopening to `tiempo` alone, leaving servings' already-implemented
+  numeric-but-unbounded shape untouched, avoids re-litigating a decision
+  (servings) nobody asked to reopen." `rest_api_contract.md` section 3,
+  item 8 repeats it: "`servings` is a freeform integer (`G-85`)".
+- Part H's "quantity bounds are implementation minutiae" — the argument the
+  ingredient half rests on — does **not** carry over: for servings a
+  requirement states the opposite explicitly.
+- Live tests lock the current behaviour: `RecipeAuthoringForm.servings.test.jsx`
+  `bounds Comensales with no min or max (E4, G-85 - no validation)`.
+
+That lift is `G-91`, as proposed. Nothing in `docs/data_model.md` bounds
+`numeroComensales` either way.
+
+### Blast radius — servings
+
+| Site | Status under the planned fix |
+|---|---|
+| `serialization.py:167` `parse_servings` | **Fixed** (E7) — covers library create/update, candidate create/update, AI-preview accept. Wrong JSON type stays 400; a well-formed non-positive integer becomes 422, the same split `parse_estimated_time` uses. |
+| `ai_output.py:65` `validate_ai_recipe_output` | **Fixed** (E8), and `validate_and_preview` must catch the new exception (E9, G-48) — otherwise one bad AI servings count raises out of whole-week generation. |
+| `lambda_ai/adapters/bedrock.py:92` | Raw `int(...)` parse; validation is `validate_ai_recipe_output`'s job. |
+| `adapters/dynamo/_meal.py:72` `read_servings` (both lambdas) | **Read** path, left permissive — a stored `numeroComensales` of 0 or less must stay readable and editable. Same reasoning as G-89/G-90 and the ingredient half. |
+| `Recipe`/`MealSnapshot` constructors | Unchanged: `test_recipe.py::test_recipe_accepts_any_servings_and_estimated_time_value` (servings `-3`, `0`) stays green by design. |
+| `test_no_recipe_metadata_logic.py` | Unaffected if the check lives in `recipe.py` / `ai_output.py` (fully exempt) and `lambda_api` (not scanned). A check anywhere else in `planner_core` fails that guard. |
 
 ## Classification
 

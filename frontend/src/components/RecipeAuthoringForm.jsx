@@ -139,16 +139,28 @@ function ScratchFields({
       <label style={fieldLabelStyle}>
         {MESSAGES.RECIPE_AUTHORING_SERVINGS_LABEL}
         <input
-          type="text"
+          type="number"
+          step="1"
+          min="0"
           value={form.servings}
           onChange={(e) => updateField('servings', e.target.value)}
           style={fieldInputStyle}
         />
+        {/* Issue negative-ingredient-quantity, E11 - non-blank, <= 0 (G-91).
+            honey - same warning idiom as ConnectionLostBanner/SetPasswordView. */}
+        {form.servings !== '' && Number(form.servings) <= 0 ? (
+          <span style={{ color: tokens.color.honey, fontSize: tokens.fontSize.xs }}>
+            {MESSAGES.RECIPE_AUTHORING_INVALID_SERVINGS}
+          </span>
+        ) : null}
       </label>
       <label style={fieldLabelStyle}>
         {MESSAGES.RECIPE_AUTHORING_ESTIMATED_TIME_LABEL}
         <input
-          type="text"
+          type="number"
+          step="1"
+          min="0"
+          max="6000"
           value={form.estimatedTime}
           onChange={(e) => updateField('estimatedTime', e.target.value)}
           style={fieldInputStyle}
@@ -172,9 +184,16 @@ function ScratchFields({
             type="number"
             placeholder={MESSAGES.RECIPE_AUTHORING_INGREDIENT_QUANTITY_LABEL}
             value={ingredient.quantity}
+            min="0"
             onChange={(e) => updateIngredient(index, 'quantity', e.target.value)}
             style={{ ...fieldInputStyle, width: '80px' }}
           />
+          {/* Issue negative-ingredient-quantity, E5 - non-blank, <= 0 (Part H). */}
+          {ingredient.quantity !== '' && Number(ingredient.quantity) <= 0 ? (
+            <span style={{ color: tokens.color.honey, fontSize: tokens.fontSize.xs }}>
+              {MESSAGES.RECIPE_AUTHORING_INVALID_QUANTITY}
+            </span>
+          ) : null}
           <select
             value={ingredient.unit}
             onChange={(e) => updateIngredient(index, 'unit', e.target.value)}
@@ -192,6 +211,13 @@ function ScratchFields({
           </button>
         </div>
       ))}
+      {/* Issue recipe-saved-without-required-sections, E8 - same honey idiom
+          as the servings/quantity warnings above. */}
+      {form.ingredients.length === 0 ? (
+        <span style={{ color: tokens.color.honey, fontSize: tokens.fontSize.xs }}>
+          {MESSAGES.RECIPE_AUTHORING_MISSING_INGREDIENTS}
+        </span>
+      ) : null}
       <button type="button" onClick={addIngredient} style={addRowButtonStyle}>
         {MESSAGES.RECIPE_AUTHORING_ADD_INGREDIENT}
       </button>
@@ -213,6 +239,11 @@ function ScratchFields({
           </button>
         </div>
       ))}
+      {form.tools.length === 0 ? (
+        <span style={{ color: tokens.color.honey, fontSize: tokens.fontSize.xs }}>
+          {MESSAGES.RECIPE_AUTHORING_MISSING_TOOLS}
+        </span>
+      ) : null}
       <button type="button" onClick={addTool} style={addRowButtonStyle}>
         {MESSAGES.RECIPE_AUTHORING_ADD_TOOL}
       </button>
@@ -234,6 +265,11 @@ function ScratchFields({
           </button>
         </div>
       ))}
+      {form.procedure.length === 0 ? (
+        <span style={{ color: tokens.color.honey, fontSize: tokens.fontSize.xs }}>
+          {MESSAGES.RECIPE_AUTHORING_MISSING_PROCEDURE}
+        </span>
+      ) : null}
       <button type="button" onClick={addProcedureStep} style={addRowButtonStyle}>
         {MESSAGES.RECIPE_AUTHORING_ADD_STEP}
       </button>

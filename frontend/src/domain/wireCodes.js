@@ -16,3 +16,10 @@ export const INGREDIENT_CATEGORIES = [
   'vegetable',
   'eggs',
 ];
+
+// Mirrors planner_core/domain/role.py's Role StrEnum values.
+export const ROLE_FROM_WIRE = { admin: 'Admin', user: 'User' };
+
+export function roleFromWire(wireRole) {
+  return ROLE_FROM_WIRE[wireRole] ?? null;
+}

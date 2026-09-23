@@ -49,6 +49,13 @@ AI_PROMPT_SANCTIONED_LINES = (
     re.compile(r'\s*"estimated_time \(str\|null\)\. Sin texto adicional\."'),
     re.compile(r'\s*"procedure \(list of str\), category \(str\), servings \(int\|null\), "'),
     re.compile(r'\s*"estimated_time \(str\|null\)\. No additional text\."'),
+    # v3 (issue tiempo-estimado-numeric-minutes, G-90): estimated_time becomes
+    # an integer minute count; worded so neither line repeats v2's verbatim.
+    re.compile(r'\s*"procedure \(list of str\), category \(str\), servings \(int\|null\); "'),
+    re.compile(
+        r'\s*"estimated_time \(int\|null, whole minutes from 0 to 6000 inclusive\)\. '
+        r'No additional text\."'
+    ),
 )
 
 INFORMATIONAL_METADATA = re.compile(r"\bservings\b|\bestimated_time\b")

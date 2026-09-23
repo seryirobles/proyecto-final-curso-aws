@@ -57,7 +57,12 @@ To prove they are red, copy a staged file to its destination, run it, then
    hypothesis — do not present a guess as a finding.
 4. **Find the root cause**, not the symptom. Trace to the line that is wrong and
    ask whether other paths share it (blast radius). Use CodeGraph before broad
-   Read/Grep.
+   Read/Grep. **If the same cause breaks an operation the report never
+   mentioned** (often because the reported one being broken made the others
+   untestable), do not silently scope the fix to only what was reported, and
+   do not silently fold the rest in either — name it in `analysis.md` §
+   *Blast radius* as an open scope question for the human (`docs/issues.md`
+   § *Blast radius wider than the report*), general fix vs. specific fix.
 5. **Check it is actually a defect.** Search `docs/requirements.md` and
    `docs/gaps_and_resolutions.md` for the behaviour. Absence is often a
    deliberate `G-xx`. Classify per `docs/issues.md` § *analysis.md*.

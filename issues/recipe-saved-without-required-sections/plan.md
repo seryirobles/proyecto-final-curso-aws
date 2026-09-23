@@ -57,6 +57,15 @@ SHALL keep today's outcome — decoded, previewed and submitted unchanged.
 E7 holds the line: the rule is a minimum of **one**, and nothing else about a
 complete recipe changes.
 
+### E8
+Implements: `FR-UX-03`, `FR-LIB-03` (as amended by `G-89`)
+
+*Scope extension, 2026-09-23 — `analysis.md` § Scope extension.* WHILE the
+from-scratch authoring form holds no ingredient, no utensilio or no paso de
+elaboración, the form SHALL show, beside each empty section, an es-ES warning
+from the messages module naming what is missing; a section with at least one
+item SHALL show none.
+
 ## Fix design
 
 One rule, expressed once in `core/domain` and applied at the two entry points
@@ -74,6 +83,13 @@ stay readable.
 | `backend/core/src/planner_core/domain/ai_output.py` | core/domain | `validate_ai_recipe_output` calls `require_recipe_sections` (E4); `validate_and_preview` adds the three exceptions to its `except` tuple (E5). |
 | `docs/rest_api_contract.md` §4 | doc | Three rows in the exception/status table, beside `UnknownUnit`. |
 | `frontend/src/hooks/useRecipeAuthoring.js` | frontend hook | `canSubmit` for the `scratch` method requires `form.ingredients.length > 0 && form.tools.length > 0 && form.procedure.length > 0`; the `// no client validation - FR-LIB-03, G-85` comment goes with it — `G-85` governs servings/time, not section cardinality (E6). |
+
+**Scope extension (E8), frontend only:**
+
+| File | Layer | Change |
+|---|---|---|
+| `frontend/src/messages/es-ES.js` | frontend messages | Three keys beside `RECIPE_AUTHORING_INVALID_*`, wording mirroring `planner_core.messages`: `RECIPE_AUTHORING_MISSING_INGREDIENTS: 'La receta debe incluir al menos un ingrediente.'`, `RECIPE_AUTHORING_MISSING_TOOLS: '… un utensilio.'`, `RECIPE_AUTHORING_MISSING_PROCEDURE: '… un paso de elaboración.'`. The key names are asserted by the staged test. |
+| `frontend/src/components/RecipeAuthoringForm.jsx` (`ScratchFields`) | frontend component | After each section's rows and before its *Añadir …* button, `{form.<section>.length === 0 ? <span style={{ color: tokens.color.honey, fontSize: tokens.fontSize.xs }}>{MESSAGES.…}</span> : null}` — the idiom at `:149-155`. Pure function of `form`, no new state; the hook is untouched. |
 
 **Do not** put the rule in `Recipe.__post_init__` and **do not** touch the
 DynamoDB read decoders (`adapters/dynamo/_meal.py`): that is the read path
@@ -170,6 +186,31 @@ cd frontend && npx vitest run tests/hooks/useRecipeAuthoring.requiredSections.te
 All four failures are `expect(result.current.canSubmit).toBe(false)` →
 `expected true to be false`, the unconditional `canSubmit` of
 `useRecipeAuthoring.js:146-150`. The pass is E7's frontend regression.
+
+### Scope extension (E8, 2026-09-23)
+
+| Staged | Destination |
+|---|---|
+| `issues/recipe-saved-without-required-sections/tests/frontend/tests/components/RecipeAuthoringForm.requiredSections.test.jsx` | `frontend/tests/components/RecipeAuthoringForm.requiredSections.test.jsx` |
+
+| Test | Covers | Kind |
+|---|---|---|
+| `warns in es-ES beside an empty {ingredients,tools,procedure} section` | E8 | **reproduction** — one warning, placed after that section's heading and before the next; the other two absent |
+| `warns once per section when all three are empty` | E8 | reproduction |
+| `shows no section warning on a recipe with one item in each section` | E8, E7 | regression |
+| `shows no section warning on the library-pick method` | E8 | regression |
+
+Red at triage (copied, run, deleted; prettier and eslint clean):
+`Tests 6 failed (6)`. All six fail at `expect(typeof MESSAGES[key]).toBe('string')`
+— the warning keys do not exist, and the form renders no warning for an empty
+section, the gap in `analysis.md` § Scope extension. The two regressions are
+red only through that key check (same pattern as issue 7's quantity test);
+they turn green with the keys and guard against over-warning after.
+
+A throwaway probe (deleted) ran the staged file against a copy of the form
+with the idiom above applied and the three keys added: `6 passed`. So the
+assertions — placement included — are red for the stated reason, not a
+technique artefact.
 
 Suites the fix must leave green: `backend/lambda_api/tests/test_serialization.py`,
 `backend/lambda_api/tests/test_error_mapping.py`,

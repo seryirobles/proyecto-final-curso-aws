@@ -25,6 +25,10 @@ export const MESSAGES = {
   WEEK_PLANNER_DEFINITIVE_BADGE: 'Definitivo',
   CONFIRM_REPLACE_DEFINITIVE: '¿Reemplazar el plato definitivo de este hueco?',
   CONFIRM_CLEAR_DEFINITIVE: '¿Quitar el plato definitivo de este hueco?',
+  // Candidate edit/remove (issue add-dish-button-inert scope extension)
+  WEEK_PLANNER_EDIT_CANDIDATE: 'Editar',
+  WEEK_PLANNER_REMOVE_CANDIDATE: 'Eliminar',
+  CONFIRM_REMOVE_CANDIDATE: '¿Eliminar este plato de este hueco?',
   // Day-card status pill (feature 20 T81, design.md 10.6)
   WEEK_PLANNER_DAY_STATUS_EMPTY: 'Sin platos',
   WEEK_PLANNER_DAY_STATUS_CANDIDATES: 'Con candidatas',
@@ -33,7 +37,7 @@ export const MESSAGES = {
   // Recipe detail (feature 20 T18-T21)
   RECIPE_DETAIL_CLOSE: 'Cerrar',
   RECIPE_DETAIL_SERVINGS: 'Comensales',
-  RECIPE_DETAIL_ESTIMATED_TIME: 'Tiempo estimado',
+  RECIPE_DETAIL_ESTIMATED_TIME: 'Tiempo estimado (minutos)',
   RECIPE_DETAIL_INGREDIENTS: 'Ingredientes',
   RECIPE_DETAIL_TOOLS: 'Utensilios',
   RECIPE_DETAIL_PROCEDURE: 'Elaboración',
@@ -46,10 +50,18 @@ export const MESSAGES = {
   RECIPE_AUTHORING_CATEGORY_LABEL: 'Categoría',
   RECIPE_AUTHORING_CATEGORY_PLACEHOLDER: 'Selecciona una categoría',
   RECIPE_AUTHORING_SERVINGS_LABEL: 'Comensales',
-  RECIPE_AUTHORING_ESTIMATED_TIME_LABEL: 'Tiempo estimado',
+  RECIPE_AUTHORING_ESTIMATED_TIME_LABEL: 'Tiempo estimado (minutos)',
   RECIPE_AUTHORING_INGREDIENTS_LABEL: 'Ingredientes',
   RECIPE_AUTHORING_INGREDIENT_NAME_LABEL: 'Nombre del ingrediente',
   RECIPE_AUTHORING_INGREDIENT_QUANTITY_LABEL: 'Cantidad',
+  // Issue negative-ingredient-quantity, E5/E11: non-blank, non-positive value.
+  RECIPE_AUTHORING_INVALID_QUANTITY: 'La cantidad del ingrediente debe ser mayor que cero.',
+  RECIPE_AUTHORING_INVALID_SERVINGS: 'El número de comensales debe ser mayor que cero.',
+  // Issue recipe-saved-without-required-sections, E8: wording mirrors
+  // planner_core.messages' RECIPE_WITHOUT_* (backend/core/src/planner_core/messages.py).
+  RECIPE_AUTHORING_MISSING_INGREDIENTS: 'La receta debe incluir al menos un ingrediente.',
+  RECIPE_AUTHORING_MISSING_TOOLS: 'La receta debe incluir al menos un utensilio.',
+  RECIPE_AUTHORING_MISSING_PROCEDURE: 'La receta debe incluir al menos un paso de elaboración.',
   RECIPE_AUTHORING_UNIT_PLACEHOLDER: 'Selecciona una unidad',
   RECIPE_AUTHORING_ADD_INGREDIENT: 'Añadir ingrediente',
   RECIPE_AUTHORING_REMOVE_INGREDIENT: 'Quitar ingrediente',

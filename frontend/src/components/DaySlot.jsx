@@ -34,7 +34,16 @@ function dayStatus(slots) {
   return 'empty';
 }
 
-export function DaySlot({ day, slots, onAddCandidate, onOpenDetail, onPromote, onClear }) {
+export function DaySlot({
+  day,
+  slots,
+  onAddCandidate,
+  onOpenDetail,
+  onPromote,
+  onClear,
+  onEdit,
+  onRemove,
+}) {
   const status = STATUS_STYLES[dayStatus(slots)];
 
   return (
@@ -113,6 +122,8 @@ export function DaySlot({ day, slots, onAddCandidate, onOpenDetail, onPromote, o
                   onOpenDetail={onOpenDetail}
                   onPromote={() => onPromote(day, slotState.slot, candidate.id)}
                   onClear={() => onClear(day, slotState.slot)}
+                  onEdit={() => onEdit(day, slotState.slot, candidate)}
+                  onRemove={() => onRemove(day, slotState.slot, candidate.id)}
                 />
               ))
             )}

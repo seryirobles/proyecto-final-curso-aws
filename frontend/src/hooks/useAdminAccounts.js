@@ -6,12 +6,19 @@ import { useCallback, useEffect, useState } from 'react';
 import { apiFetch, ApiError } from '../api/client.js';
 import { useConfirm } from './useConfirm.js';
 import { MESSAGES } from '../messages/index.js';
+import { roleFromWire } from '../domain/wireCodes.js';
 
 const USERS_URL = '/v1/users';
 
 // R15 / design.md section 4.1: surface `error.detail` verbatim.
 function toDetail(err) {
   return err instanceof ApiError ? err.detail : MESSAGES.GENERIC_ERROR;
+}
+
+// GET /v1/users sends the wire role ('admin'/'user'); map it once here so
+// AccountRow and ROLE_LABELS stay in the SPA's internal vocabulary.
+function withRoleMapped(users) {
+  return users.map((account) => ({ ...account, role: roleFromWire(account.role) }));
 }
 
 export function useAdminAccounts({ active = true } = {}) {
@@ -22,7 +29,7 @@ export function useAdminAccounts({ active = true } = {}) {
   const refetch = useCallback(async () => {
     try {
       const result = await apiFetch(USERS_URL);
-      setAccounts(result.users);
+      setAccounts(withRoleMapped(result.users));
       setError(null);
     } catch (err) {
       setError(toDetail(err));
@@ -38,7 +45,7 @@ export function useAdminAccounts({ active = true } = {}) {
     apiFetch(USERS_URL).then(
       (result) => {
         if (!cancelled) {
-          setAccounts(result.users);
+          setAccounts(withRoleMapped(result.users));
           setError(null);
         }
       },

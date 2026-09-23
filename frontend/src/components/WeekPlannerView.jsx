@@ -11,6 +11,7 @@ import { DaySlot } from './DaySlot.jsx';
 import { RecipeDetailView } from './RecipeDetailView.jsx';
 import { ConfirmDialog } from './ConfirmDialog.jsx';
 import { LoadingState } from './LoadingState.jsx';
+import { CandidateAuthoring } from './CandidateAuthoring.jsx';
 
 export function WeekPlannerView({
   liveWeeks,
@@ -19,6 +20,14 @@ export function WeekPlannerView({
   isLoading,
   switchWeek,
   openCandidateAuthoring,
+  authoringTarget,
+  submitCandidate,
+  closeCandidateAuthoring,
+  editingTarget,
+  openCandidateEdit,
+  closeCandidateEdit,
+  submitCandidateEdit,
+  removeCandidate,
   openDetail,
   promoteDefinitive,
   clearDefinitive,
@@ -62,9 +71,21 @@ export function WeekPlannerView({
             onOpenDetail={openDetail}
             onPromote={promoteDefinitive}
             onClear={clearDefinitive}
+            onEdit={openCandidateEdit}
+            onRemove={removeCandidate}
           />
         ))}
       </div>
+      {authoringTarget ? (
+        <CandidateAuthoring onSubmit={submitCandidate} onClose={closeCandidateAuthoring} />
+      ) : null}
+      {editingTarget ? (
+        <CandidateAuthoring
+          initialRecipe={editingTarget.recipe}
+          onSubmit={submitCandidateEdit}
+          onClose={closeCandidateEdit}
+        />
+      ) : null}
       <ConfirmDialog
         pending={confirm.pending}
         onConfirm={confirm.confirm}

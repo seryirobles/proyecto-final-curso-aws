@@ -84,6 +84,23 @@ REFERENCE_FRAMING_TEMPLATE_V2: Final[str] = (
 tokenizes English more efficiently. `OUTPUT_LANGUAGE` (es-ES) is untouched;
 only the instruction sentences change (FR-AI-14/G-84 append-only)."""
 
+RECIPE_METADATA_INSTRUCTION_V3: Final[str] = (
+    "Also state the number of diners it serves and an estimated preparation "
+    "and cooking time, in whole minutes, for each generated recipe. These are "
+    "purely informational: do not adjust the ingredient quantities based on them."
+)
+JSON_OUTPUT_INSTRUCTION_V3: Final[str] = (
+    "Respond EXCLUSIVELY with a JSON object with the keys: name (str), "
+    "ingredients (list of {name, quantity, unit}), tools (list of str), "
+    "procedure (list of str), category (str), servings (int|null); "
+    "estimated_time (int|null, whole minutes from 0 to 6000 inclusive). No additional text."
+)
+"""v3 (issue tiempo-estimado-numeric-minutes, G-90): the prep/cook time field
+becomes an integer minute count instead of free text. Everything else keeps
+v2's wording verbatim (FR-AI-14/G-84 append-only) - only these two lines
+change, worded so they do not repeat v2's verbatim (the metadata-scan test
+matches line-for-line)."""
+
 
 @dataclass(frozen=True)
 class PromptInstructionsVersion:
@@ -130,10 +147,24 @@ PROMPT_INSTRUCTION_VERSIONS: Final[dict[str, PromptInstructionsVersion]] = {
         specification_framing_template=SPECIFICATION_FRAMING_TEMPLATE_V2,
         reference_framing_template=REFERENCE_FRAMING_TEMPLATE_V2,
     ),
+    "v3": PromptInstructionsVersion(
+        version_id="v3",
+        output_language=OUTPUT_LANGUAGE,
+        healthy_balanced_instruction=HEALTHY_BALANCED_INSTRUCTION_V2,
+        recipe_metadata_instruction=RECIPE_METADATA_INSTRUCTION_V3,
+        json_output_instruction=JSON_OUTPUT_INSTRUCTION_V3,
+        output_language_template=OUTPUT_LANGUAGE_TEMPLATE_V2,
+        allowed_units_template=ALLOWED_UNITS_TEMPLATE_V2,
+        category_framing_template=CATEGORY_FRAMING_TEMPLATE_V2,
+        specification_framing_template=SPECIFICATION_FRAMING_TEMPLATE_V2,
+        reference_framing_template=REFERENCE_FRAMING_TEMPLATE_V2,
+    ),
 }
 """Append-only (R2, G-84): a version is added here when wording changes; an
 existing key is never removed or overwritten (specs/ai_prompt_versioning/design.md
-section 4). v2 (2026-09-11): English instruction wording, same es-ES output_language."""
+section 4). v2 (2026-09-11): English instruction wording, same es-ES
+output_language. v3 (issue tiempo-estimado-numeric-minutes, G-90): reuses
+every v2 field except the two prep/cook-time-bearing instructions."""
 
 PROMPT_VERSION_CONFIG_KEY: Final[str] = "AI_PROMPT_VERSION_ID"
 """The ConfigPort key naming which PROMPT_INSTRUCTION_VERSIONS entry is active (R3)."""

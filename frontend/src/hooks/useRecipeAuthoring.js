@@ -24,6 +24,13 @@ function emptyIngredient() {
   return { name: '', quantity: '', unit: '' };
 }
 
+// Issue negative-ingredient-quantity (E4, E10): a non-blank value that is not
+// strictly positive blocks submit. Blank is issue 5's territory (empty
+// required field), not this rule's - see plan.md "Who owns which message".
+function isInvalidPositive(value) {
+  return value !== '' && !(Number(value) > 0);
+}
+
 // Inverse of buildManualRecipe, below - seeds the manual form from an
 // existing recipe on edit (F4 fix round 1: openEdit used to open a blank
 // form, so saving without re-typing everything wiped the real content).
@@ -32,7 +39,7 @@ function recipeToForm(recipe) {
     name: recipe.name ?? '',
     category: recipe.category ?? '',
     servings: recipe.servings != null ? String(recipe.servings) : '',
-    estimatedTime: recipe.estimatedTime ?? '',
+    estimatedTime: recipe.estimatedTime != null ? String(recipe.estimatedTime) : '',
     ingredients: (recipe.ingredients ?? []).map((ingredient) => ({
       name: ingredient.name ?? '',
       quantity: ingredient.quantity != null ? String(ingredient.quantity) : '',
@@ -43,15 +50,16 @@ function recipeToForm(recipe) {
   };
 }
 
-// rest_api_contract.md section 3.1's `manual.recipe` shape. `quantity` is
-// cast to a number to match the contract's wire type - transport plumbing,
-// not a computed value.
+// rest_api_contract.md section 3.1's `manual.recipe` shape. `quantity`,
+// `servings` and `estimatedTime` are cast to their wire types - transport
+// plumbing, not a computed value. `estimatedTime` is a minute count
+// (FR-LIB-03, G-90 - supersedes G-85's free text for this field).
 function buildManualRecipe(form) {
   return {
     name: form.name,
     category: form.category,
-    servings: form.servings,
-    estimatedTime: form.estimatedTime,
+    servings: form.servings === '' ? null : Number(form.servings),
+    estimatedTime: form.estimatedTime === '' ? null : Number(form.estimatedTime),
     ingredients: form.ingredients.map((ingredient) => ({
       name: ingredient.name,
       quantity: Number(ingredient.quantity),
@@ -62,9 +70,15 @@ function buildManualRecipe(form) {
   };
 }
 
-export function useRecipeAuthoring({ mode, onSubmit, initialRecipe = null, active = true }) {
+export function useRecipeAuthoring({
+  mode,
+  onSubmit,
+  initialRecipe = null,
+  initialMethod = null,
+  active = true,
+}) {
   const methods = mode === 'candidate' ? CANDIDATE_METHODS : LIBRARY_METHODS;
-  const [method, setMethod] = useState(methods[0]);
+  const [method, setMethod] = useState(initialMethod ?? methods[0]);
   const [form, setForm] = useState(() =>
     initialRecipe ? recipeToForm(initialRecipe) : emptyForm(),
   );
@@ -144,10 +158,20 @@ export function useRecipeAuthoring({ mode, onSubmit, initialRecipe = null, activ
   }, []);
 
   const canSubmit = useMemo(() => {
-    if (method === 'scratch') return true; // no client validation - FR-LIB-03, G-85
+    if (method === 'scratch') {
+      // Each section needs at least one item (issue
+      // recipe-saved-without-required-sections, E6, G-89).
+      const sectionsFilled =
+        form.ingredients.length > 0 && form.tools.length > 0 && form.procedure.length > 0;
+      if (!sectionsFilled) return false;
+      if (form.ingredients.some((ingredient) => isInvalidPositive(ingredient.quantity))) {
+        return false;
+      }
+      return !isInvalidPositive(form.servings);
+    }
     if (method === 'library') return libraryRecipeId != null;
     return false; // ai - design.md section 1.3 stub, never submittable
-  }, [method, libraryRecipeId]);
+  }, [method, form, libraryRecipeId]);
 
   const submit = useCallback(() => {
     if (!canSubmit) return;

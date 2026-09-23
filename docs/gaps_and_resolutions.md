@@ -1236,3 +1236,85 @@ lift, per `docs/specs.md`'s "never invent a requirement" rule.
   `FR-AI-12` (amended — AI output with any of the three sections empty
   surfaces as a per-slot failure, the same path `G-66` established for an
   insufficient library, never a raise).
+
+## Part Z — Estimated prep/cook time becomes a numeric minute count (2026-09-22)
+
+Directed by the requirements owner, in the same manner as Parts I through Y.
+Raised as a direct follow-on to issue 4 (`servings-and-time-inputs-not-numeric`,
+the issue workflow's own `docs/issues.md`): that issue's triager classified the
+*Tiempo estimado* half `not_a_defect` because `G-85` explicitly made it
+freeform text, and staged tests that **lock** that behaviour so it survives
+by accident. The owner has now reopened `G-85` for that one field only.
+
+### G-90 · Estimated prep/cook time is a numeric minute count, not freeform text (amends G-85, FR-LIB-03, FR-AI-13)
+
+- **Gap:** `G-85` made both `numeroComensales` (servings) and `tiempo`
+  (estimated prep/cook time) per-recipe, purely informational, freeform
+  fields — deliberately, to sidestep `G-64`'s risk of a stored value silently
+  feeding shopping-aggregation logic. Servings has since gained a numeric wire
+  type (issue 4, `parse_servings`, still unbounded and still purely
+  informational — that part of `G-85` is unaffected and not reopened here).
+  The owner now wants `tiempo` held as a plain count of minutes instead of
+  free text such as `"45 min"` or `"1 hora"`.
+- **Decision:** `tiempo` becomes a numeric field: an integer number of
+  minutes from **0 to 6000 inclusive**, or absent/`null` (still optional —
+  `G-85`'s "purely informational" framing is otherwise unchanged: bounded only
+  by this range, no shopping-aggregation logic, no generation-consistency
+  guarantee across recipes). A value outside `[0, 6000]` is rejected the same
+  way an empty required field is (`G-90`'s own write-boundary check, not
+  `G-89`'s section-cardinality rule). Every authoring flow — write-from-scratch
+  and AI-generated,
+  targeting a candidate or the library (`FR-CAND-03`) — sets it the same way.
+  AI generation is instructed to output an integer minute count, not a
+  string. **Backward compatibility is the implementer's to design**, following
+  the precedent `G-89` already set for this project: enforce the new shape at
+  the write boundary and in AI-output validation, not as a domain-level
+  invariant that would raise on reading a recipe already persisted with a
+  free-text value in the running dev environment.
+- **Reasoning:** The owner's call; no product reasoning is recorded beyond the
+  instruction itself. Scoping the reopening to `tiempo` alone, leaving
+  servings' already-implemented numeric-but-unbounded shape untouched, avoids
+  re-litigating a decision (servings) nobody asked to reopen.
+- **Requirements:** `FR-LIB-03` (amended — `tiempo` is a numeric minute
+  count, not freeform). `FR-AI-13` (amended — the AI states an integer minute
+  count for estimated prep/cook time, not free text).
+
+## Part AA — Servings (Comensales) becomes strictly positive (2026-09-23)
+
+Directed by the requirements owner, in the same manner as Parts I through Z.
+Raised as a direct follow-on to issue 7 (`negative-ingredient-quantity`, the
+issue workflow's own `docs/issues.md`): the owner extended that issue's scope
+to servings and confirmed the same ruling already given for ingredient
+quantity (2026-09-22): strictly positive, with a UI control that warns the
+user if a quantity is 0 or negative, and no stepper that can walk below zero.
+
+### G-91 · Servings (Comensales) must be a strictly positive integer or absent (amends G-85, FR-LIB-03)
+
+- **Gap:** `G-85` made servings a purely informational, freeform field with
+  "no validation beyond a numeric wire type" — deliberately, to sidestep
+  `G-64`'s risk of a stored value silently feeding shopping-aggregation
+  logic. `G-90` (Part Z) reopened `G-85` for `tiempo` only and explicitly left
+  servings' unbounded shape untouched. The owner now wants a floor on
+  servings too.
+- **Decision:** `servings` becomes a strictly positive integer (`>= 1`) or
+  absent/`null` — still optional, still purely informational (`G-85`'s
+  "no shopping-aggregation logic, no generation-consistency guarantee across
+  recipes" is otherwise unchanged). Zero or negative is rejected the same way
+  an empty required field is (this decision's own write-boundary check, the
+  precedent `G-90` and `G-89` set). Every authoring flow — write-from-scratch
+  and AI-generated, targeting a candidate or the library (`FR-CAND-03`) —
+  enforces it the same way. The UI control's minimum is 0 and shows an
+  inline warning if the user reaches 0 or a negative value, never a stepper
+  that walks below zero. **Backward compatibility is the implementer's to
+  design**, following the precedent `G-89`/`G-90` already set: enforce the
+  new shape at the write boundary and in AI-output validation, not as a
+  domain-level invariant that would raise on reading a recipe already
+  persisted with a zero/negative servings count in the running dev
+  environment.
+- **Reasoning:** The owner's call; no product reasoning is recorded beyond
+  the instruction itself. Unlike `tiempo`, this does reopen servings —
+  scoped narrowly to a positivity floor, not the freeform/informational
+  framing itself.
+- **Requirements:** `FR-LIB-03` (amended — servings is a strictly positive
+  integer or absent, not any integer). `FR-AI-13` (amended — the AI states a
+  strictly positive integer servings count).

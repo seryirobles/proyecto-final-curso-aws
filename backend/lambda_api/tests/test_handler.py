@@ -245,8 +245,9 @@ _VALID_RECIPE = {
     "name": "Tortilla",
     "category": "eggs",
     "ingredients": [{"name": "huevo", "quantity": 3, "unit": "unit"}],
-    "tools": [],
-    "procedure": [],
+    # Non-empty sections (issue recipe-saved-without-required-sections, G-89).
+    "tools": ["sartén"],
+    "procedure": ["Batir los huevos y cuajar."],
 }
 
 

@@ -125,7 +125,7 @@ carries an `ETag`.
 | `GET /v1/weeks/{weekId}/summary` | `AP8` projection · `FR-SUM-01`, `-03` | ✅ | Definitive meals only, read-only view. No ingredients (§7 Q13); recipe detail is one click away via `FR-MENU-05`. No new access pattern. |
 | `GET …/candidates/{candidateId}` | Obtener comida - Semana (`AP10`) · `FR-MENU-04`, `-05` | — | Full recipe detail of one candidate. Returns no `definitiveId` — nothing to validate (`data_model.md` §5.4). |
 | `POST …/slots/{slot}/candidates` | Editar o añadir comida (`AP13`) · `FR-CAND-01`, `-02` | — | The three-way authoring flow (§3.1). Returns `duplicateWarning`, never an error. |
-| `PUT …/candidates/{candidateId}` | same (`AP13`) · `FR-CAND-01`, `-05` | — | Edit in place. A definitive meal edits like any candidate (`G-67`). |
+| `PUT …/candidates/{candidateId}` | same (`AP13`) · `FR-CAND-01`, `-05` | — | Edit in place, same §3.1 discriminated body as `POST` (issue add-dish-button-inert). A definitive meal edits like any candidate (`G-67`). |
 | `DELETE …/candidates/{candidateId}` | Eliminar comida (`AP12`) · `FR-CAND-01`, `FR-UX-04` | — | |
 | `PUT …/slots/{slot}/definitive` | Establecer comida definitiva (`AP11`) · `FR-CAND-05`, `FR-MENU-03` | — | Body `{"candidateId": …}`. At most one per slot is a primary-key property, not a check. |
 | `DELETE …/slots/{slot}/definitive` | Desasignar (`AP11`) · `FR-CAND-08` | — | Clears the slot; all meals return to candidate status. |
@@ -204,8 +204,12 @@ repository directly (§7 Q13); `AP29` is the conditional-GET short-circuit (§6)
    no `weeks`, no `qtyChanged` — all removed by `G-72`/`G-73`/`G-77`
    (`frontend_prototype.md` §4.4). The prototype's shape is the superseded one.
 8. **A recipe has no `cuisine`, `diff` or `kcal`** (`FR-LIB-03`; prototype
-   divergence §4.1). `servings` and `estimatedTime` are freeform and purely
-   informational (`G-85`) — no validation, no downstream logic.
+   divergence §4.1). `servings` and `estimatedTime` are purely informational
+   metadata — no downstream logic. `servings` is a strictly positive integer
+   (`>= 1`) or absent (`G-91`, Part AA, amending `G-85`'s "freeform integer"
+   — issue `negative-ingredient-quantity`); `estimatedTime` is an integer
+   minute count in `[0, 6000]`, or absent (`G-90`, superseding `G-85`'s free
+   text for this one field — issue `tiempo-estimado-numeric-minutes`).
 
 ### 3.1 The three-way authoring flow (`FR-CAND-02`, `FR-CAND-03`)
 
@@ -222,7 +226,7 @@ round-trip) and non-tamperable.
     "name": "Lentejas al curry",
     "category": "legumbres",
     "servings": 4,
-    "estimatedTime": "45 min",
+    "estimatedTime": 45,
     "ingredients": [ { "name": "lentejas", "quantity": 300, "unit": "g" } ],
     "tools": ["olla"],
     "procedure": ["Sofreír la cebolla.", "Añadir las lentejas."]
@@ -403,6 +407,13 @@ path parameter). **`422`** = well-formed but rejected by a domain rule.
 | *(no exception — handler check)* | 409 | `PIN_RULES_AFFECTED` (§3.4), `WEEK_ARCHIVED` (§7 Q11); the per-slot in-flight `409` (§3.5, `FR-AI-09`) — code named in feature 17's spec |
 | `UsernameReserved` | 422 | `USERNAME_RESERVED` (`FR-AUTH-17` placeholder) |
 | `PasswordTooShort` | 422 | `PASSWORD_TOO_SHORT` (`FR-AUTH-15`) |
+| `EmptyField` | 422 | `EMPTY_FIELD` — a required field was blank; `detail` names it (`FR-UX-03`, issue `empty-field-error-messages`) |
+| `InvalidEstimatedTime` | 422 | `INVALID_ESTIMATED_TIME` — a well-formed `estimatedTime` outside `[0, 6000]`; `detail` names the range (`G-90`, issue `tiempo-estimado-numeric-minutes`) |
+| `InvalidIngredientQuantity` | 422 | `INVALID_INGREDIENT_QUANTITY` — a well-formed but non-positive ingredient quantity (issue `negative-ingredient-quantity`) |
+| `InvalidServings` | 422 | `INVALID_SERVINGS` — a well-formed but non-positive `servings` (`G-91`, Part AA, issue `negative-ingredient-quantity`) |
+| `MissingIngredients` | 422 | `MISSING_INGREDIENTS` — an empty or absent `ingredients` list (`G-89`, Part Y, issue `recipe-saved-without-required-sections`) |
+| `MissingTools` | 422 | `MISSING_TOOLS` — an empty or absent `tools` list (`G-89`, Part Y) |
+| `MissingProcedure` | 422 | `MISSING_PROCEDURE` — an empty or absent `procedure` list (`G-89`, Part Y) |
 | `UnknownUnit` | 422 | `UNKNOWN_UNIT` (`FR-LIB-05`) |
 | `UnknownIngredientCategory` | 422 | `UNKNOWN_INGREDIENT_CATEGORY` (`FR-RULE-04`) |
 | `InvalidWeekday` | 422 | `INVALID_WEEKDAY` |

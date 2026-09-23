@@ -38,10 +38,11 @@ export function useShoppingList({ active = true } = {}) {
   const [isResyncing, setIsResyncing] = useState(false);
   const [error, setError] = useState(null);
 
-  // One-time fetch, not a poll (design.md section 5's Screens table lists
-  // only the shopping-list poll) - feeds the resync button's WeekLabel
-  // scope (R21, FR-SHOP-05), same pattern as useWeekPlanner's live-weeks read.
+  // Live-weeks read, not a poll (design.md section 5) - feeds the resync
+  // button's WeekLabel scope (R21, FR-SHOP-05). Re-runs each time the view
+  // becomes active (issue stuck-loading-after-login), not just once.
   useEffect(() => {
+    if (!active) return undefined;
     let cancelled = false;
     apiFetch('/v1/live-weeks').then(
       (result) => {
@@ -52,7 +53,7 @@ export function useShoppingList({ active = true } = {}) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [active]);
 
   const items = useMemo(() => poll.data?.items ?? [], [poll.data]);
   const uncheckedItems = useMemo(() => items.filter((item) => !item.checked), [items]);
@@ -90,6 +91,7 @@ export function useShoppingList({ active = true } = {}) {
         onHeaders: (headers) => (marker = parseMarker(headers.get('ETag'))),
       });
       poll.applyMutationMarker(marker); // design.md section 4.2
+      poll.refetchNow(); // issue ui-not-reflecting-mutations, E4/E5
       setError(null);
       setIsFormOpen(false);
       setEditingItem(null);
@@ -108,6 +110,7 @@ export function useShoppingList({ active = true } = {}) {
           onHeaders: (headers) => (marker = parseMarker(headers.get('ETag'))),
         });
         poll.applyMutationMarker(marker);
+        poll.refetchNow(); // issue ui-not-reflecting-mutations, E6
         setError(null);
       } catch (err) {
         setError(toDetail(err));
@@ -127,6 +130,7 @@ export function useShoppingList({ active = true } = {}) {
             onHeaders: (headers) => (marker = parseMarker(headers.get('ETag'))),
           });
           poll.applyMutationMarker(marker);
+          poll.refetchNow(); // issue ui-not-reflecting-mutations, E7
           setError(null);
         } catch (err) {
           setError(toDetail(err));
@@ -147,6 +151,7 @@ export function useShoppingList({ active = true } = {}) {
         onHeaders: (headers) => (marker = parseMarker(headers.get('ETag'))),
       });
       poll.applyMutationMarker(marker);
+      poll.refetchNow(); // issue ui-not-reflecting-mutations, E8
       setError(null);
     } catch (err) {
       setError(toDetail(err));

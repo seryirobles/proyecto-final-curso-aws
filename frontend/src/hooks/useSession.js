@@ -4,6 +4,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { apiFetch } from '../api/client.js';
+import { roleFromWire } from '../domain/wireCodes.js';
 
 const LIVE_WEEKS_URL = '/v1/live-weeks';
 
@@ -43,7 +44,7 @@ export function useSession() {
     setSession(
       result.passwordResetRequired
         ? { status: 'passwordResetPending' }
-        : { status: 'authenticated', role: result.role, userId: result.userId },
+        : { status: 'authenticated', role: roleFromWire(result.role), userId: result.userId },
     );
   }, []);
 

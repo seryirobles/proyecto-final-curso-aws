@@ -47,5 +47,6 @@ export function useLibraryPicker({ enabled = true } = {}) {
     isLoading: poll.data === null,
     connectionLost: poll.connectionLost,
     applyMutationMarker: poll.applyMutationMarker, // design.md section 4.2
+    refetchNow: poll.refetchNow, // issue ui-not-reflecting-mutations
   };
 }

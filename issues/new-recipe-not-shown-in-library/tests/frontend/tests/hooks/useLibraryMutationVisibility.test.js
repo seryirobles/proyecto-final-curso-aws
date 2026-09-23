@@ -99,12 +99,27 @@ describe('library view after its own mutation', () => {
     return rendered;
   }
 
+  // Non-empty sections (issue recipe-saved-without-required-sections, G-89,
+  // landed after this test was staged): fixture-only addition, no assertion
+  // touched - collateral, same pattern as useLibrary.test.js's own fix.
+  function fillRequiredSections(result) {
+    act(() => result.current.authoring.addIngredient());
+    act(() => result.current.authoring.updateIngredient(0, 'name', 'lentejas'));
+    act(() => result.current.authoring.updateIngredient(0, 'quantity', '300'));
+    act(() => result.current.authoring.updateIngredient(0, 'unit', 'g'));
+    act(() => result.current.authoring.addTool());
+    act(() => result.current.authoring.updateTool(0, 'olla'));
+    act(() => result.current.authoring.addProcedureStep());
+    act(() => result.current.authoring.updateProcedureStep(0, 'Cocer las lentejas.'));
+  }
+
   it('E1: a recipe created from the library view appears in it without a reload', async () => {
     const { result } = await renderLibrary();
 
     act(() => result.current.openAdd());
     act(() => result.current.authoring.updateField('name', 'Tortilla'));
     act(() => result.current.authoring.updateField('category', 'eggs'));
+    fillRequiredSections(result);
     await act(async () => result.current.authoring.submit());
     await settle();
 
@@ -116,6 +131,7 @@ describe('library view after its own mutation', () => {
 
     act(() => result.current.openEdit(entry('r-1', 'Lentejas')));
     act(() => result.current.authoring.updateField('name', 'Lentejas estofadas'));
+    fillRequiredSections(result);
     await act(async () => result.current.authoring.submit());
     await settle();
 
@@ -128,6 +144,7 @@ describe('library view after its own mutation', () => {
     act(() => result.current.openAdd());
     act(() => result.current.authoring.updateField('name', 'Tortilla'));
     act(() => result.current.authoring.updateField('category', 'eggs'));
+    fillRequiredSections(result);
     await act(async () => result.current.authoring.submit());
     await settle();
 

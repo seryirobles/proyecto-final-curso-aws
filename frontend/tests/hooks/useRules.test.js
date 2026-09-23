@@ -16,7 +16,12 @@ import { usePolling } from '../../src/hooks/usePolling.js';
 import { useRules } from '../../src/hooks/useRules.js';
 
 function pollSnapshot(data) {
-  return { data, connectionLost: false, applyMutationMarker: vi.fn() };
+  return {
+    data,
+    connectionLost: false,
+    applyMutationMarker: vi.fn(),
+    refetchNow: vi.fn(), // issue ui-not-reflecting-mutations
+  };
 }
 
 function mockPolling({ rules = [], recipes = [] } = {}) {

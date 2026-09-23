@@ -40,6 +40,7 @@ export function useLibrary({ active = true } = {}) {
           onHeaders: (headers) => (marker = parseMarker(headers.get('ETag'))),
         });
         picker.applyMutationMarker(marker); // design.md section 4.2
+        picker.refetchNow(); // issue new-recipe-not-shown-in-library, E1/E2
         setError(null);
         setIsAuthoringOpen(false);
         setEditingRecipe(null);
@@ -78,6 +79,7 @@ export function useLibrary({ active = true } = {}) {
             onHeaders: (headers) => (marker = parseMarker(headers.get('ETag'))),
           });
           picker.applyMutationMarker(marker);
+          picker.refetchNow(); // issue ui-not-reflecting-mutations, E1
           setError(null);
         } catch (err) {
           setError(toDetail(err));

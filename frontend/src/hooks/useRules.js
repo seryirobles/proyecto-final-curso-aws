@@ -91,6 +91,7 @@ export function useRules({ active = true } = {}) {
           onHeaders: (headers) => (marker = parseMarker(headers.get('ETag'))),
         });
         poll.applyMutationMarker(marker); // design.md section 4.2
+        poll.refetchNow(); // issue ui-not-reflecting-mutations, E2
         setError(null);
         return true;
       } catch (err) {
@@ -112,6 +113,7 @@ export function useRules({ active = true } = {}) {
             onHeaders: (headers) => (marker = parseMarker(headers.get('ETag'))),
           });
           poll.applyMutationMarker(marker);
+          poll.refetchNow(); // issue ui-not-reflecting-mutations, E3
           setError(null);
         } catch (err) {
           setError(toRuleErrorDetail(err));

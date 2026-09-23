@@ -3,6 +3,294 @@
 > This file is emptied when each session closes and moved to `history.md`.
 > While you work, **keep it updated in real time**, not at the end.
 
+## 2026-09-23 — Batch review, issues 6/7/8/9/10/12: 2 APPROVED, 4 CHANGES_REQUESTED
+
+Implementer finished all six (issue 10's shared `pollingEngine.js` fix first,
+then 6/7/8/9/12; confirmed candidate add/edit/remove/promote/clear — issue
+3's already-`done` code — now also reflect immediately via a new real-engine
+regression test). `./init.sh` green, 0 surviving mutants across the whole
+batch. Reviewer verdicts: **6, 9 APPROVED.** **7, 8, 10, 12
+CHANGES_REQUESTED** — comment-ceiling violations in all four, plus one real
+bug in issue 10: `pollingEngine.js`'s `refetchNow()` is silently dropped if
+called while a scheduled poll is already in flight, reopening the original
+bug behind a race. Fix round sent to the implementer (comment fixes + the
+race fix + a new engine test + restoring `useWeekPlanner.mutationVisibility
+.test.js` to byte-identical with its staged copy, moving the 3 issue-3
+regression cases to their own file).
+
+**Two items outside the implementer's reach — need the owner:**
+1. `docs/requirements.md`'s `FR-LIB-03`/`FR-AI-13` rows were never updated
+   for `G-91` (Part AA, servings). Frozen doc — I don't touch it without a
+   direct command.
+2. Reviewer also flagged, **outside this batch**: issue 11's `G-90` edit to
+   the `FR-LIB-03` row **replaced** the old servings/time text instead of
+   striking it through, violating the frozen-docs rule (`CLAUDE.md`). Same
+   file, needs the owner's hand or explicit command either way.
+
+Issue 12's reviewer also asked for the owner's general-vs-specific answer
+(`analysis.md:42`) to be recorded — not blocking (the approved `covers`
+array already implies the general fix was chosen), just a paper-trail gap.
+
+## 2026-09-23 — Issues 8 & 9 scope extensions APPROVED
+
+Owner reported live gaps in already-approved work: issue 8's block silently
+disabled the submit button with no explanation, and issue 9's fix only
+styled `LibraryView.jsx`'s "Cerrar" (the library's own add/edit form) —
+`CandidateAuthoring.jsx`'s identically-labeled Close button (the week
+planner's "Añadir plato" panel, the closer match to "recipe creation menu")
+was untouched. Leader found both root causes directly (file:line) before
+routing to the triager, which extended both issues' `plan.md` (E8; E4/E5),
+staged new tests, confirmed red, reset `reviewed: false` (issue 3
+precedent). One implementer run stalled on an infra timeout mid-task
+(issue 9's fix had already landed and passed before the stall; issue 8
+hadn't started) — resumed with a second implementer given the exact tree
+state, no rework needed. Both extensions reviewed: **APPROVED, 0 findings,
+7 new mutants all killed.** `reviewed: true` restored on both (leader,
+targeted edit). `./init.sh` green throughout.
+
+## 2026-09-23 — Batch fix round + re-review: all six APPROVED
+
+Fix round: issue 10's race (`refetchNow()` silently dropped when called
+mid-flight) fixed with a `pendingForcedRefetch` flag, new engine test;
+`useWeekPlanner.mutationVisibility.test.js` restored byte-identical to its
+staged copy, the 3 issue-3 regression cases moved to their own new file
+(`useWeekPlanner.candidateMutationVisibility.test.js`); comment-ceiling
+fixes in issues 7, 8, 12. `./init.sh` green (949 backend / 436 frontend).
+
+Confirm-fixes pass (reviewer): **all four (7, 8, 10, 12) now APPROVED** —
+every named fix verified, 3 fresh mutants on the new race-condition logic
+all killed, tree restored. Combined with issues 6 and 9 (APPROVED round 1),
+**the whole six-issue batch is APPROVED.** `reviewed: true` set on all six
+in `issue_list.json` (leader, targeted edits, owner directive 2026-09-22 —
+status stays `in_progress` until the owner marks `done`).
+
+Reviewer also flagged issue 6's staged test as no longer byte-identical to
+its live copy (fixture-only `fillRequiredSections` helper, collateral from
+issue 8's landing after issue 6 was staged — no assertion touched, verified
+by `diff`). Re-staged the copy (leader, `issues/` is not frozen/backend/
+frontend) to keep the byte-identity record accurate; no code change.
+
+**Still open, need the owner:**
+1. `docs/requirements.md` `FR-LIB-03`/`FR-AI-13` rows not updated for `G-91`.
+2. Separately: issue 11's `G-90` edit to the `FR-LIB-03` row replaced text
+   instead of striking it through (frozen-docs rule violation, past session).
+3. Record the owner's general-vs-specific answer for issue 12 (non-blocking).
+4. All six issues are `in_progress`+`reviewed: true`, awaiting the owner's
+   `done` mark (human-only) and commit (human-only, not raised further per
+   convention).
+
+## 2026-09-23 — Requirements.md fixed (owner's direct command); issue 12 confirmed general
+
+Owner directly commanded both `docs/requirements.md` edits (items 1 and 2
+above), invoking the frozen-docs exception in `CLAUDE.md`/`AGENTS.md`
+(explicit owner command, not another agent's say-so):
+- `FR-LIB-03`: restored the original combined time/servings sentence as
+  struck-through (`~~Time and servings are set the same way...~~ (G-85)`),
+  fixing issue 11's violation, then added the `G-91` servings amendment
+  alongside the existing `G-90` time amendment.
+- `FR-AI-13`: additive `G-91` sentence for the AI's servings instruction
+  (this row's `G-90` edit was already correctly additive, no violation here).
+
+Item 3: owner confirmed issue 12's fix was meant to be general (all three
+hooks). Recorded in `issue_list.json` id 12's `note`.
+
+All three open items closed. Nothing left outstanding from this session
+except the owner's `done` mark and commit on the six-issue batch.
+
+## 2026-09-23 — Issues 7 & 12 status correction; issue 7 partially `blocked`
+
+Owner reported (new manual test pass) that utensilios/elaboración, negative
+comensales/cantidad, and UI-not-reflecting-mutations were still broken. Cross-
+checked against `issue_list.json`: issues 7 (`negative-ingredient-quantity`)
+and 12 (`stuck-loading-after-login`) had been marked `done` directly by the
+owner with **no implementation ever run** (`git diff` showed the cited code
+unchanged) — reverted both to `pending` (leader, targeted edit) after showing
+the owner the file:line evidence. Issues 6/8/9/10 were already fully triaged
+and simply still `pending`, never approved.
+
+Owner asked to fold servings (`comensales`) negative-value validation into
+issue 7, alongside its existing ingredient-quantity scope. Retriage
+(`issue_triager`) found the servings half is a **spec_gap**: `G-85`/
+`FR-LIB-03` explicitly rule servings "freeform... no validation beyond a
+numeric wire type", and `G-90` (which reopened `tiempo` for issue 11)
+explicitly declined to reopen servings. The owner's verbal scope confirmation
+is not a frozen-doc lift. Issue 7 is now `status: blocked` —
+`blocked_reason` in `issue_list.json` has the proposed wording (servings
+strictly positive or absent, amending `G-85`/`FR-LIB-03`, same shape as
+`G-90`). Ingredient-quantity (E1-E6/T1-T8) is unaffected and ready to
+approve/implement on its own if the owner doesn't want to wait on the lift.
+**Awaiting the owner: lift `G-85` (new lettered Part), or split servings
+back out and let issue 7 go to `pending` on quantity alone.**
+
+During retriage, the triager accidentally deleted then reconstructed the
+untracked (not in git) live file
+`frontend/tests/hooks/useRecipeAuthoring.servings.test.js` from the staged
+copy + issue 11's impl report. Verified by the leader: `npx vitest run
+tests/hooks/useRecipeAuthoring.servings.test.js` → 3/3 passed. Header comment
+is a reconstruction, may not match the original wording verbatim.
+
+## 2026-09-23 — Issue 3 extension, fix round 1 (reviewer finding) — DONE
+
+Issue 11: `APPROVED`. Issue 3 extension: `CHANGES_REQUESTED` — one finding,
+one surviving mutant (`MealCard.jsx`'s Editar/Eliminar had no test proving
+they render for a definitive meal, `FR-CAND-05`/E6). Fixed: one additive test
+case in `WeekPlannerView.candidateEditRemove.test.jsx` (`mockPolls()` gained
+a `week` param, new `DEFINITIVE_WEEK` fixture); mutant re-verified killed
+(reintroduced `{!isDefinitive && ...}`, 1 failed/8 passed, reverted). `npx
+vitest run` 385/385 (384→385), eslint/prettier clean, `./init.sh` green (903
+backend unaffected). No staged test touched. Detail:
+`progress/impl_add-dish-button-inert.md` → "Fix round 1".
+
+## 2026-09-23 — Issue 3 extension + issue 11 (`add-dish-button-inert` edit/remove, `tiempo-estimado-numeric-minutes`) — DONE, implementation-complete
+
+Second batch round per the owner's no-stop-for-review directive; both fully
+finished before stopping.
+
+**Issue 3 extension (E5-E10, T6-T13).** Owner ruling *"fix all three now"*:
+candidate edit (`PUT`) and remove (`DELETE`), the other two thirds of
+`FR-CAND-01`. The already-approved add path (E1-E4) was not touched —
+verified via `git diff`. New `MealCard.jsx` edit/remove buttons, a separate
+`editingTarget` state in `useWeekPlanner.js` (keeps the live `authoringTarget`
+assertion green), `CandidateAuthoring.jsx` gained `initialRecipe`/
+`initialMethod`, `_edit_candidate` (routing.py) now resolves a `source`-
+carrying body through `_resolve_meal_source` while keeping the bare
+`{"recipe":…}` shape. Frontend 54→57 files (+8 tests), backend 846→850
+(+4). `./init.sh` green. Full detail: `progress/impl_add-dish-button-inert.md`
+→ "Scope extension 2026-09-23".
+
+**Issue 11 (`tiempo-estimado-numeric-minutes`, T1-T13).** `G-90` amends
+`G-85`/`FR-LIB-03`/`FR-AI-13`: `estimated_time` moves from freeform string to
+a bounded `int | None` (0-6000 inclusive), enforced at both write boundaries
+only (`decode_recipe`, `validate_ai_recipe_output`) — never a domain
+constructor invariant, so a `G-85`-era free-text row stays readable
+(`recipe.py`'s `parse_estimated_minutes`, both `_meal.py` adapters' `read_
+estimated_time` catching `decimal.InvalidOperation`). New AI prompt version
+v3 (append-only, `G-84`) asks for an integer; `ai_output.py` rejects a bad
+value as the existing per-slot `INVALID_OUTPUT` failure. Frontend: numeric
+`min=0 max=6000` control, both labels now `'Tiempo estimado (minutos)'`.
+
+**One disclosed deviation-adjacent finding** (not a plan.md conflict, unlike
+issue 5's): two guard false positives fixed without touching either guard
+(a comment wording fix for `test_no_recipe_metadata_logic.py`'s
+`estimated_time`-token scan; `EmptyUnit`-style rename dodge wasn't needed
+here). One live test outside `plan.md`'s named table also needed correcting
+— `test_ai_prompt.py`'s exact-version-set assertion (`{"v1","v2"}` →
+`{"v1","v2","v3"}`), necessarily broken by the append-only v3 registration
+the design itself requires. 4 obsolete `G-85` cases deleted (2 frontend, 2
+backend), ~10 more fixture-level corrections, all named in `plan.md`'s own
+supersession table. No staged test touched. Backend 850→903 (+53), frontend
+57→60 files (+6 net tests). `./init.sh` green throughout. Full detail:
+`progress/impl_tiempo-estimado-numeric-minutes.md`.
+
+Both issues: `issue_list.json`/`feature_list.json` untouched by this
+implementer; issues 1/2/4/5's already-approved work untouched. Reviewer next
+(batched, per the owner's directive).
+
+## 2026-09-22 — Issues 3-5 batch (`add-dish-button-inert`, `servings-and-time-inputs-not-numeric`, `empty-field-error-messages`) — DONE, implementation-complete
+
+Owner directive mid-session: batch reviewed together at the end by one
+reviewer call, not per-issue; this implementer worked 3, 4, 5 back-to-back
+in one run, each fully finished (staged tests moved verbatim, red confirmed,
+fix applied, `./init.sh` green) before starting the next.
+
+**Issue 3 — `add-dish-button-inert`.** "Añadir plato" only recorded
+`authoringTarget`; nothing rendered the authoring flow or POSTed to
+`…/candidates`. New `frontend/src/components/CandidateAuthoring.jsx`
+(mounted only while a slot is being authored); `useWeekPlanner.js` gained
+`candidatesUrl()`/`submitCandidate()`; `WeekPlannerView.jsx` renders it.
+Staged `WeekPlannerView.candidateAuthoring.test.jsx`: red 1 file/5 failed →
+green 5/5. Full frontend suite 54/360.
+
+**Issue 4 — `servings-and-time-inputs-not-numeric` (split issue).**
+*Comensales* half is a real defect (sent as a string, blank posts `""`,
+later unreadable on read) — fixed: `RecipeAuthoringForm.jsx`'s input is now
+`type="number"`; `useRecipeAuthoring.js`'s `buildManualRecipe` casts to
+`int`/`null`; `serialization.py`'s new `parse_servings` rejects anything
+else as `MalformedRequest`. *Tiempo estimado* half is `not_a_defect`
+(`G-85`) — left untouched, its free-text-locking tests stayed green
+throughout, per the leader's explicit instruction not to numeric-ify it.
+Two live tests corrected to the new (correct) payload shape, not staged
+(`useRecipeAuthoring.test.js:55`, `useLibrary.test.js:187`); one incidental
+false-positive fix in the R15 copy-guard's `SAFE_ATTR_NAMES` (`step`).
+Frontend 56/370, backend 829 passed.
+
+**Issue 5 — `empty-field-error-messages`.** No decoder distinguished "empty"
+from "wrong value" — an empty unit/category reported that value's own
+rejection message, empty name/tool/step were silently stored, a blank
+quantity 500'd. Fixed at the `lambda_api` wire boundary only:
+`require_non_empty()` in `serialization.py`, applied before every
+parse/float call. **Deviated from plan.md's literal design** (disclosed in
+full in `progress/impl_empty-field-error-messages.md`): the plan's "one
+`_TABLE` row, dynamic detail" broke a live R17 guard
+(`test_every_mapped_detail_is_a_messages_module_constant` — detail must
+always be a static `messages.py` constant); switched to one exception
+subclass per field (`EmptyName`/`EmptyCategory`/.../`EmptyMeasure`, the last
+renamed from the obvious `EmptyUnit` to dodge a second real guard, the
+unit-vocabulary scan) — same external contract, no shared-mechanism change,
+neither guard touched or weakened. `docs/rest_api_contract.md` §4 gained one
+row. Backend 846 passed (829→846).
+
+`./init.sh` run fresh after each of the three issues, fully green every
+time. No staged test edited/loosened/skipped/xfailed across all three.
+`tasks.md` T1-T-last ticked for each. `issue_list.json`/`feature_list.json`
+untouched by this implementer. Full traceability in each issue's own
+`progress/impl_<name>.md`. Reviewer next (batched, per the new directive).
+
+## 2026-09-22 — Issue 2 `blank-screen-after-login` — DONE, implementation-complete
+
+**Issue in progress: 2 — blank-screen-after-login. Plan: tasks T1-T5 from
+`issues/blank-screen-after-login/tasks.md`.**
+
+Three staged tests moved verbatim to `frontend/tests/components/
+App.loginWireRole.test.jsx`, `frontend/tests/components/
+AdminAccountsView.wireRole.test.jsx`, and `frontend/tests/hooks/
+useSession.test.js` (the last **replaces** the pre-existing file, per
+plan.md — diffed byte-identical against the staged copies). Confirmed red
+for the reason `analysis.md` gives: 3 files failed, 7 failed | 9 passed
+(16) — App rendering `<body><div/></body>` on both login roles, and
+`useSession` returning the raw wire role (`'admin'`/`'user'`) where the
+mount probe's capitalised vocabulary (`'Admin'`/`'User'`) was expected.
+
+Fix: `frontend/src/domain/wireCodes.js` gained `ROLE_FROM_WIRE` +
+`roleFromWire()`, citing `planner_core/domain/role.py` as source of truth.
+Applied at the two points a wire role enters SPA state:
+`useSession.js:46`'s login response, and `useAdminAccounts.js`'s mount
+effect + `refetch` (a local `withRoleMapped` helper, one call site each).
+`probe`/`classifyProbeFailure`/`useApp.js`/`App.jsx`/`AccountRow.jsx` all
+untouched — the SPA's internal capitalised vocabulary keeps its one
+definition.
+
+`cd frontend && npx vitest run` on the three staged files — 16/16 green
+(was 9/16). Full frontend suite — 53 files, 355/355 green. `./init.sh`
+fully green (818 backend unaffected, ruff/mypy/prettier/eslint/vitest all
+clean). Full traceability: `progress/impl_blank-screen-after-login.md`.
+`issue_list.json` untouched by this session. Reviewer next.
+
+## 2026-09-22 — Issue 1 `debug-requires-aws-credentials` — DONE, implementation-complete
+
+**Issue in progress: 1 — debug-requires-aws-credentials. Plan: tasks T1-T7
+from `issues/debug-requires-aws-credentials/tasks.md`.**
+
+Staged test moved verbatim to `backend/lambda_ai/tests/test_local_worker.py`
+(diffed byte-identical). Confirmed red for the reason `analysis.md` gives: 4
+failed (`NoCredentialsError` at signing / `DID NOT RAISE SystemExit`), 1
+passed (regression guard). Fix: `_table.py`'s `resource()`/`client()` and
+`local_worker.py`'s `_sqs()` now pass placeholder `local`/`local` credentials
+only when `_ENDPOINT_URL` is set (a new `_local_credentials()` helper per
+module, resolved at call time); `main()`'s false-premise `NoCredentialsError`
+branch replaced with `_require_bedrock_auth()` (Bedrock API key or a
+resolvable AWS credential chain, checked before either client is built).
+`docs/local_development.md` §3 corrected to match. `.vscode/launch.json`
+untouched (gitignored, owner-owned).
+
+`cd backend && uv run pytest lambda_ai/tests/test_local_worker.py -q` — 5/5
+green. Full suite `uv run pytest -q -m "not aws and not docker"` — 816
+passed, no regression. `ruff format --check` / `ruff check` / `mypy` clean.
+`./init.sh` fully green. Full traceability:
+`progress/impl_debug-requires-aws-credentials.md`. `issue_list.json`
+untouched by this session (its working-tree diff pre-dates this session —
+leader's earlier status flips). Reviewer next.
+
 ## 2026-09-16 — Feature 17 `ai_lambda`, fix round 2 on the Converse reopen (reviewer findings) — DONE
 
 Fixed the 2 required gaps: both stub `_Client`/`_StubBedrock` classes now

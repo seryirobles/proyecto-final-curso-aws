@@ -88,10 +88,11 @@ def test_slot_result_and_outcome_are_frozen() -> None:
 
 def test_a_provider_failure_on_one_slot_leaves_the_others_persisted() -> None:
     weeks = FakeWeekRepository()
+    # Non-empty tools (issue recipe-saved-without-required-sections, G-89).
     good = RawRecipeOutput(
         name="Buena",
         ingredients=(RawIngredient(name="arroz", quantity=100.0, unit="g"),),
-        tools=(),
+        tools=("olla",),
         procedure=("Cocer.",),
         category="carbohydrate",
     )

@@ -43,11 +43,24 @@ MARKER_ATTR = "marcaCambio"
 _serializer = TypeSerializer()
 
 
+def _local_credentials() -> dict[str, str]:
+    """Placeholder credentials for local-emulator traffic only, when an endpoint
+    override is set (E2/E3, issues/debug-requires-aws-credentials/analysis.md).
+    Read at call time, like `_ENDPOINT_URL`, so tests patching it take effect."""
+    if not _ENDPOINT_URL:
+        return {}
+    return {"aws_access_key_id": "local", "aws_secret_access_key": "local"}
+
+
 # boto3 ships no type stubs, so these resource/table/client handles are untyped
 # (docs/conventions.md — no bare `Any` without a justification).
 def resource() -> Any:
     return boto3.resource(
-        "dynamodb", region_name=_REGION, endpoint_url=_ENDPOINT_URL, config=_CONFIG
+        "dynamodb",
+        region_name=_REGION,
+        endpoint_url=_ENDPOINT_URL,
+        config=_CONFIG,
+        **_local_credentials(),
     )
 
 
@@ -56,7 +69,13 @@ def table() -> Any:
 
 
 def client() -> Any:
-    return boto3.client("dynamodb", region_name=_REGION, endpoint_url=_ENDPOINT_URL, config=_CONFIG)
+    return boto3.client(
+        "dynamodb",
+        region_name=_REGION,
+        endpoint_url=_ENDPOINT_URL,
+        config=_CONFIG,
+        **_local_credentials(),
+    )
 
 
 def create_data_table() -> None:

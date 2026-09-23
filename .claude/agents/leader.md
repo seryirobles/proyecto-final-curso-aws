@@ -87,14 +87,37 @@ reported → [issue_triager] → pending → ⏸ HUMAN go/no-go → approved →
   untouched** (`git diff`) and revert any status change that is not yours.
 - **STOP at `pending`.** Your message lists each issue: id, title,
   classification, one-line root cause, and `issues/<name>/`. Ask which to
-  **go**, which to decline, and which to leave.
+  **go**, which to decline, and which to leave. **If any `analysis.md` flags a
+  blast-radius scope question** (`docs/issues.md` § *Blast radius wider than
+  the report*, owner directive 2026-09-22), surface it as its own explicit
+  question — general fix or specific fix — not folded into the routine
+  go/no-go list as a footnote.
 - **Human answers** → `go` sets `approved`; `no` sets `wontfix` with the
   human's reason in `resolution`; silence leaves `pending`. Never set these on
   your own initiative.
-- **Implementing** → promote the lowest-id `approved` issue to `in_progress`
-  (only when nothing is `in_progress` in *either* list), launch **1
-  `implementer`** passing `issues/<name>/`, then **1 `reviewer`** without asking.
-  Repeat for the next `approved` issue.
+- **Implementing a batch of `approved` issues** (owner directive, 2026-09-22:
+  "1 implementer per batch that implements what I approve, and then 1 reviewer
+  reviews the whole batch, not 1 by 1") →
+  1. Promote **every** `approved` issue to `in_progress` (targeted edits; no
+     per-issue cap among issues — see `issue_list.json` rules).
+  2. Launch **1 `implementer`**, briefed with the full list of ids. It works
+     through them in order in one continuous run, each one fully finished
+     (tasks ticked, tests green) before the next, **without stopping for
+     review in between**. For any issue added to the batch after that agent
+     is already running, continue the *same* agent via `SendMessage` rather
+     than launching a fresh one.
+  3. Once every issue in the batch is implemented, launch **1 `reviewer`** for
+     the whole batch (issue-batch mode, see `reviewer.md`) — one call, one
+     verdict per issue.
+  4. For each issue the verdict marks `APPROVED`, set `reviewed: true`
+     (targeted edit; `status` stays `in_progress` — marking `done` is still
+     the human's). For each `CHANGES_REQUESTED`, send the **same implementer**
+     back with just that issue's findings; once every reopened issue is fixed,
+     run **one more batched reviewer call** covering only the reopened ones
+     (a cheap fix-confirmation pass per `docs/verification.md`, not a fresh
+     full review of the whole batch).
+  An issue already reviewed individually before this directive (2026-09-22)
+  is not redone.
 - **Priority**: while any issue is `approved`, do not start a `pending` feature
   unless the human says to.
 - `blocked` issues are reported with their reason; you never resolve them.

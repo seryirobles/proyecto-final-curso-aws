@@ -102,6 +102,19 @@ add three checks:
 
 The verdict header reads `# Review — issue <id> (<name>)`.
 
+### Batch mode
+
+The leader may hand you **several `in_progress` issues at once** (owner
+directive, 2026-09-22: one reviewer call per batch, not one per issue). Read
+the shared docs (step 1) **once**, then walk the full protocol — including a
+full, independent mutation-testing pass — **for each issue in turn**, and
+return **one verdict block per issue**, each headed `# Review — issue <id>
+(<name>)`, one after another in the same response. An issue's scope (step 1's
+"bound your reading") stays scoped to that issue's own `issues/<name>/` and the
+files its implementer touched — do not let one issue's diff bleed into
+another's verdict. `./init.sh` still runs once for the whole batch (step 10),
+not once per issue. End with one summary line per issue, in id order.
+
 ## Mutation testing
 
 **This is yours.** Not the implementer's, not the leader's. It is the one part

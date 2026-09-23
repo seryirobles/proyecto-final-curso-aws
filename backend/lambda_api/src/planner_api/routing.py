@@ -404,7 +404,14 @@ def _edit_candidate(
 ) -> RouteResult:
     week, slot_ref = _week_slot(path)
     ser.reject_keys(body, "id", "author", "añadidoPor")
-    meal = snapshot(ser.decode_recipe(ser.require_field(body, "recipe")))
+    # AP13 ("Editar o añadir comida") gives edit the same three §3.1 methods
+    # as add; the bare {"recipe": ...} shape keeps working (issue
+    # add-dish-button-inert scope extension).
+    meal = (
+        _resolve_meal_source(body, deps)
+        if "source" in body
+        else snapshot(ser.decode_recipe(ser.require_field(body, "recipe")))
+    )
     candidate_id = path["candidateId"]
     marker = week_editing.edit_slot_candidate(week, slot_ref, candidate_id, meal, weeks=deps.weeks)
     candidate = week_editing.load_candidate(week, slot_ref, candidate_id, weeks=deps.weeks)

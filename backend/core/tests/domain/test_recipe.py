@@ -61,10 +61,12 @@ def test_recipe_servings_and_estimated_time_default_to_none() -> None:
 
 
 def test_recipe_accepts_any_servings_and_estimated_time_value() -> None:
-    """R7, R8: zero, a negative servings count and an arbitrary time string, no exception."""
-    recipe = dataclasses.replace(_make_recipe(), servings=-3, estimated_time="45 minutos")
+    """R7, R8: zero, a negative servings count and an out-of-range estimated
+    time both construct without exception - enforcement is at the write
+    boundary, never here (G-90)."""
+    recipe = dataclasses.replace(_make_recipe(), servings=-3, estimated_time=9999)
     assert recipe.servings == -3
-    assert recipe.estimated_time == "45 minutos"
+    assert recipe.estimated_time == 9999
 
     zero = dataclasses.replace(_make_recipe(), servings=0)
     assert zero.servings == 0
@@ -133,7 +135,7 @@ def test_meal_snapshot_servings_and_estimated_time_default_to_none() -> None:
 
 def test_snapshot_copies_servings_and_estimated_time_when_set() -> None:
     """R5, R6, R9: snapshot() carries both fields through unchanged."""
-    recipe = dataclasses.replace(_make_recipe(), servings=4, estimated_time="30 min")
+    recipe = dataclasses.replace(_make_recipe(), servings=4, estimated_time=30)
 
     taken = snapshot(recipe)
 

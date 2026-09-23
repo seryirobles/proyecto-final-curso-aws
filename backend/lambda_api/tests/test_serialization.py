@@ -57,7 +57,7 @@ def test_recipe_round_trips_through_camel_case_keys() -> None:
         procedure=("Sofreir la cebolla.",),
         category=IngredientCategory.LEGUME,
         servings=4,
-        estimated_time="45 min",
+        estimated_time=45,
     )
 
     wire = encode_recipe(recipe)
@@ -65,7 +65,7 @@ def test_recipe_round_trips_through_camel_case_keys() -> None:
         "name": "Lentejas al curry",
         "category": "legume",
         "servings": 4,
-        "estimatedTime": "45 min",
+        "estimatedTime": 45,
         "ingredients": [{"name": "lentejas", "quantity": 300, "unit": "g"}],
         "tools": ["olla"],
         "procedure": ["Sofreir la cebolla."],

@@ -57,6 +57,7 @@ export function createPollingEngine(config, deps) {
   let consecutiveFailures = 0;
   let timerId = null;
   let inFlight = false;
+  let pendingForcedRefetch = false;
   let disposed = false;
   let unsubscribeVisibility = null;
   let wasBackgrounded = false;
@@ -87,11 +88,11 @@ export function createPollingEngine(config, deps) {
     timerId = setTimeoutFn(poll, delay);
   }
 
-  async function poll() {
+  async function fetchAndApply(marker) {
     if (inFlight) return;
     inFlight = true;
     try {
-      const result = await fetchResource(snapshot.marker);
+      const result = await fetchResource(marker);
       if (result.status === 200) {
         updateSnapshot({ data: result.body, marker: result.marker }); // R14
       } // 304 leaves data/marker unchanged (R13)
@@ -104,8 +105,21 @@ export function createPollingEngine(config, deps) {
       }
     } finally {
       inFlight = false;
-      scheduleNext();
+      if (pendingForcedRefetch && !disposed) {
+        // Fix round 2 (issue 10): a refetchNow() that arrived mid-flight is
+        // queued here rather than dropped - see refetchNow() below.
+        pendingForcedRefetch = false;
+        if (timerId !== null) clearTimeoutFn(timerId);
+        fetchAndApply(null);
+      } else {
+        pendingForcedRefetch = false;
+        scheduleNext();
+      }
     }
+  }
+
+  function poll() {
+    return fetchAndApply(snapshot.marker);
   }
 
   function pollNow() {
@@ -134,6 +148,18 @@ export function createPollingEngine(config, deps) {
       const resolved = resolveMutationMarker(snapshot.marker, returnedMarker);
       updateSnapshot({ marker: resolved.marker });
       if (resolved.refetch) pollNow(); // R26
+    },
+    // Issue ui-not-reflecting-mutations: forces an unconditional refetch so the
+    // writer's own change reaches `snapshot.data` (rest_api_contract.md section 6).
+    // Queued via pendingForcedRefetch, not dropped, if a poll is already in flight.
+    refetchNow() {
+      if (disposed) return;
+      if (inFlight) {
+        pendingForcedRefetch = true;
+        return;
+      }
+      if (timerId !== null) clearTimeoutFn(timerId);
+      fetchAndApply(null);
     },
     start() {
       wasBackgrounded = visibilitySource.isBackgrounded();

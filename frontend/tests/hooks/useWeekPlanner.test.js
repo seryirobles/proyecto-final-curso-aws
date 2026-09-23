@@ -50,6 +50,7 @@ function pollSnapshot(weekId) {
     marker: 1,
     connectionLost: false,
     applyMutationMarker: vi.fn(),
+    refetchNow: vi.fn(), // issue ui-not-reflecting-mutations
   };
 }
 
@@ -260,14 +261,14 @@ describe('useWeekPlanner', () => {
     expect(result.current.error).toBe('Conflicto.');
   });
 
-  it('active: false reaches usePolling as enabled: false (App shell finding 1)', async () => {
+  it('active: false reaches usePolling as enabled: false (App shell finding 1; live-weeks is now also gated on active, issue stuck-loading-after-login, so its URL never resolves here)', async () => {
     apiFetch.mockResolvedValue(LIVE_WEEKS);
     usePolling.mockReturnValue(pollSnapshot('2026-W34'));
 
     renderHook(() => useWeekPlanner({ active: false }));
 
     await waitFor(() =>
-      expect(usePolling).toHaveBeenLastCalledWith('/v1/weeks/2026-W34', undefined, {
+      expect(usePolling).toHaveBeenLastCalledWith(null, undefined, {
         enabled: false,
       }),
     );

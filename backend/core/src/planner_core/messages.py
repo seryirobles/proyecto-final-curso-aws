@@ -38,6 +38,34 @@ PIN_RULES_AFFECTED = "Hay reglas que fijan esta receta."
 UNSATISFIABLE_RULE_SET = "Las reglas indicadas no se pueden cumplir a la vez."
 INVALID_RULE_ID = "El identificador de regla indicado no es válido."
 MALFORMED_REQUEST = "La solicitud no es válida."
+
+# Issue empty-field-error-messages: a required field left blank names itself,
+# instead of falling through to the value parser's own rejection.
+EMPTY_NAME = "El campo Nombre no puede estar vacío."
+EMPTY_CATEGORY = "El campo Categoría no puede estar vacío."
+EMPTY_INGREDIENT_NAME = "El campo Nombre del ingrediente no puede estar vacío."
+EMPTY_QUANTITY = "El campo Cantidad no puede estar vacío."
+EMPTY_UNIT = "El campo Unidad no puede estar vacío."
+EMPTY_TOOL = "El campo Utensilio no puede estar vacío."
+EMPTY_PROCEDURE_STEP = "El campo Paso de la elaboración no puede estar vacío."
+
+# Issue tiempo-estimado-numeric-minutes (G-90): a well-formed but out-of-range
+# prep/cook time is rejected the same way an empty required field is.
+INVALID_ESTIMATED_TIME = (
+    "El campo Tiempo estimado debe ser un número entero de minutos entre 0 y 6000."
+)
+
+# Issue negative-ingredient-quantity: a well-formed but non-positive value is
+# rejected the same way an empty required field is (Part H, G-91/Part AA).
+INVALID_INGREDIENT_QUANTITY = "La cantidad del ingrediente debe ser mayor que cero."
+INVALID_SERVINGS = "El número de comensales debe ser mayor que cero."
+
+# Issue recipe-saved-without-required-sections (G-89, Part Y): each section
+# needs at least one item.
+RECIPE_WITHOUT_INGREDIENTS = "La receta debe incluir al menos un ingrediente."
+RECIPE_WITHOUT_TOOLS = "La receta debe incluir al menos un utensilio."
+RECIPE_WITHOUT_PROCEDURE = "La receta debe incluir al menos un paso de elaboración."
+
 INTERNAL_ERROR = "Se ha producido un error inesperado. Inténtalo de nuevo más tarde."
 GENERATION_NOT_FOUND = "No se ha encontrado la petición de generación solicitada."
 ROUTE_NOT_FOUND = "El recurso solicitado no existe."

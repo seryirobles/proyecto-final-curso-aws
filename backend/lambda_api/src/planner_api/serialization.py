@@ -10,10 +10,27 @@ from typing import Any  # untyped JSON in/out is the wire boundary itself (conve
 from planner_core import messages
 from planner_core.domain.calendar import IsoWeek, MealSlot, SlotRef
 from planner_core.domain.candidate import Candidate
-from planner_core.domain.errors import PlannerError
+from planner_core.domain.errors import (
+    EmptyCategory,
+    EmptyIngredientName,
+    EmptyMeasure,
+    EmptyName,
+    EmptyProcedureStep,
+    EmptyQuantity,
+    EmptyTool,
+    PlannerError,
+)
 from planner_core.domain.generation import GenerationMode, GenerationTargets, RuleOverride
 from planner_core.domain.ingredient_category import parse_category
-from planner_core.domain.recipe import Ingredient, MealSnapshot, Recipe
+from planner_core.domain.recipe import (
+    Ingredient,
+    MealSnapshot,
+    Recipe,
+    parse_estimated_minutes,
+    parse_quantity,
+    parse_servings_count,
+    require_recipe_sections,
+)
 from planner_core.domain.rules import CategoryCountRule, DisabledDay, PinRule, Rule
 from planner_core.domain.shopping import ShoppingItem
 from planner_core.domain.units import parse_unit
@@ -71,6 +88,26 @@ def require_field(body: dict[str, Any], key: str) -> Any:
     return body[key]
 
 
+_EMPTY_FIELD_EXCEPTIONS: dict[str, type[PlannerError]] = {
+    "name": EmptyName,
+    "category": EmptyCategory,
+    "ingredient_name": EmptyIngredientName,
+    "quantity": EmptyQuantity,
+    "unit": EmptyMeasure,
+    "tool": EmptyTool,
+    "procedure_step": EmptyProcedureStep,
+}
+
+
+def require_non_empty(value: Any, field: str) -> Any:
+    """R18-adjacent: a present-but-blank required field names itself (422),
+    instead of falling through to the value parser's own rejection or an
+    uncaught `float("")` (issue empty-field-error-messages)."""
+    if value is None or (isinstance(value, str) and value.strip() == ""):
+        raise _EMPTY_FIELD_EXCEPTIONS[field]()
+    return value
+
+
 def parse_week_id(value: str) -> IsoWeek:
     """`<isoYear>-W<ww>` (data_model.md section 2). Any failure to parse — not
     just an out-of-range week — is the same 400 in a path (design.md section 4)."""
@@ -112,9 +149,11 @@ def encode_ingredient(ingredient: Ingredient) -> dict[str, Any]:
 
 def decode_ingredient(payload: dict[str, Any]) -> Ingredient:
     return Ingredient(
-        name=str(require_field(payload, "name")),
-        quantity=float(require_field(payload, "quantity")),
-        unit=parse_unit(str(require_field(payload, "unit"))),
+        name=str(require_non_empty(require_field(payload, "name"), "ingredient_name")),
+        quantity=parse_quantity(
+            float(require_non_empty(require_field(payload, "quantity"), "quantity"))
+        ),
+        unit=parse_unit(str(require_non_empty(require_field(payload, "unit"), "unit"))),
     )
 
 
@@ -130,16 +169,48 @@ def encode_recipe(recipe: Recipe | MealSnapshot) -> dict[str, Any]:
     }
 
 
+def parse_servings(value: Any) -> int | None:
+    """rest_api_contract.md section 3.1: an integer or null, never a string —
+    a bad value must 400, not persist an unreadable numeroComensales
+    (issue servings-and-time-inputs-not-numeric). A well-formed but
+    non-positive integer is a domain rejection (422, InvalidServings),
+    same split as parse_estimated_time (G-91, Part AA)."""
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise MalformedRequest
+    return parse_servings_count(value)
+
+
+def parse_estimated_time(value: Any) -> int | None:
+    """G-90: the wrong JSON type is malformed (400, same shape as
+    parse_servings); a well-formed integer outside [0, 6000] is a domain
+    rejection (422, InvalidEstimatedTime) - issue tiempo-estimado-numeric-minutes."""
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise MalformedRequest
+    return parse_estimated_minutes(value)
+
+
 def decode_recipe(payload: dict[str, Any]) -> Recipe:
     reject_keys(payload, "id")
+    ingredients = tuple(decode_ingredient(i) for i in payload.get("ingredients", []))
+    tools = tuple(str(require_non_empty(t, "tool")) for t in payload.get("tools", ()))
+    procedure = tuple(
+        str(require_non_empty(s, "procedure_step")) for s in payload.get("procedure", ())
+    )
+    require_recipe_sections(ingredients, tools, procedure)  # G-89, Part Y
     return Recipe(
-        name=str(require_field(payload, "name")),
-        ingredients=tuple(decode_ingredient(i) for i in payload.get("ingredients", [])),
-        tools=tuple(str(t) for t in payload.get("tools", ())),
-        procedure=tuple(str(s) for s in payload.get("procedure", ())),
-        category=parse_category(str(require_field(payload, "category"))),
-        servings=payload.get("servings"),
-        estimated_time=payload.get("estimatedTime"),
+        name=str(require_non_empty(require_field(payload, "name"), "name")),
+        ingredients=ingredients,
+        tools=tools,
+        procedure=procedure,
+        category=parse_category(
+            str(require_non_empty(require_field(payload, "category"), "category"))
+        ),
+        servings=parse_servings(payload.get("servings")),
+        estimated_time=parse_estimated_time(payload.get("estimatedTime")),
     )
 
 
@@ -178,9 +249,9 @@ def decode_shopping_item(payload: dict[str, Any], *, item_id: str) -> ShoppingIt
     reject_keys(payload, "id")
     return ShoppingItem(
         id=item_id,
-        name=str(require_field(payload, "name")),
-        quantity=float(require_field(payload, "quantity")),
-        unit=parse_unit(str(require_field(payload, "unit"))),
+        name=str(require_non_empty(require_field(payload, "name"), "name")),
+        quantity=float(require_field(payload, "quantity")),  # bound: issue 7, not this one
+        unit=parse_unit(str(require_non_empty(require_field(payload, "unit"), "unit"))),
     )
 
 

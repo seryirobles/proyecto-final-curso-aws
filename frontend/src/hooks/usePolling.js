@@ -58,5 +58,9 @@ export function usePolling(
   }, [engine, enabled]);
 
   const snapshot = useSyncExternalStore(engine.subscribe, engine.getSnapshot);
-  return { ...snapshot, applyMutationMarker: engine.applyMutationMarker };
+  return {
+    ...snapshot,
+    applyMutationMarker: engine.applyMutationMarker,
+    refetchNow: engine.refetchNow, // issue ui-not-reflecting-mutations
+  };
 }

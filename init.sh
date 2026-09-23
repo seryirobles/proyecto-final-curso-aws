@@ -226,10 +226,13 @@ feature_ids_in_progress = [f["name"] for f in in_progress]
 issue_ids = [i["id"] for i in issues]
 if len(issue_ids) != len(set(issue_ids)):
     FAILURES.append("issue_list.json has duplicate issue ids")
+# No cap among issues themselves -- an approved batch may sit in_progress
+# together (one implementer run, one batched reviewer call). A feature and an
+# issue batch still never run at the same time. See issue_list.json rules.
 issues_in_progress = [i["name"] for i in issues if i["status"] == "in_progress"]
-if len(issues_in_progress) + len(feature_ids_in_progress) > 1:
+if issues_in_progress and feature_ids_in_progress:
     FAILURES.append(
-        "more than one item in_progress across both lists: "
+        "a feature and an issue are in_progress at the same time: "
         + ", ".join(feature_ids_in_progress + issues_in_progress)
     )
 for i in issues:

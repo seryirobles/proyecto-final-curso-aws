@@ -124,3 +124,30 @@ stored empty recipes stay readable), and the AI path returns a
 `GenerationFailure`.
 
 Severity as reported: `medium`. Not amended.
+
+## Scope extension (2026-09-23)
+
+**Gap, one sentence:** with a section empty, *Guardar receta* is disabled and
+nothing on screen says why.
+
+E6 required only that the form not submit. The landed fix satisfies it
+silently: `useRecipeAuthoring.js:160-174` returns `canSubmit === false`, and
+`RecipeAuthoringForm.jsx:261` renders `disabled={!canSubmit}` with no message.
+The sibling rules on the same form do explain themselves — servings and
+ingredient quantity (issue `negative-ingredient-quantity`, E5/E11) render an
+inline `tokens.color.honey` `<span>` beside the field
+(`RecipeAuthoringForm.jsx:149-155`, `:191-196`), text from `es-ES.js`. The
+owner reported the empty-section case as still broken; `FR-UX-03` (errors and
+validation messages in Castilian Spanish) and `FR-LIB-03` as amended by `G-89`
+("rejected … with an es-ES message") cover it. No new requirement.
+
+**Trigger.** Those warnings keep no touched or submit-attempted state: each is a
+pure function of the current form value, shown whenever the value is invalid.
+E8 follows the same rule, so a section warns whenever it is empty — including
+on a freshly opened scratch form, where the three warnings are exactly the
+explanation for the disabled button. A touched/attempted flag would be a new
+state mechanism on this form; not proposed.
+
+**Blast radius.** `ScratchFields` is shared by the library add/edit flow and
+the week view's candidate flow (`CandidateAuthoring.jsx`), so one change covers
+both. The library-pick and AI-stub methods do not render these sections.

@@ -7,6 +7,7 @@
 // progress/impl_frontend_spa.md, "Tier E - library".
 
 import { tokens } from '../tokens/index.js';
+import { secondaryButtonStyle } from '../tokens/controlStyles.js';
 import { MESSAGES } from '../messages/index.js';
 import { CATEGORY_COLORS } from '../domain/labels.js';
 import { EmptyState } from './EmptyState.jsx';
@@ -204,7 +205,11 @@ export function LibraryView({
       {isAuthoringOpen ? (
         <div>
           <RecipeAuthoringForm {...authoring} />
-          <button type="button" onClick={closeAuthoring}>
+          <button
+            type="button"
+            onClick={closeAuthoring}
+            style={{ ...secondaryButtonStyle, marginTop: tokens.space.sm }}
+          >
             {MESSAGES.RECIPE_DETAIL_CLOSE}
           </button>
         </div>

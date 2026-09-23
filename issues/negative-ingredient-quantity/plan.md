@@ -34,6 +34,35 @@ up/1 down button controls to go below 0."* E1–E4 are unchanged — nothing in 
 ruling contradicts them; it adds the user-facing half that this plan previously
 left to issue 5.
 
+### Servings extension (2026-09-23) — `G-91`
+
+The owner extended the scope to *Comensales* with the same ruling. **E7–E12
+cite `FR-LIB-03` and `FR-AI-13` as amended by `G-91`** (Part AA, landed
+2026-09-23; see `analysis.md`, "Requirement basis — `G-91`"). Servings stays
+optional: blank / `null` / absent is valid everywhere below.
+
+- **E7** — When a request body carries an integer `servings` that is not
+  strictly greater than zero, the API **shall** reject the request with `422`
+  and a `detail` taken from `planner_core.messages`.
+  *Implements:* FR-LIB-03 (as amended), FR-LIB-02, FR-CAND-03, FR-UX-03.
+- **E8** — When AI output carries a `servings` that is not strictly greater
+  than zero, `validate_ai_recipe_output` **shall** raise a named domain
+  exception instead of returning a `Recipe`.
+  *Implements:* FR-LIB-03 (as amended), FR-AI-13.
+- **E9** — When `validate_and_preview` receives such output, it **shall** return
+  `GenerationFailure(INVALID_OUTPUT)` instead of propagating the exception.
+  *Implements:* FR-AI-12 (G-48, G-66).
+- **E10** — While the authoring form's servings field holds a non-blank value
+  that is not strictly greater than zero, the form **shall not** submit the
+  recipe. *Implements:* FR-LIB-03 (as amended), FR-CAND-03.
+- **E11** — While the servings field holds a non-blank value that is not
+  strictly greater than zero, the form **shall** display the es-ES message
+  `MESSAGES.RECIPE_AUTHORING_INVALID_SERVINGS`.
+  *Implements:* FR-UX-03, FR-LIB-03 (as amended).
+- **E12** — While the authoring form is shown, the servings control **shall**
+  be a numeric control whose minimum is zero, so its stepper never produces a
+  negative value. *Implements:* FR-UX-02, FR-LIB-03 (as amended).
+
 ## Fix design
 
 Ingredient quantity gains the validating entry point its sibling field `unit`
@@ -53,8 +82,23 @@ in `lambda_api`, form state in the frontend hook.
 | `frontend/src/messages/es-ES.js` | frontend messages | One constant, `RECIPE_AUTHORING_INVALID_QUANTITY`, with the same text as the backend's `INVALID_INGREDIENT_QUANTITY` — the two message modules are parallel by design (`docs/conventions.md`, *Castilian Spanish*). |
 | `frontend/src/components/RecipeAuthoringForm.jsx` | frontend component | `min="0"` on the quantity input (E6), and inside each ingredient row an element rendering `MESSAGES.RECIPE_AUTHORING_INVALID_QUANTITY` while `ingredient.quantity !== '' && Number(ingredient.quantity) <= 0` (E5). No `role`, no `aria-*` — `frontend/tests/test_no_extra_accessibility.test.js` (R22) forbids them in `src/**/*.jsx`. |
 
+Servings extension (E7–E12), same pattern as `parse_estimated_minutes` (G-90):
+
+| File | Layer | Change |
+|---|---|---|
+| `backend/core/src/planner_core/domain/recipe.py` | core/domain | Add `InvalidServings(PlannerError)` and `parse_servings_count(value: int \| None) -> int \| None`: `None` passes, an integer `<= 0` raises. Must live here or in `ai_output.py` — the only `planner_core` modules `test_no_recipe_metadata_logic.py` exempts. |
+| `backend/core/src/planner_core/messages.py` | core | One es-ES constant, e.g. `INVALID_SERVINGS = "El número de comensales debe ser mayor que cero."` |
+| `backend/core/src/planner_core/domain/ai_output.py` | core/domain | `servings=parse_servings_count(raw.servings)` (E8); add `InvalidServings` to `validate_and_preview`'s `except` tuple (E9); update the docstring's "servings carries through unchanged and unvalidated (G-85)". |
+| `backend/lambda_api/src/planner_api/serialization.py` | lambda_api | `parse_servings` keeps its 400 type check, then returns `parse_servings_count(value)` (E7). |
+| `backend/lambda_api/src/planner_api/errors.py` | lambda_api | One `_TABLE` row: `422`, code `INVALID_SERVINGS`, the new message. |
+| `docs/rest_api_contract.md` sections 3 (item 8) and 4 | doc | `servings` "a strictly positive integer or absent"; one exception row. Per `G-91`. |
+| `frontend/src/hooks/useRecipeAuthoring.js` | frontend hook | `canSubmit` for `scratch` also requires `form.servings === '' \|\| Number(form.servings) > 0` (E10). |
+| `frontend/src/messages/es-ES.js` | frontend messages | `RECIPE_AUTHORING_INVALID_SERVINGS`, same text as the backend constant. |
+| `frontend/src/components/RecipeAuthoringForm.jsx` | frontend component | `min="0"` on the *Comensales* input (E12) and, inside its `<label>`, an element rendering `MESSAGES.RECIPE_AUTHORING_INVALID_SERVINGS` while `form.servings !== '' && Number(form.servings) <= 0` (E11). No `role`/`aria-*` (R22). |
+
 **Do not** put the check in `Ingredient.__post_init__` — see the rejected
-alternatives. **Do not** touch `ShoppingItem`: same class of hole, different
+alternatives. The same applies to `Recipe.servings`: a constructor check would
+make a stored `numeroComensales <= 0` raise on read. **Do not** touch `ShoppingItem`: same class of hole, different
 entry point, and outside this report (`analysis.md`, "Blast radius").
 
 ### Who owns which message on this field
@@ -105,6 +149,13 @@ Staged files and their destinations (moved verbatim):
 | `issues/negative-ingredient-quantity/tests/backend/lambda_api/tests/test_ingredient_quantity_rejected.py` | `backend/lambda_api/tests/test_ingredient_quantity_rejected.py` |
 | `issues/negative-ingredient-quantity/tests/frontend/tests/hooks/useRecipeAuthoring.quantity.test.js` | `frontend/tests/hooks/useRecipeAuthoring.quantity.test.js` |
 | `issues/negative-ingredient-quantity/tests/frontend/tests/components/RecipeAuthoringForm.quantity.test.jsx` | `frontend/tests/components/RecipeAuthoringForm.quantity.test.jsx` |
+| `issues/negative-ingredient-quantity/tests/backend/core/tests/domain/test_servings_count.py` | `backend/core/tests/domain/test_servings_count.py` |
+| `issues/negative-ingredient-quantity/tests/backend/lambda_api/tests/test_servings_rejected.py` | `backend/lambda_api/tests/test_servings_rejected.py` |
+| `issues/negative-ingredient-quantity/tests/frontend/tests/hooks/useRecipeAuthoring.servingsBound.test.js` | `frontend/tests/hooks/useRecipeAuthoring.servingsBound.test.js` |
+| `issues/negative-ingredient-quantity/tests/frontend/tests/components/RecipeAuthoringForm.servingsBound.test.jsx` | `frontend/tests/components/RecipeAuthoringForm.servingsBound.test.jsx` |
+
+The `servingsBound` names are deliberate: `useRecipeAuthoring.servings.test.js`
+and `RecipeAuthoringForm.servings.test.jsx` already exist live (issue 4).
 
 | Expected behaviour | Test |
 |---|---|
@@ -115,6 +166,20 @@ Staged files and their destinations (moved verbatim):
 | E5 | `warns in es-ES while the quantity is %s` (reproduction, 3 cases), `shows no warning for a positive quantity`, `shows no warning while the quantity field is empty - issue 5 owns that message` |
 | E6 | `bounds the quantity stepper at zero, so it never steps negative` |
 | regression | `test_decode_recipe_accepts_a_positive_ingredient_quantity`, `test_ai_output_validation_accepts_a_positive_quantity`, `test_a_positive_quantity_still_previews`, `test_aggregation_of_positive_quantities_is_unchanged`, `submits the form with a positive quantity` |
+| E7 | `test_decode_recipe_rejects_a_non_positive_servings` (reproduction, 3 cases), `test_the_servings_rejection_reaches_the_client_as_422_with_an_es_es_message` |
+| E8 | `test_ai_output_validation_rejects_a_non_positive_servings` (3 cases) |
+| E9 | `test_a_non_positive_servings_surfaces_as_a_generation_failure` (2 cases) |
+| E10 | `does not submit the form with servings %s` (reproduction, 3 cases) |
+| E11 | `warns in es-ES while servings is %s` (3 cases), `shows no warning while servings is "%s"` (`'4'`, `''`) |
+| E12 | `bounds the servings stepper at zero, so it never steps negative` |
+| regression (servings) | `test_decode_recipe_accepts_one_serving_exactly`, `test_decode_recipe_still_reads_an_absent_servings_as_none`, `test_ai_output_validation_keeps_a_positive_or_absent_servings` (1, 4, None), `test_a_positive_servings_still_previews`, `submits the form with servings "%s" (still optional)` (`'4'`, `''`) |
+
+### Live tests the servings fix supersedes
+
+| File | Case | What the implementer does |
+|---|---|---|
+| `frontend/tests/components/RecipeAuthoringForm.servings.test.jsx` | `bounds Comensales with no min or max (E4, G-85 - no validation)` | Keep the `max` null assertion; drop the `min` null assertion and retitle — the staged E12 test states the opposite. Update the file header ("numeric and unbounded"). |
+| `backend/core/tests/domain/test_recipe.py` | `test_recipe_accepts_any_servings_and_estimated_time_value` | **Keep unchanged** — it asserts the constructor stays permissive, which this plan requires. |
 
 The tests name no exception class of their own: they assert `PlannerError`, the
 `422` status and an es-ES detail drawn from the messages module, so they
@@ -158,3 +223,18 @@ found.
 `frontend/tests/components/RecipeAuthoringForm.test.jsx` renders its ingredient
 row with `quantity: '300'`, so the new warning does not appear there and that
 suite stays green.
+
+### Red result for E7–E12 (2026-09-23)
+
+Copied, run, deleted; `git status --porcelain` matched the pre-run snapshot.
+
+- Backend, `uv run pytest` on `test_servings_count.py` and
+  `test_servings_rejected.py`: **9 failed, 6 passed.** Every rejection fails
+  `DID NOT RAISE PlannerError` (E7, E8); both `GenerationFailure` cases get a
+  `GenerationSuccess` (E9). Green, as planned: the six positive/absent
+  regressions.
+- Frontend, `npx vitest run` on the two `servingsBound` files: **9 failed,
+  2 passed.** E10: `expected true to be false` on `canSubmit`. E11 (5 cases):
+  `expected 'undefined' to be 'string'` — no `RECIPE_AUTHORING_INVALID_SERVINGS`;
+  once it exists the three non-positive cases still need the rendered element.
+  E12: `expected null to be '0'`. Green: the two "still optional" submissions.

@@ -20,7 +20,7 @@ function recipe(id, author, overrides = {}) {
     name: `Receta ${id}`,
     category: 'legume',
     servings: 4,
-    estimatedTime: '30 min',
+    estimatedTime: 30,
     ingredients: [],
     tools: [],
     procedure: [],
@@ -40,7 +40,25 @@ function fullRecipe(id, author) {
 }
 
 function pollSnapshot(recipes) {
-  return { data: { recipes }, connectionLost: false, applyMutationMarker: vi.fn() };
+  return {
+    data: { recipes },
+    connectionLost: false,
+    applyMutationMarker: vi.fn(),
+    refetchNow: vi.fn(), // issue ui-not-reflecting-mutations
+  };
+}
+
+// Non-empty sections (issue recipe-saved-without-required-sections, G-89):
+// canSubmit now requires at least one ingredient/tool/procedure step.
+function fillRequiredSections(result) {
+  act(() => result.current.authoring.addIngredient());
+  act(() => result.current.authoring.updateIngredient(0, 'name', 'lentejas'));
+  act(() => result.current.authoring.updateIngredient(0, 'quantity', '300'));
+  act(() => result.current.authoring.updateIngredient(0, 'unit', 'g'));
+  act(() => result.current.authoring.addTool());
+  act(() => result.current.authoring.updateTool(0, 'olla'));
+  act(() => result.current.authoring.addProcedureStep());
+  act(() => result.current.authoring.updateProcedureStep(0, 'Cocer las lentejas.'));
 }
 
 describe('useLibrary', () => {
@@ -141,6 +159,7 @@ describe('useLibrary', () => {
     act(() => result.current.openAdd());
     act(() => result.current.authoring.updateField('name', 'Tortilla'));
     act(() => result.current.authoring.updateField('category', 'eggs'));
+    fillRequiredSections(result);
 
     await act(async () => result.current.authoring.submit());
 
@@ -160,7 +179,7 @@ describe('useLibrary', () => {
       name: 'Receta r-1',
       category: 'legume',
       servings: '2',
-      estimatedTime: '30 min',
+      estimatedTime: '30',
       ingredients: [{ name: 'lentejas', quantity: '300', unit: 'g' }],
       tools: ['olla'],
       procedure: ['Sofreír la cebolla.'],
@@ -184,8 +203,8 @@ describe('useLibrary', () => {
           recipe: {
             name: 'Receta r-1',
             category: 'legume',
-            servings: '2',
-            estimatedTime: '30 min',
+            servings: 2,
+            estimatedTime: 30,
             ingredients: [{ name: 'lentejas', quantity: 300, unit: 'g' }],
             tools: ['olla'],
             procedure: ['Sofreír la cebolla.'],
@@ -202,6 +221,7 @@ describe('useLibrary', () => {
     act(() => result.current.openEdit(recipe('r-1', 'Marta')));
     act(() => result.current.authoring.updateField('name', 'Tortilla'));
     act(() => result.current.authoring.updateField('category', 'eggs'));
+    fillRequiredSections(result);
 
     await act(async () => result.current.authoring.submit());
 
@@ -220,6 +240,7 @@ describe('useLibrary', () => {
     act(() => result.current.openAdd());
     act(() => result.current.authoring.updateField('name', 'Tortilla'));
     act(() => result.current.authoring.updateField('category', 'eggs'));
+    fillRequiredSections(result);
 
     await act(async () => result.current.authoring.submit());
 

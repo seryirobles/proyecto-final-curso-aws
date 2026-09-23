@@ -75,12 +75,25 @@ which is rendered.
   its first real call site; the `library` method's picker embed (`R12`) is
   exercised for the first time from this flow.
 - `closeCandidateAuthoring` (`useWeekPlanner.js:96`) is likewise unreferenced.
-- **Adjacent, same cause, out of scope:** the week view also offers no candidate
-  **edit** (`PUT …/candidates/{id}`) and no candidate **remove**
+- **Adjacent, same cause — now in scope (owner ruling 2026-09-22, *"fix all
+  three now"*):** the week view also offers no candidate **edit**
+  (`PUT …/candidates/{id}`) and no candidate **remove**
   (`DELETE …/candidates/{id}`) — `MealCard.jsx:56` carries only
   detail/promote/clear — so the other two thirds of `FR-CAND-01` are equally
-  unreachable. The report names the add button; this issue fixes only the add
-  path. **Recommend the human open a separate issue for candidate edit/remove.**
+  unreachable. Triage raised this as an open scope question
+  (`docs/issues.md` § *Blast radius wider than the report*); the owner answered
+  **general fix**, so this issue now covers all three operations. `E5`–`E10` in
+  `plan.md` and `T6`–`T13` in `tasks.md` carry that work; `covers` is unchanged
+  (`FR-CAND-01` already reads "add, **edit, or remove**", `FR-CAND-02` "when
+  adding/**editing**"), with `FR-UX-04` added for the removal confirmation.
+  One extra finding while designing it: `_edit_candidate`
+  (`backend/lambda_api/src/planner_api/routing.py:398`) accepts only a bare
+  `{"recipe": …}` body, so only the *from-scratch* method would work on edit —
+  `FR-CAND-02` asks for all three. `AP13` is *Editar o añadir comida* and the
+  contract's `PUT` row says "same (`AP13`)", so accepting the §3.1 discriminated
+  body there is the contract read, not a new decision; `plan.md` records it as
+  a one-branch backend change plus a clarifying sentence in
+  `docs/rest_api_contract.md` §2.
 - No other view shares the bug: library, rules and shopping all mount their
   authoring/editing UI.
 - Constraint measured while prototyping (in a scratch copy; repo untouched):

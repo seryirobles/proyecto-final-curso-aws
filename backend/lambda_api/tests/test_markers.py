@@ -44,8 +44,9 @@ def test_adding_a_library_recipe_returns_the_writes_marker_as_the_etag() -> None
                 "name": "Tortilla",
                 "category": "eggs",
                 "ingredients": [{"name": "huevo", "quantity": 3, "unit": "unit"}],
-                "tools": [],
-                "procedure": [],
+                # Non-empty sections (issue recipe-saved-without-required-sections, G-89).
+                "tools": ["sartén"],
+                "procedure": ["Batir los huevos y cuajar."],
             },
         },
         context=authorizer_context(user_id="u-1"),

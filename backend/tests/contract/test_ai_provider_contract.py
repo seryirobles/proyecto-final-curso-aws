@@ -24,7 +24,7 @@ _RECIPE_JSON = json.dumps(
         "procedure": ["Cocer el arroz.", "Añadir las verduras."],
         "category": "carbohydrate",
         "servings": 2,
-        "estimated_time": "30 min",
+        "estimated_time": 30,
     }
 )
 
@@ -35,7 +35,7 @@ _EXPECTED = RawRecipeOutput(
     procedure=("Cocer el arroz.", "Añadir las verduras."),
     category="carbohydrate",
     servings=2,
-    estimated_time="30 min",
+    estimated_time=30,
 )
 
 

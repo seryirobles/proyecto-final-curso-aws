@@ -40,11 +40,18 @@ export function useSummary({ active = true } = {}) {
   const [detailSource, setDetailSource] = useState(null);
   const [error, setError] = useState(null);
 
+  // Gated on `active` (issue stuck-loading-after-login): a mount-once read
+  // fails SESSION_EXPIRED before login and never re-runs, same pattern
+  // useAdminAccounts.js already uses.
   useEffect(() => {
+    if (!active) return undefined;
     let cancelled = false;
     apiFetch('/v1/live-weeks').then(
       (result) => {
-        if (!cancelled) setLiveWeeks(result);
+        if (!cancelled) {
+          setLiveWeeks(result);
+          setError(null);
+        }
       },
       (err) => {
         if (!cancelled) setError(toDetail(err));
@@ -53,7 +60,7 @@ export function useSummary({ active = true } = {}) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [active]);
 
   const currentWeek = liveWeeks?.current ?? null;
   const summaryUrl = currentWeek ? `/v1/weeks/${currentWeek.weekId}/summary` : null;

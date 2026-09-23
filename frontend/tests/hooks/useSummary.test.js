@@ -64,14 +64,14 @@ describe('useSummary', () => {
     );
   });
 
-  it('active: false reaches usePolling as enabled: false (App shell finding 1)', async () => {
+  it('active: false reaches usePolling as enabled: false (App shell finding 1; live-weeks is now also gated on active, issue stuck-loading-after-login, so its URL never resolves here)', async () => {
     apiFetch.mockResolvedValue(LIVE_WEEKS);
     usePolling.mockReturnValue(pollSnapshot([]));
 
     renderHook(() => useSummary({ active: false }));
 
     await waitFor(() =>
-      expect(usePolling).toHaveBeenLastCalledWith('/v1/weeks/2026-W34/summary', undefined, {
+      expect(usePolling).toHaveBeenLastCalledWith(null, undefined, {
         enabled: false,
       }),
     );

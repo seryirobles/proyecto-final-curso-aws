@@ -189,8 +189,10 @@ def test_recipe_metadata_instruction_v2_is_the_approved_english_wording() -> Non
 
 def test_resolve_prompt_version_registry_carries_every_expected_version() -> None:
     """FR-AI-14, R1, R2, R6: v1 carries feature 11's/feature 25's already-approved
-    constants; v2 (2026-09-11 owner correction) adds the English instruction wording."""
-    assert set(PROMPT_INSTRUCTION_VERSIONS) == {"v1", "v2"}
+    constants; v2 (2026-09-11 owner correction) adds the English instruction
+    wording; v3 (issue tiempo-estimado-numeric-minutes, G-90) adds the
+    integer-minutes prep/cook-time wording."""
+    assert set(PROMPT_INSTRUCTION_VERSIONS) == {"v1", "v2", "v3"}
 
     version = resolve_prompt_version("v1")
 

@@ -16,6 +16,13 @@
 - **E3** — The close control SHALL call `closeAuthoring` exactly once when
   clicked.
   *Implements:* `FR-LIB-02`.
+- **E4** (scope extension 2026-09-23) — The close control of the week view's
+  candidate authoring panel (`CandidateAuthoring`, "Añadir plato") SHALL render
+  with the same shared secondary-button treatment as E1.
+  *Implements:* `FR-UX-02` (same chain as E1).
+- **E5** (scope extension) — That close control SHALL call `onClose` exactly
+  once when clicked.
+  *Implements:* `FR-CAND-02`.
 
 ## Fix design
 
@@ -50,6 +57,14 @@ Precedent for choosing the *secondary* variant: `ShoppingListView.jsx:140`
 styles its "Cancelar" — the dismiss half of the same save/cancel pair inside an
 open form — with `secondaryButtonStyle`. The authoring panel's submit is the
 primary, so its dismiss is the secondary.
+
+### Scope extension (E4, E5)
+
+`frontend/src/components/CandidateAuthoring.jsx` — mirror `LibraryView.jsx:210-216`
+exactly: import `tokens` from `../tokens/index.js` and `secondaryButtonStyle`
+from `../tokens/controlStyles.js`, and give the button at `:23` `style={{
+...secondaryButtonStyle, marginTop: tokens.space.sm }}`. No other change;
+`RecipeDetailView.jsx`'s close button is not touched.
 
 ### Rejected alternatives
 
@@ -109,3 +124,24 @@ for a technique artefact.
 
 `npx prettier --check` and `npx eslint` both pass on the staged file, so it will
 not turn `./init.sh` red on style once moved.
+
+### Scope extension (2026-09-23)
+
+| Staged | Destination |
+|---|---|
+| `issues/close-button-style/tests/frontend/tests/components/CandidateAuthoring.closeButton.test.jsx` | `frontend/tests/components/CandidateAuthoring.closeButton.test.jsx` |
+
+| Test | Covers | Kind |
+|---|---|---|
+| `carries the shared secondary-button treatment (E4)` | E4 | **reproduction** |
+| `still calls onClose when clicked (E5)` | E5 | regression |
+
+Same probe-element technique as E1. `useRecipeAuthoring` is mocked to return
+the form's props, so the test renders `CandidateAuthoring` alone. No E2-style
+"no unstyled button" guard: it would also depend on the AI-tab stub submit,
+which stays unstyled by decision.
+
+Red at triage (copied, run, deleted; prettier and eslint clean):
+`Tests 1 failed | 1 passed (2)`. **E4 fails**: expected the secondary
+treatment, received every property `""` — the button has no `style`, the cause
+recorded in `analysis.md` § *Correction*. **E5 passes** as intended.

@@ -48,6 +48,13 @@ const SAFE_ATTR_NAMES = new Set([
   'cx',
   'cy',
   'r',
+  // Comensales numeric stepper (issue servings-and-time-inputs-not-numeric)
+  // - an HTML step increment, never copy.
+  'step',
+  // Tiempo estimado's minute bounds (issue tiempo-estimado-numeric-minutes,
+  // G-90) - HTML range limits, never copy.
+  'min',
+  'max',
 ]);
 const ATTR_ASSIGNMENT = /([A-Za-z][\w-]*)\s*=\s*("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g;
 // A string literal counts as a rendered branch/fallback only right after one

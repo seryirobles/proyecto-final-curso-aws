@@ -90,9 +90,10 @@ def _parse_recipe(text: str) -> RawRecipeOutput:
             procedure=tuple(str(step) for step in payload["procedure"]),
             category=str(payload["category"]),
             servings=None if payload.get("servings") is None else int(payload["servings"]),
-            estimated_time=None
-            if payload.get("estimated_time") is None
-            else str(payload["estimated_time"]),
+            # Passed through raw (G-90): the domain validator, not this
+            # adapter, is what rejects a bad value (issue
+            # tiempo-estimado-numeric-minutes).
+            estimated_time=payload.get("estimated_time"),
         )
     except (ValueError, KeyError, TypeError) as exc:
         raise AiProviderError(f"unparseable model output: {exc}") from exc

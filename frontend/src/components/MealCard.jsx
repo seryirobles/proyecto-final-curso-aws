@@ -53,7 +53,49 @@ function ClearIcon() {
   );
 }
 
-export function MealCard({ candidate, isDefinitive, onOpenDetail, onPromote, onClear }) {
+function EditIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M4 20h4L19 9l-4-4L4 16z" />
+      <path d="M14 5l4 4" />
+    </svg>
+  );
+}
+
+function RemoveIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+    >
+      <path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13" />
+    </svg>
+  );
+}
+
+export function MealCard({
+  candidate,
+  isDefinitive,
+  onOpenDetail,
+  onPromote,
+  onClear,
+  onEdit,
+  onRemove,
+}) {
   return (
     <div
       style={{
@@ -125,6 +167,22 @@ export function MealCard({ candidate, isDefinitive, onOpenDetail, onPromote, onC
             {MESSAGES.WEEK_PLANNER_PROMOTE_DEFINITIVE}
           </button>
         )}
+        <button
+          type="button"
+          onClick={onEdit}
+          style={{ ...actionButtonStyle, color: tokens.color.ink2 }}
+        >
+          <EditIcon />
+          {MESSAGES.WEEK_PLANNER_EDIT_CANDIDATE}
+        </button>
+        <button
+          type="button"
+          onClick={onRemove}
+          style={{ ...actionButtonStyle, color: tokens.color.ink3 }}
+        >
+          <RemoveIcon />
+          {MESSAGES.WEEK_PLANNER_REMOVE_CANDIDATE}
+        </button>
       </div>
     </div>
   );
