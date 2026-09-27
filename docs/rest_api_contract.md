@@ -148,7 +148,7 @@ inside the Lambda.
 
 | Method + path | Pattern / `FR-*` | Poll | Semantics |
 |---|---|---|---|
-| `GET /v1/rules` | Obtener reglas (`AP22`) · `FR-RULE-01`, `-02` | ✅ | Pin rules carry `recipeName`, resolved at read time from the library — never stored (`data_model.md` §6). |
+| `GET /v1/rules` | Obtener reglas (`AP22`) · `FR-RULE-01`, `-02`, `-07` | ✅ | Pin rules carry `recipeName`, resolved at read time from the library — never stored (`data_model.md` §6). The `200` body also carries a sibling `availableOptions` object — the dropdown-narrowing half of `FR-RULE-07` (feature 29). See §3.7. |
 | `PUT /v1/rules/{ruleId}` | Añadir o editar regla (`AP23`) · `FR-RULE-03`, `-06`, `-07` | — | Single-item `PutItem` (`AP23`), giving genuine per-rule last-write-wins. Satisfiability (`FR-RULE-07`) is re-validated whole-set in the adapter on each write: load the full set (`AP22`), apply the candidate change in memory, check, then commit the one item. See §7 Q5. |
 | `DELETE /v1/rules/{ruleId}` | Eliminar regla (`AP24`) · `FR-RULE-03`, `-06`, `-07` | — | Single-item `DeleteItem` (`AP24`). Whole-set satisfiability re-validated as above. |
 
@@ -388,6 +388,39 @@ and saved only when the user POSTs it as a candidate or library recipe (§3.1).
 `GET /v1/generations/{id}` is polled on its own short interval by the AI
 progress UI. It is deliberately **not** conditional-GET pollable — `PETICIONIA#`
 carries no `MarcaCambio` and is not one of `FR-RT-01`'s four resources.
+
+### 3.7 Rules dropdown constraints (`FR-RULE-07`; feature 29)
+
+```jsonc
+// GET /v1/rules  →  200 OK,  ETag: "7"
+{
+  "rules": [ /* unchanged — categoryCount / pin / disabledDay, as today */ ],
+  "availableOptions": {
+    "maxCountByCategory": {
+      "meat": 4, "fish": 6, "carbohydrate": 2,
+      "legume": 6, "vegetable": 6, "eggs": 6
+    },
+    "daysAvailableForPin": [1, 2, 4, 6, 7],
+    "daysAvailableToDisable": [2, 6]
+  }
+}
+```
+
+- **`maxCountByCategory`** — one entry per `IngredientCategory` member (all
+  six, always present, even a category with no rule yet), the highest count
+  that category could take without exceeding the slots left after disabled
+  days. `0` is valid: every slot is already claimed by other categories.
+- **`daysAvailableForPin`** — the `1..7` weekdays not disabled, ascending.
+  Does **not** exclude a day that already carries one pin — a day holds two
+  pins (lunch and dinner), so both slots of an available day stay offerable.
+- **`daysAvailableToDisable`** — the `1..7` weekdays that are neither
+  disabled nor already carrying a pin, ascending.
+- No new error shape, no new status code; same `304`-on-unchanged-marker
+  behaviour as today. This is the *preventive* half of `FR-RULE-07` — the SPA
+  narrows its dropdowns to these options instead of offering a choice the
+  whole-set satisfiability check (§1's `PUT`/`DELETE` row, `422
+  UNSATISFIABLE_RULE_SET`) would reject. That reactive check is unchanged and
+  stays the last line of defense for a race between two concurrent edits.
 
 ---
 

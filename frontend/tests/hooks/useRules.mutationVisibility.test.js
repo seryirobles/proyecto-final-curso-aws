@@ -34,7 +34,7 @@ function fakeRulesServer(initialRules) {
       };
     }
     if (method === 'DELETE') {
-      const ruleId = url.replace('/v1/rules/', '');
+      const ruleId = decodeURIComponent(url.replace('/v1/rules/', ''));
       rows = rows.filter((row) => `cat#${row.category}` !== ruleId);
       marker += 1;
       return { status: 204, ok: true, headers: new Headers({ ETag: `"${marker}"` }) };

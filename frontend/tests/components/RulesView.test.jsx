@@ -28,11 +28,13 @@ function baseProps(overrides = {}) {
       connectionLost: false,
     },
     categoryCountDraft: { category: '', count: '' },
+    categoryCountOptions: [],
     setCategoryCountCategory: vi.fn(),
     setCategoryCountCount: vi.fn(),
     canSaveCategoryCount: false,
     saveCategoryCount: vi.fn(),
     pinDraft: { day: '', slot: '' },
+    pinDayOptions: [],
     setPinDay: vi.fn(),
     setPinSlot: vi.fn(),
     pinRecipeId: null,
@@ -40,6 +42,7 @@ function baseProps(overrides = {}) {
     canSavePin: false,
     savePin: vi.fn(),
     disabledDayDraft: { day: '' },
+    disabledDayOptions: [],
     setDisabledDayDay: vi.fn(),
     canSaveDisabledDay: false,
     saveDisabledDay: vi.fn(),
@@ -234,6 +237,52 @@ describe('RulesView', () => {
     render(<RulesView {...baseProps({ error: 'Día no válido.' })} />);
 
     expect(screen.getByText('Día no válido.')).not.toBeNull();
+  });
+
+  it('the count select renders no options when categoryCountOptions is empty (R7)', () => {
+    render(<RulesView {...baseProps()} />);
+
+    const countSelect = screen.getAllByRole('combobox')[1];
+    expect(countSelect.querySelectorAll('option')).toHaveLength(1); // placeholder only
+  });
+
+  it('the count select renders exactly the options categoryCountOptions lists (R6)', () => {
+    render(<RulesView {...baseProps({ categoryCountOptions: [1, 2, 3] })} />);
+
+    const countSelect = screen.getAllByRole('combobox')[1];
+    const optionTexts = Array.from(countSelect.querySelectorAll('option')).map(
+      (o) => o.textContent,
+    );
+    expect(optionTexts).toEqual([MESSAGES.RULES_COUNT_PLACEHOLDER, '1', '2', '3']);
+  });
+
+  it('the pin-day select renders exactly the options pinDayOptions lists (R9)', () => {
+    render(
+      <RulesView
+        {...baseProps({
+          pinDayOptions: [
+            ['1', 'lunes'],
+            ['3', 'miércoles'],
+          ],
+        })}
+      />,
+    );
+
+    const pinDaySelect = screen.getAllByRole('combobox')[2];
+    const optionTexts = Array.from(pinDaySelect.querySelectorAll('option')).map(
+      (o) => o.textContent,
+    );
+    expect(optionTexts).toEqual([MESSAGES.RULES_DAY_PLACEHOLDER, 'lunes', 'miércoles']);
+  });
+
+  it('the disabled-day select renders exactly the options disabledDayOptions lists (R10)', () => {
+    render(<RulesView {...baseProps({ disabledDayOptions: [['7', 'domingo']] })} />);
+
+    const disabledDaySelect = screen.getAllByRole('combobox')[5];
+    const optionTexts = Array.from(disabledDaySelect.querySelectorAll('option')).map(
+      (o) => o.textContent,
+    );
+    expect(optionTexts).toEqual([MESSAGES.RULES_DAY_PLACEHOLDER, 'domingo']);
   });
 
   it('renders ConfirmDialog only when a removal is pending (R18)', () => {

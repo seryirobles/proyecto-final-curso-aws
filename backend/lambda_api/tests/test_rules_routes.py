@@ -9,7 +9,14 @@ from _helpers import api_event, authorizer_context, make_deps, seed_user
 from planner_core.domain.calendar import MealSlot
 from planner_core.domain.ingredient_category import IngredientCategory
 from planner_core.domain.recipe import Recipe
-from planner_core.domain.rules import DisabledDay, PinRule
+from planner_core.domain.rules import (
+    CategoryCountRule,
+    DisabledDay,
+    PinRule,
+    available_days_for_pin,
+    available_days_to_disable,
+    max_selectable_count,
+)
 from planner_core.ports.recipes import LibraryRecipe
 
 from planner_api.handler import handle
@@ -116,6 +123,36 @@ def test_get_rules_resolves_a_pin_rules_recipe_name_from_the_library() -> None:
     assert pins == [
         {"type": "pin", "day": 1, "slot": 1, "recipeId": "r1", "recipeName": "Lentejas"}
     ]
+
+
+def test_get_rules_available_options_matches_the_pure_functions_on_the_same_rule_set() -> None:
+    """R2-R4: availableOptions is read verbatim off rules.py's own functions,
+    applied to the same RuleSet the rules array was built from."""
+    deps = make_deps()
+    seed_user(deps, user_id="u-1")
+    deps.rules.save_rule(CategoryCountRule(category=IngredientCategory.MEAT, count=5))
+    deps.rules.save_rule(CategoryCountRule(category=IngredientCategory.FISH, count=3))
+    deps.rules.save_rule(DisabledDay(day=7))
+    deps.rules.save_rule(PinRule(day=1, slot=MealSlot.LUNCH, recipe_id="r1"))
+    event = api_event("GET", "/v1/rules", context=authorizer_context(user_id="u-1"))
+
+    response = handle(event, deps)
+
+    assert response["statusCode"] == 200
+    available_options = json.loads(response["body"])["availableOptions"]
+    rule_set = deps.rules.get()
+    assert available_options == {
+        "maxCountByCategory": {
+            category.value: max_selectable_count(rule_set, category)
+            for category in IngredientCategory
+        },
+        "daysAvailableForPin": list(available_days_for_pin(rule_set)),
+        "daysAvailableToDisable": list(available_days_to_disable(rule_set)),
+    }
+    # Sanity: the scenario actually exercises non-trivial values, not all-default.
+    assert available_options["maxCountByCategory"]["meat"] not in (0, None)
+    assert available_options["daysAvailableForPin"] == [1, 2, 3, 4, 5, 6]
+    assert available_options["daysAvailableToDisable"] == [2, 3, 4, 5, 6]
 
 
 def test_an_unsatisfiable_rule_change_is_rejected_422_with_conflicts() -> None:

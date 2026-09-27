@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 import logging
 from typing import Any  # untyped JSON in/out is the wire boundary itself (conventions.md)
+from urllib.parse import unquote
 
 from planner_core.domain.authentication_guards import PasswordResetPending
 from planner_core.domain.authorization import Forbidden
@@ -74,7 +75,9 @@ def handle(event: dict[str, Any], deps: Dependencies | None = None) -> dict[str,
             if auth.password_reset_required and not spec.allow_during_password_reset:
                 raise PasswordResetPending
         resolved_deps = deps or build_dependencies()
-        path_params = event.get("pathParameters") or {}
+        # Rule ids hold `#` (issues/rule-creation-400-invalid-request); decode
+        # once here so PUT, DELETE and the local server all see the real id.
+        path_params = {k: unquote(v) for k, v in (event.get("pathParameters") or {}).items()}
         query_params = event.get("queryStringParameters") or {}
         if method == "GET" and spec.current_version_reader is not None:
             held = parse_if_none_match((event.get("headers") or {}).get("If-None-Match"))

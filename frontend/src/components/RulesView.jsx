@@ -4,8 +4,8 @@
 
 import { tokens } from '../tokens/index.js';
 import { MESSAGES } from '../messages/index.js';
-import { CATEGORY_LABELS, DAY_LABELS, SLOT_LABELS } from '../domain/labels.js';
-import { RULE_COUNT_OPTIONS, describeRule } from '../hooks/useRules.js';
+import { CATEGORY_LABELS, SLOT_LABELS } from '../domain/labels.js';
+import { describeRule } from '../hooks/useRules.js';
 import {
   selectStyle,
   primaryButtonStyle,
@@ -61,11 +61,13 @@ export function RulesView({
   remove,
   picker,
   categoryCountDraft,
+  categoryCountOptions,
   setCategoryCountCategory,
   setCategoryCountCount,
   canSaveCategoryCount,
   saveCategoryCount,
   pinDraft,
+  pinDayOptions,
   setPinDay,
   setPinSlot,
   pinRecipeId,
@@ -73,6 +75,7 @@ export function RulesView({
   canSavePin,
   savePin,
   disabledDayDraft,
+  disabledDayOptions,
   setDisabledDayDay,
   canSaveDisabledDay,
   saveDisabledDay,
@@ -135,7 +138,7 @@ export function RulesView({
               style={selectStyle}
             >
               <option value="">{MESSAGES.RULES_COUNT_PLACEHOLDER}</option>
-              {RULE_COUNT_OPTIONS.map((count) => (
+              {categoryCountOptions.map((count) => (
                 <option key={count} value={count}>
                   {count}
                 </option>
@@ -177,7 +180,7 @@ export function RulesView({
               style={selectStyle}
             >
               <option value="">{MESSAGES.RULES_DAY_PLACEHOLDER}</option>
-              {Object.entries(DAY_LABELS).map(([day, label]) => (
+              {pinDayOptions.map(([day, label]) => (
                 <option key={day} value={day}>
                   {label}
                 </option>
@@ -235,7 +238,7 @@ export function RulesView({
               style={selectStyle}
             >
               <option value="">{MESSAGES.RULES_DAY_PLACEHOLDER}</option>
-              {Object.entries(DAY_LABELS).map(([day, label]) => (
+              {disabledDayOptions.map(([day, label]) => (
                 <option key={day} value={day}>
                   {label}
                 </option>

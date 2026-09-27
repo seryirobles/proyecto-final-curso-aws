@@ -586,7 +586,7 @@
         "The existing whole-set 422 UNSATISFIABLE_RULE_SET check (feature 27) is untouched and stays the last line of defense for a race between two concurrent edits; this feature only narrows what a single well-behaved client can submit"
       ],
       "sdd": true,
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": 30,

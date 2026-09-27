@@ -22,5 +22,18 @@
       "reviewed": "bool, set by the leader (targeted edit) after a reviewer APPROVED verdict; owner directive 2026-09-22, see docs/issues.md"
     }
   },
-  "issues": []
+  "issues": [
+    {
+      "id": 1,
+      "name": "rule-creation-400-invalid-request",
+      "title": "Creating any rule fails with 400 \"La solicitud no es válida\"",
+      "severity": "high",
+      "report": "I tried to create a rule to test the new feature and in the app I got \"La solicitud no es válida\", in logs all I can see is\n\nINFO:planner_api:Handled request\nINFO:planner_api.local_server:\"PUT /v1/rules/cat HTTP/1.1\" 400 -\nINFO:planner_api:Handled request\nINFO:planner_api.local_server:\"GET /v1/library/recipes HTTP/1.1\" 304 -\nINFO:planner_api:Handled request\nINFO:planner_api.local_server:\"GET /v1/rules HTTP/1.1\" 304 -\n\nThis is happening when trying to create any rule of any type",
+      "reported": "2026-09-27",
+      "status": "in_progress",
+      "covers": ["FR-RULE-03", "FR-RULE-04", "FR-RULE-06"],
+      "classification": "defect",
+      "reviewed": true
+    }
+  ]
 }

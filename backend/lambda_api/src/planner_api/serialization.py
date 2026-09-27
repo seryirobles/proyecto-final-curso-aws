@@ -28,7 +28,7 @@ from planner_core.domain.generation import (
     SingleRecipeRequest,
     SpecificationSource,
 )
-from planner_core.domain.ingredient_category import parse_category
+from planner_core.domain.ingredient_category import IngredientCategory, parse_category
 from planner_core.domain.recipe import (
     Ingredient,
     MealSnapshot,
@@ -38,7 +38,16 @@ from planner_core.domain.recipe import (
     parse_servings_count,
     require_recipe_sections,
 )
-from planner_core.domain.rules import CategoryCountRule, DisabledDay, PinRule, Rule
+from planner_core.domain.rules import (
+    CategoryCountRule,
+    DisabledDay,
+    PinRule,
+    Rule,
+    RuleSet,
+    available_days_for_pin,
+    available_days_to_disable,
+    max_selectable_count,
+)
 from planner_core.domain.shopping import ShoppingItem
 from planner_core.domain.units import parse_unit
 from planner_core.ports.accounts import AccountRecord
@@ -281,6 +290,19 @@ def encode_rule(rule: Rule, *, recipe_name: str | None = None) -> dict[str, Any]
             return payload
         case DisabledDay():
             return {"type": "disabledDay", "day": rule.day}
+
+
+def encode_available_options(rule_set: RuleSet) -> dict[str, Any]:
+    """R1-R4: one call per already-built pure function (rules_model, feature 6),
+    no arithmetic of its own (rest_api_contract.md section 3.7)."""
+    return {
+        "maxCountByCategory": {
+            category.value: max_selectable_count(rule_set, category)
+            for category in IngredientCategory
+        },
+        "daysAvailableForPin": list(available_days_for_pin(rule_set)),
+        "daysAvailableToDisable": list(available_days_to_disable(rule_set)),
+    }
 
 
 def decode_rule(payload: dict[str, Any]) -> Rule:

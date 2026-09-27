@@ -24,9 +24,9 @@ function pollSnapshot(data) {
   };
 }
 
-function mockPolling({ rules = [], recipes = [] } = {}) {
+function mockPolling({ rules = [], availableOptions = null, recipes = [] } = {}) {
   usePolling.mockImplementation((url) => {
-    if (url === '/v1/rules') return pollSnapshot({ rules });
+    if (url === '/v1/rules') return pollSnapshot({ rules, availableOptions });
     if (url === '/v1/library/recipes') return pollSnapshot({ recipes });
     return pollSnapshot(null);
   });
@@ -64,7 +64,7 @@ describe('useRules', () => {
     await act(async () => result.current.saveCategoryCount());
 
     expect(apiFetch).toHaveBeenCalledWith(
-      '/v1/rules/cat#meat',
+      '/v1/rules/cat%23meat',
       expect.objectContaining({
         method: 'PUT',
         body: { type: 'categoryCount', category: 'meat', count: 3 },
@@ -83,7 +83,7 @@ describe('useRules', () => {
     await act(async () => result.current.savePin());
 
     expect(apiFetch).toHaveBeenCalledWith(
-      '/v1/rules/pin#3#2',
+      '/v1/rules/pin%233%232',
       expect.objectContaining({
         method: 'PUT',
         body: { type: 'pin', day: 3, slot: 2, recipeId: 'r-9' },
@@ -100,7 +100,7 @@ describe('useRules', () => {
     await act(async () => result.current.saveDisabledDay());
 
     expect(apiFetch).toHaveBeenCalledWith(
-      '/v1/rules/day#5',
+      '/v1/rules/day%235',
       expect.objectContaining({ method: 'PUT', body: { type: 'disabledDay', day: 5 } }),
     );
   });
@@ -119,7 +119,7 @@ describe('useRules', () => {
     await act(async () => result.current.confirm.confirm());
 
     expect(apiFetch).toHaveBeenCalledWith(
-      '/v1/rules/day#7',
+      '/v1/rules/day%237',
       expect.objectContaining({ method: 'DELETE' }),
     );
   });
@@ -152,6 +152,71 @@ describe('useRules', () => {
     expect(usePolling).toHaveBeenCalledWith('/v1/library/recipes', undefined, {
       enabled: false,
     });
+  });
+
+  it('the three option lists come only from availableOptions, never from rules (R6, R9, R10, R11)', () => {
+    mockPolling({
+      rules: [{ type: 'categoryCount', category: 'meat', count: 99 }],
+      availableOptions: {
+        maxCountByCategory: { meat: 2, fish: 0, carbohydrate: 0, legume: 0, vegetable: 0, eggs: 0 },
+        daysAvailableForPin: [1, 3],
+        daysAvailableToDisable: [3],
+      },
+    });
+    const { result } = renderHook(() => useRules());
+    act(() => result.current.setCategoryCountCategory('meat'));
+
+    expect(result.current.categoryCountOptions).toEqual([1, 2]);
+    expect(result.current.pinDayOptions.map(([day]) => day)).toEqual(['1', '3']);
+    expect(result.current.disabledDayOptions.map(([day]) => day)).toEqual(['3']);
+  });
+
+  it('an empty category draft yields no count options (R7)', () => {
+    mockPolling({
+      availableOptions: {
+        maxCountByCategory: { meat: 2, fish: 0, carbohydrate: 0, legume: 0, vegetable: 0, eggs: 0 },
+        daysAvailableForPin: [],
+        daysAvailableToDisable: [],
+      },
+    });
+    const { result } = renderHook(() => useRules());
+
+    expect(result.current.categoryCountOptions).toEqual([]);
+  });
+
+  it('changing category clears a count draft the new category no longer covers (R8)', () => {
+    mockPolling({
+      availableOptions: {
+        maxCountByCategory: { meat: 5, fish: 1, carbohydrate: 0, legume: 0, vegetable: 0, eggs: 0 },
+        daysAvailableForPin: [],
+        daysAvailableToDisable: [],
+      },
+    });
+    const { result } = renderHook(() => useRules());
+    act(() => result.current.setCategoryCountCategory('meat'));
+    act(() => result.current.setCategoryCountCount('4'));
+
+    act(() => result.current.setCategoryCountCategory('fish'));
+
+    expect(result.current.categoryCountDraft).toEqual({ category: 'fish', count: '' });
+  });
+
+  it('changing category keeps a count draft the new category still covers, including at its exact max (R8, design.md section 4)', () => {
+    mockPolling({
+      availableOptions: {
+        maxCountByCategory: { meat: 5, fish: 4, carbohydrate: 0, legume: 0, vegetable: 0, eggs: 0 },
+        daysAvailableForPin: [],
+        daysAvailableToDisable: [],
+      },
+    });
+    const { result } = renderHook(() => useRules());
+    act(() => result.current.setCategoryCountCategory('meat'));
+    act(() => result.current.setCategoryCountCount('4'));
+
+    act(() => result.current.setCategoryCountCategory('fish'));
+
+    // fish's max is exactly 4 - the boundary `<=` case, not `<`.
+    expect(result.current.categoryCountDraft).toEqual({ category: 'fish', count: '4' });
   });
 
   it('a rejected save with no conflicts falls back to the plain error detail (R15)', async () => {

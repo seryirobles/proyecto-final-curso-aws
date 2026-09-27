@@ -13,13 +13,6 @@ import { CATEGORY_LABELS, DAY_LABELS, SLOT_LABELS } from '../domain/labels.js';
 
 const RULES_URL = '/v1/rules';
 
-// The physical bound on a category count - 7 days x 2 slots - not a
-// satisfiability decision (that stays server-side, FR-RULE-07).
-export const RULE_COUNT_OPTIONS = Array.from(
-  { length: Object.keys(DAY_LABELS).length * Object.keys(SLOT_LABELS).length },
-  (_, i) => i + 1,
-);
-
 function computeRuleId(rule) {
   if (rule.type === 'categoryCount') return `cat#${rule.category}`;
   if (rule.type === 'pin') return `pin#${rule.day}#${rule.slot}`;
@@ -81,11 +74,39 @@ export function useRules({ active = true } = {}) {
   const pins = useMemo(() => rules.filter((r) => r.type === 'pin'), [rules]);
   const disabledDays = useMemo(() => rules.filter((r) => r.type === 'disabledDay'), [rules]);
 
+  // R11: the three dropdown option sets come only from availableOptions, the
+  // server's own pure-function output (rest_api_contract.md section 3.7) -
+  // never re-derived from `rules` (architecture.md section 1.1).
+  const availableOptions = poll.data?.availableOptions ?? null;
+  const maxCountByCategory = useMemo(
+    () => availableOptions?.maxCountByCategory ?? {},
+    [availableOptions],
+  );
+  const daysAvailableForPin = useMemo(
+    () => availableOptions?.daysAvailableForPin ?? [],
+    [availableOptions],
+  );
+  const daysAvailableToDisable = useMemo(
+    () => availableOptions?.daysAvailableToDisable ?? [],
+    [availableOptions],
+  );
+
+  const pinDayOptions = useMemo(
+    () => Object.entries(DAY_LABELS).filter(([day]) => daysAvailableForPin.includes(Number(day))),
+    [daysAvailableForPin],
+  );
+
+  const disabledDayOptions = useMemo(
+    () =>
+      Object.entries(DAY_LABELS).filter(([day]) => daysAvailableToDisable.includes(Number(day))),
+    [daysAvailableToDisable],
+  );
+
   const putRule = useCallback(
     async (rule) => {
       try {
         let marker = null;
-        await apiFetch(`${RULES_URL}/${computeRuleId(rule)}`, {
+        await apiFetch(`${RULES_URL}/${encodeURIComponent(computeRuleId(rule))}`, {
           method: 'PUT',
           body: rule,
           onHeaders: (headers) => (marker = parseMarker(headers.get('ETag'))),
@@ -108,7 +129,7 @@ export function useRules({ active = true } = {}) {
         // R18
         try {
           let marker = null;
-          await apiFetch(`${RULES_URL}/${computeRuleId(rule)}`, {
+          await apiFetch(`${RULES_URL}/${encodeURIComponent(computeRuleId(rule))}`, {
             method: 'DELETE',
             onHeaders: (headers) => (marker = parseMarker(headers.get('ETag'))),
           });
@@ -124,9 +145,21 @@ export function useRules({ active = true } = {}) {
   );
 
   const [categoryCountDraft, setCategoryCountDraft] = useState(emptyCategoryCountDraft);
+  const categoryCountOptions = useMemo(() => {
+    if (categoryCountDraft.category === '') return [];
+    const max = maxCountByCategory[categoryCountDraft.category] ?? 0;
+    return Array.from({ length: max }, (_, i) => i + 1);
+  }, [categoryCountDraft.category, maxCountByCategory]);
+  // R8: an out-of-range count draft is cleared, not left dangling, when the
+  // category change shrinks (or removes) its allowed range.
   const setCategoryCountCategory = useCallback(
-    (category) => setCategoryCountDraft((current) => ({ ...current, category })),
-    [],
+    (category) =>
+      setCategoryCountDraft((current) => {
+        const max = maxCountByCategory[category] ?? 0;
+        const stillValid = current.count !== '' && Number(current.count) <= max;
+        return { category, count: stillValid ? current.count : '' };
+      }),
+    [maxCountByCategory],
   );
   const setCategoryCountCount = useCallback(
     (count) => setCategoryCountDraft((current) => ({ ...current, count })),
@@ -183,11 +216,13 @@ export function useRules({ active = true } = {}) {
     remove,
     picker,
     categoryCountDraft,
+    categoryCountOptions,
     setCategoryCountCategory,
     setCategoryCountCount,
     canSaveCategoryCount,
     saveCategoryCount,
     pinDraft,
+    pinDayOptions,
     setPinDay,
     setPinSlot,
     pinRecipeId,
@@ -195,6 +230,7 @@ export function useRules({ active = true } = {}) {
     canSavePin,
     savePin,
     disabledDayDraft,
+    disabledDayOptions,
     setDisabledDayDay,
     canSaveDisabledDay,
     saveDisabledDay,

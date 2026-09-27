@@ -580,7 +580,11 @@ def _list_rules(
         ),
         *(ser.encode_rule(DisabledDay(day=d)) for d in rule_set.disabled_days),
     ]
-    return RouteResult(200, {"rules": rules}, etag=quoted_etag(view.marker))
+    return RouteResult(
+        200,
+        {"rules": rules, "availableOptions": ser.encode_available_options(rule_set)},
+        etag=quoted_etag(view.marker),
+    )
 
 
 def _put_rule(
