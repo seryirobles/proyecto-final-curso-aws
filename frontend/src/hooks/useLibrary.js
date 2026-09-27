@@ -10,11 +10,22 @@ import { useConfirm } from './useConfirm.js';
 import { useRecipeDetail, normalizeRecipeDetail } from './useRecipeDetail.js';
 import { parseMarker } from '../realtime/etag.js';
 import { MESSAGES } from '../messages/index.js';
+import { DAY_LABELS, SLOT_LABELS } from '../domain/labels.js';
 
 // R15 / design.md section 4.1: surface `error.detail` verbatim, never a
 // composed message.
 function toDetail(err) {
   return err instanceof ApiError ? err.detail : MESSAGES.GENERIC_ERROR;
+}
+
+// R2: renders one affected pin as "<day> · <slot>" (design.md section 4).
+function formatPin(pin) {
+  return `${DAY_LABELS[pin.day]} · ${SLOT_LABELS[pin.slot]}`;
+}
+
+function composeCascadeMessage(pins) {
+  const list = pins.map(formatPin).join(', ');
+  return `${MESSAGES.LIBRARY_REMOVE_PIN_CASCADE_WARNING} ${list}. ${MESSAGES.LIBRARY_REMOVE_PIN_CASCADE_CONFIRM}`;
 }
 
 export function useLibrary({ active = true } = {}) {
@@ -68,25 +79,46 @@ export function useLibrary({ active = true } = {}) {
   }, []);
   const closeAuthoring = useCallback(() => setIsAuthoringOpen(false), []);
 
+  // T2: shared by the first DELETE attempt and the R3 cascade retry - only
+  // the query string differs (design.md section 4).
+  const deleteRecipe = useCallback(
+    async (recipeId, { confirmCascade }) => {
+      const query = confirmCascade ? '?confirmCascade=true' : '';
+      let marker = null;
+      await apiFetch(`/v1/library/recipes/${recipeId}${query}`, {
+        method: 'DELETE',
+        onHeaders: (headers) => (marker = parseMarker(headers.get('ETag'))),
+      });
+      picker.applyMutationMarker(marker);
+      picker.refetchNow(); // issue ui-not-reflecting-mutations, E1 / R6
+      setError(null);
+    },
+    [picker],
+  );
+
   const remove = useCallback(
     (recipeId) => {
       confirm.requestConfirm(MESSAGES.CONFIRM_REMOVE_LIBRARY_RECIPE, async () => {
         // R18
         try {
-          let marker = null;
-          await apiFetch(`/v1/library/recipes/${recipeId}`, {
-            method: 'DELETE',
-            onHeaders: (headers) => (marker = parseMarker(headers.get('ETag'))),
-          });
-          picker.applyMutationMarker(marker);
-          picker.refetchNow(); // issue ui-not-reflecting-mutations, E1
-          setError(null);
+          await deleteRecipe(recipeId, { confirmCascade: false });
         } catch (err) {
-          setError(toDetail(err));
+          if (err instanceof ApiError && err.code === 'PIN_RULES_AFFECTED') {
+            // R1, R2: re-arm the same confirm instance with the cascade prompt.
+            confirm.requestConfirm(composeCascadeMessage(err.details?.pins ?? []), async () => {
+              try {
+                await deleteRecipe(recipeId, { confirmCascade: true }); // R3
+              } catch (retryErr) {
+                setError(toDetail(retryErr)); // R7 fallback, same path as any other failure
+              }
+            });
+          } else {
+            setError(toDetail(err)); // R7
+          }
         }
       });
     },
-    [confirm, picker],
+    [confirm, deleteRecipe],
   );
 
   const openDetail = useCallback(

@@ -96,6 +96,9 @@ export const MESSAGES = {
   LIBRARY_VIEW_REMOVE: 'Eliminar',
   LIBRARY_VIEW_EMPTY: 'Todavía no hay recetas en la biblioteca.',
   CONFIRM_REMOVE_LIBRARY_RECIPE: '¿Eliminar esta receta de la biblioteca?',
+  // Pin-cascade delete warning (feature 30, design.md section 4)
+  LIBRARY_REMOVE_PIN_CASCADE_WARNING: 'Esta receta está fijada por una regla en:',
+  LIBRARY_REMOVE_PIN_CASCADE_CONFIRM: '¿Eliminarla igualmente? También se eliminará esa regla.',
 
   // Rules view (feature 20 T32-T34)
   RULES_VIEW_TITLE: 'Reglas de generación',

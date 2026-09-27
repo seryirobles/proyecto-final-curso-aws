@@ -3,10 +3,11 @@
 > This file is emptied when each session closes and moved to `history.md`.
 > While you work, **keep it updated in real time**, not at the end.
 
-- **Feature 29:** `done` (owner marked it, no longer in progress).
-- **Issue in progress:** 1 `rule-creation-400-invalid-request` — fixed,
-  reviewed, **APPROVED** (0 findings, 0 mutants survived), `reviewed: true`
-  set, awaiting the owner's `done`
+- **Feature 29 + issue 1:** committed together by the owner (`c009deb`);
+  issue 1 cleared from `issue_list.json` (now empty).
+- **Feature in progress:** 30 `library_delete_pin_cascade_ui` —
+  implemented, reviewed, **APPROVED** (0 findings, 0 mutants survived after
+  1 round), awaiting the owner's `done`
 - **Started:** 2026-09-27
 - **Agent:** _—_
 
@@ -98,8 +99,64 @@ Feature 28 `single_recipe_generation` marked `done` by the owner (2026-09-27).
   targeted edit); `status` stays `in_progress` per `docs/issues.md` (only
   the human moves it to `done`).
 
+- 2026-09-27: `spec_author` launched for feature 30
+  `library_delete_pin_cascade_ui` (frontend-only, depends on feature 20
+  `done`). Brief covers: `useLibrary.remove`'s current plain-DELETE path,
+  `useConfirm`/`ConfirmDialog` reuse, `ApiError.code === 'PIN_RULES_AFFECTED'`
+  + `err.details.pins`, `DAY_LABELS`/`SLOT_LABELS`, the
+  `RULES_CONFLICT_PREFIX` composed-message pattern, and R15 (verbatim
+  `error.detail`, never composed) vs. composing a confirm-prompt from
+  structured `details` (not the same rule). No owner-owned precursor
+  expected — backend already complete (feature 27) — but the spec may still
+  stop at a gate if it finds one.
+
+- 2026-09-27: `spec_author` wrote `specs/library_delete_pin_cascade_ui/`
+  (requirements.md R1-R7, design.md, tasks.md T1-T5). Whole change is one
+  file, `frontend/src/hooks/useLibrary.js`, plus two new `MESSAGES` keys.
+  Reuses `remove`'s existing single `confirm = useConfirm()` instance — the
+  plain "¿Eliminar...?" confirm and the cascade warning are never live at
+  once, so the catch block re-arms the same `confirm` with a composed
+  message (`DAY_LABELS`/`SLOT_LABELS`) and a retry thunk
+  (`DELETE .../recipes/{id}?confirmCascade=true`) on `409
+  PIN_RULES_AFFECTED`; any other error code keeps the existing R15
+  `toDetail` path (regression-guarded by R7). No backend change, no
+  `ConfirmDialog`/`useConfirm` API change. "Disappears from both the
+  library and rules views" needs no new code for the rules half —
+  `useRules.js` already polls independently (feature 26) — called out in
+  design.md §5 as explicitly out of scope. `feature_list.json` id 30:
+  `pending` → `spec_ready` (verified: `git diff` touched only that field).
+  No human gate found/needed — awaiting ordinary spec review.
+
+- 2026-09-27: owner said go. `feature_list.json` id 30: `spec_ready` →
+  `in_progress` (leader, targeted edit, verified unique before change).
+  `implementer` launched against `specs/library_delete_pin_cascade_ui/`.
+
+- 2026-09-27: `implementer` completed T1-T5. `frontend/src/messages/es-ES.js`
+  gained `LIBRARY_REMOVE_PIN_CASCADE_WARNING`/`_CONFIRM`. `useLibrary.js`:
+  factored `deleteRecipe(recipeId, { confirmCascade })` out of `remove`'s
+  inline DELETE body; added local `formatPin`/`composeCascadeMessage`; the
+  catch block re-arms the existing `confirm` instance on `err.code ===
+  'PIN_RULES_AFFECTED'`, retrying with `?confirmCascade=true` on the second
+  confirm, keeping `toDetail(err)` for every other rejection (R7). New
+  `frontend/tests/hooks/useLibrary.pinCascade.test.js` (3 tests: cascade
+  open+retry+disappear R1/R2/R3/R6, cancel-no-retry R4, non-cascade R7).
+  `./init.sh` green (1043 backend + full frontend suite); `git diff --stat
+  -- backend/` empty. See `progress/impl_library_delete_pin_cascade_ui.md`.
+
+- 2026-09-27: reviewer CHANGES_REQUESTED on feature 30 — 1 surviving mutant
+  in `remove`'s cascade-retry catch (`setError(toDetail(retryErr))` →
+  `setError(null)`); no test made the `?confirmCascade=true` retry itself
+  fail. Added `"the cascade retry's own rejection sets error to detail
+  verbatim, recipe untouched (T3)"` to `useLibrary.pinCascade.test.js`
+  (404 `NOT_FOUND` on the cascade retry) plus the optional direct R5
+  assertion (first DELETE URL carries no `confirmCascade`) in the existing
+  test. Manually reproduced the named mutant, confirmed it fails the new
+  test, reverted. `./init.sh` green (1043 backend + full frontend suite).
+  See `progress/impl_library_delete_pin_cascade_ui.md`.
+
+- 2026-09-27: cheap re-verification (reviewer re-applied only the 1 named
+  mutant, now killed) → **APPROVED**, 0 findings.
+
 ## Next step
 
-Owner: mark issue 1 `done` and commit (fix + feature 29 together, or
-separately — your call). Then next: feature 30
-`library_delete_pin_cascade_ui` (`sdd: true`, spec_author → human gate).
+Owner: mark feature 30 `done` and commit.

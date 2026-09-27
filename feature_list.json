@@ -603,7 +603,7 @@
         "Test: a 409 response opens the cascade-warning dialog with the correct day/slot text; confirming re-issues DELETE with confirmCascade=true and the item disappears from both the library and rules views; cancelling leaves the recipe and its pin rule untouched"
       ],
       "sdd": true,
-      "status": "pending"
+      "status": "done"
     }
   ]
 }
