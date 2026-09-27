@@ -1318,3 +1318,29 @@ user if a quantity is 0 or negative, and no stepper that can walk below zero.
 - **Requirements:** `FR-LIB-03` (amended — servings is a strictly positive
   integer or absent, not any integer). `FR-AI-13` (amended — the AI states a
   strictly positive integer servings count).
+
+## Part AB — Single-recipe generation: attempt derivation (2026-09-24)
+
+Directed by the requirements owner, in the same manner as Parts I through AA,
+during the spec gate of feature 28 (`single_recipe_generation`). No requirement
+text is struck through or reworded.
+
+### G-92 · Single-recipe `attempt` is derived by probing; no per-slot concurrency limit (amends `rest_api_contract.md` §3.5/§7 Q3; implements FR-AI-10)
+
+- **Gap:** contract §7 Q3 derived `attempt` from "the count of completed
+  generations for the slot" and proposed a `409` when a slot already had a
+  live generation. The count needs an access pattern that does not exist
+  (`PETICIONIA#` is keyed by hash only), and the `409` would stop two household
+  members generating for the same slot.
+- **Decision:** (1) `attempt` is found by probing AP26 for `n = 0, 1, 2 …` until
+  a record is absent; a live record at `n` is an idempotent hit, a terminal one
+  (including `failed`) advances `n`. No new item type or access pattern.
+  (2) The per-slot `409` is **dropped**: any number of users may generate for the
+  same slot or the library at once (`FR-AI-09` as written); only an identical
+  in-flight request dedupes. (3) A client that loses the response after
+  completion and re-POSTs pays for a new generation; accepted. (4) Empty
+  `ingredients`/`tools` in a single-recipe request are `422` (`G-89` applied at
+  the request boundary).
+- **Reasoning:** The owner's call. Two collaborators generating for one slot is
+  legitimate use, not a fault to prevent.
+- **Requirements:** `FR-AI-08`, `FR-AI-10` (implemented). `FR-AI-09` unchanged.

@@ -8,17 +8,43 @@ import json
 import logging
 from typing import Any
 
+from planner_core.application.single_recipe_generation import run_single_recipe_generation
 from planner_core.application.week_generation import run_week_generation
 from planner_core.domain.calendar import civil_date
 
-from planner_ai.message import parse_message
+from planner_ai.message import MalformedMessage, message_type, parse_message, parse_recipe_message
+from planner_ai.serialization import encode_recipe
 from planner_ai.wiring import Dependencies, build_dependencies
 
 logger = logging.getLogger("planner_ai")
 
 
+def _process_recipe(body: dict[str, Any], deps: Dependencies) -> None:
+    recipe_message = parse_recipe_message(body)
+    outcome = run_single_recipe_generation(
+        recipe_message.idempotency_key,
+        recipe_message.source,
+        recipe_message.prompt_version_id,
+        provider=deps.provider,
+        queue=deps.records,
+        gate=deps.gate,
+        encode_recipe=encode_recipe,
+    )
+    logger.info(
+        "Processed single-recipe generation",
+        extra={"idPeticionIA": recipe_message.idempotency_key, "claimed": outcome.claimed},
+    )
+
+
 def _process_record(record: dict[str, Any], deps: Dependencies) -> None:
-    message = parse_message(json.loads(record["body"]))
+    body = json.loads(record["body"])
+    kind = message_type(body)
+    if kind == "recipe":
+        _process_recipe(body, deps)
+        return
+    if kind != "week":
+        raise MalformedMessage(f"type: {kind!r}")
+    message = parse_message(body)
     first_day = civil_date(deps.clock.now())
     outcome = run_week_generation(
         message.idempotency_key,

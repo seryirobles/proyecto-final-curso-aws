@@ -42,6 +42,30 @@ class GenerationRequest:
 
 
 @dataclass(frozen=True)
+class SpecificationSource:
+    """FR-AI-01: a recipe generated from the user's ingredients and tools."""
+
+    ingredients: tuple[str, ...]
+    tools: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class ReferenceSource:
+    """FR-AI-02: a recipe generated from a library recipe plus extra specifications."""
+
+    recipe_id: str
+    extra_specifications: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class SingleRecipeRequest:
+    """A single-recipe submission; `target` None means the library (FR-CAND-03)."""
+
+    target: SlotRef | None
+    source: SpecificationSource | ReferenceSource
+
+
+@dataclass(frozen=True)
 class PinnedTarget:
     """An unoccupied slot resolving deterministically to its pinned library meal."""
 
@@ -188,3 +212,34 @@ def build_plan(
     return GenerationPlan(
         effective_rules=rules, targets=targets, mode=request.mode, idempotency_key=key
     )
+
+
+def single_recipe_key(request: SingleRecipeRequest, attempt: int) -> str:
+    """Hash of scope, source and attempt; lists sorted so order is moot (FR-AI-08, G-92)."""
+    target = request.target
+    scope: dict[str, object] | str = (
+        "library"
+        if target is None
+        else {
+            "week": IsoWeek.containing(target.day).week_id,
+            "day": target.day_number,
+            "slot": target.slot.value,
+        }
+    )
+    source = request.source
+    payload_source: dict[str, object]
+    if isinstance(source, SpecificationSource):
+        payload_source = {
+            "kind": "specification",
+            "ingredients": sorted(source.ingredients),
+            "tools": sorted(source.tools),
+        }
+    else:
+        payload_source = {
+            "kind": "reference",
+            "recipe_id": source.recipe_id,
+            "extra_specifications": sorted(source.extra_specifications),
+        }
+    payload = {"type": "recipe", "scope": scope, "source": payload_source, "attempt": attempt}
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()

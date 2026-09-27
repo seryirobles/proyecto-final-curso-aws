@@ -77,11 +77,16 @@ export function WeekPlannerView({
         ))}
       </div>
       {authoringTarget ? (
-        <CandidateAuthoring onSubmit={submitCandidate} onClose={closeCandidateAuthoring} />
+        <CandidateAuthoring
+          onSubmit={submitCandidate}
+          onClose={closeCandidateAuthoring}
+          target={authoringTarget}
+        />
       ) : null}
       {editingTarget ? (
         <CandidateAuthoring
           initialRecipe={editingTarget.recipe}
+          target={editingTarget}
           onSubmit={submitCandidateEdit}
           onClose={closeCandidateEdit}
         />

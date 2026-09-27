@@ -168,9 +168,9 @@ inside the Lambda.
 
 | Method + path | Pattern / `FR-*` | Poll | Semantics |
 |---|---|---|---|
-| `POST /v1/generations` | Añadir o editar petición IA (`AP25`) · `FR-AI-01`, `-02`, `-03`, `-05`, `-08`, `-09` | — | Submit. `202 Accepted` on a fresh request, `200 OK` with the stored result on an idempotent hit. `409` if the target slot already has a `pending`/`running` generation (`FR-AI-09` per-slot concurrency). `attempt` is server-authoritative — the count of *completed* generations for the slot, folded into `idPeticionIA` (§7 Q3), never a client field. Both are feature 17 spec inputs. |
+| `POST /v1/generations` | Añadir o editar petición IA (`AP25`) · `FR-AI-01`, `-02`, `-03`, `-05`, `-08`, `-09` | — | Submit. `202 Accepted` on a fresh request, `200 OK` with the stored result on an idempotent hit. `type: "week"` (§3.5) or `type: "recipe"` (§3.6). `attempt` is server-authoritative, folded into `idPeticionIA` (§7 Q3), never a client field. There is no per-slot rejection: concurrent submits are allowed (`FR-AI-09`) and only the exact same request dedupes. |
 | `GET /v1/generations/{generationId}` | Obtener petición IA (`AP26`) · `FR-AI-10`, `-12` | — | Status + result. Per-slot status for whole-week runs. Short-interval poll, **not** conditional-GET pollable (no `MarcaCambio` on `PETICIONIA#`). |
-| `DELETE /v1/generations/{generationId}` | Eliminar petición IA (`AP27`) · `FR-AI-10` | — | Discards a preview and its idempotency record. |
+| `DELETE /v1/generations/{generationId}` | Eliminar petición IA (`AP27`) · `FR-AI-10` | — | Discards a preview and its idempotency record |
 
 **All 29 access patterns are accounted for:** `AP1`–`AP2`, `AP4`–`AP8`,
 `AP10`–`AP28` above (`AP23`/`AP24` are the per-rule `PUT`/`DELETE`); `AP3`
@@ -327,12 +327,13 @@ one (`data_model.md` §4.5).
 skip is reported, never applied silently" — it is in the **submit** response
 because the resolution is deterministic and needs no model call.
 
-**`attempt` is not a request field** (§7 Q3). The server derives it from the
-count of *completed* generations for the slot and folds it into `idPeticionIA`
-(`FR-AI-08`), so a retry (same `attempt`) dedupes, a regenerate (next `attempt`)
-misses, and two fast clicks compute the same value and dedupe. A generation
-request for a slot that already holds a `pending`/`running` generation returns
-`409` (`FR-AI-09` per-slot concurrency). Both belong in feature 17's spec.
+**`attempt` is not a request field** (§7 Q3). The server derives it by probing
+and folds it into `idPeticionIA` (`FR-AI-08`), so a retry (same `attempt`)
+dedupes, a regenerate (next `attempt`) misses, and two fast clicks compute the
+same value and dedupe. Neither generation type has a per-slot rejection: two
+different runs for one week or one slot are allowed (`FR-AI-09`; whole-week
+is safe by `FR-AI-11` additive writes); only the exact same request dedupes.
+Single-recipe generation: see §3.6.
 
 ```jsonc
 // GET /v1/generations/9f2c…          → 200
@@ -349,6 +350,40 @@ constraint) — so the week's `MarcaCambio` bumps and every client's ordinary po
 picks the candidates up. Single-recipe results are the opposite: a **preview**
 carried in `result`, persisted nowhere else (`FR-AI-10`, `data_model.md` §4.6),
 and saved only when the user POSTs it as a candidate or library recipe (§3.1).
+
+### 3.6 Single-recipe generation (`FR-AI-01`, `-02`, `-08`, `-10`; `G-92`)
+
+```jsonc
+// POST /v1/generations
+{ "type": "recipe",                       // no `attempt` field — §7 Q3
+  "target": { "kind": "slot", "weekId": "2026-W34", "day": 3, "slot": 1 },
+            // or { "kind": "library" }  (FR-CAND-03: library authoring has no slot)
+  "source": { "kind": "specification", "ingredients": ["lentejas"], "tools": ["olla"] }
+            // or { "kind": "reference", "recipeId": "01J8…", "extraSpecifications": ["sin gluten"] } }
+```
+
+- `ingredients` and `tools` must each be non-empty (`422 MISSING_INGREDIENTS` /
+  `MISSING_TOOLS`, §4). `"reference"` is `FR-AI-02`; `"specification"` is
+  `FR-AI-01`.
+- `202 Accepted` + `Location`, body `{ "generationId", "status": "pending" }` (no
+  `targets`). `200 OK` with `{ generationId, status, result }` on an idempotent
+  hit.
+- **`result` on success** is the recipe in the wire shape §3.1's `manual` body
+  carries as `recipe`, so `POST …/candidates` with `"source": "generation"`
+  copies it unchanged. **On failure:** `status: "failed"`, `result` =
+  `{ "error": { "code": <reason>, "message": <es-ES> } }`. Nothing is persisted
+  outside the `PETICIONIA#` record until the user saves it (`FR-AI-10`); the
+  `ai` Lambda writes it through `GenerationQueue`, never `WeekRepository`.
+- **Attempt derivation:** probe `n = 0, 1, 2 …`; the first `n` whose
+  `PETICIONIA#` record (`AP26`) is absent is fresh (`202`); a `pending`/`running`
+  record at `n` is returned (`200`: retry, double click); a terminal record
+  (including `failed`) advances `n`.
+- **Concurrency (`FR-AI-09`):** none is prevented. Two users may generate for the
+  same slot or the library at once; each distinct request runs and is charged.
+  Only an identical in-flight request dedupes (the `200` above).
+- A client that loses the response after the generation completed and re-POSTs
+  derives the next `attempt` and pays for a new generation; a retry dedupes only
+  while the generation is in flight (accepted, owner 2026-09-24).
 
 `GET /v1/generations/{id}` is polled on its own short interval by the AI
 progress UI. It is deliberately **not** conditional-GET pollable — `PETICIONIA#`
@@ -404,15 +439,15 @@ path parameter). **`422`** = well-formed but rejected by a domain rule.
 | `UsernameAlreadyTaken` | 409 | `USERNAME_ALREADY_TAKEN` (`FR-AUTH-17`) |
 | `SetPasswordNotPending` | 409 | `SET_PASSWORD_NOT_PENDING` |
 | `ShoppingListLockHeld` | 409 | `SHOPPING_LIST_LOCK_HELD` (`FR-SHOP-10`) |
-| *(no exception — handler check)* | 409 | `PIN_RULES_AFFECTED` (§3.4), `WEEK_ARCHIVED` (§7 Q11); the per-slot in-flight `409` (§3.5, `FR-AI-09`) — code named in feature 17's spec |
+| *(no exception — handler check)* | 409 | `PIN_RULES_AFFECTED` (§3.4), `WEEK_ARCHIVED` (§7 Q11) |
 | `UsernameReserved` | 422 | `USERNAME_RESERVED` (`FR-AUTH-17` placeholder) |
 | `PasswordTooShort` | 422 | `PASSWORD_TOO_SHORT` (`FR-AUTH-15`) |
 | `EmptyField` | 422 | `EMPTY_FIELD` — a required field was blank; `detail` names it (`FR-UX-03`, issue `empty-field-error-messages`) |
 | `InvalidEstimatedTime` | 422 | `INVALID_ESTIMATED_TIME` — a well-formed `estimatedTime` outside `[0, 6000]`; `detail` names the range (`G-90`, issue `tiempo-estimado-numeric-minutes`) |
 | `InvalidIngredientQuantity` | 422 | `INVALID_INGREDIENT_QUANTITY` — a well-formed but non-positive ingredient quantity (issue `negative-ingredient-quantity`) |
 | `InvalidServings` | 422 | `INVALID_SERVINGS` — a well-formed but non-positive `servings` (`G-91`, Part AA, issue `negative-ingredient-quantity`) |
-| `MissingIngredients` | 422 | `MISSING_INGREDIENTS` — an empty or absent `ingredients` list (`G-89`, Part Y, issue `recipe-saved-without-required-sections`) |
-| `MissingTools` | 422 | `MISSING_TOOLS` — an empty or absent `tools` list (`G-89`, Part Y) |
+| `MissingIngredients` | 422 | `MISSING_INGREDIENTS` — an empty or absent `ingredients` list (`G-89`, Part Y, issue `recipe-saved-without-required-sections`); also a single-recipe generation request (§3.6) |
+| `MissingTools` | 422 | `MISSING_TOOLS` — an empty or absent `tools` list (`G-89`, Part Y); also a single-recipe generation request (§3.6) |
 | `MissingProcedure` | 422 | `MISSING_PROCEDURE` — an empty or absent `procedure` list (`G-89`, Part Y) |
 | `UnknownUnit` | 422 | `UNKNOWN_UNIT` (`FR-LIB-05`) |
 | `UnknownIngredientCategory` | 422 | `UNKNOWN_INGREDIENT_CATEGORY` (`FR-RULE-04`) |
@@ -645,11 +680,13 @@ context; the ruling is the **Decided** line.
    record then resubmits (`AP27`, two round-trips, racy); (c) a
    `POST /v1/generations/{id}/regenerate` endpoint. **Decided: (a)**, with one
    added constraint: `attempt` is **server-authoritative** — derived from the
-   count of *completed* generations for that slot, never a client-side click
-   counter (two fast clicks must both compute the same `attempt` and dedupe).
-   Additionally the server returns `409` on a generation request for a slot that
-   already has one `pending`/`running` (`FR-AI-09` per-slot concurrency). Both
-   belong in feature 17's spec.
+   probing (§3.6): the first `attempt` whose record is absent, never a
+   client-side click counter (two fast clicks must both compute the same
+   `attempt` and dedupe). *(Originally "count of completed generations for the
+   slot", which needs an access pattern that does not exist because `PETICIONIA#`
+   is keyed by hash only; amended 2026-09-24, `G-92`.)* The originally
+   proposed per-slot `409` is **dropped** (owner, 2026-09-24): concurrent
+   generations for one slot are allowed.
 4. **Per-slot retry shape (`FR-AI-12`).** Options: (a)
    `POST /v1/generations/{id}/slots/{day}/{slot}/retry`, reusing the parent
    run's effective rules; (b) a fresh single-slot `POST /v1/generations`.

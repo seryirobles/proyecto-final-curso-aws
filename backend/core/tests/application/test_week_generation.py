@@ -29,7 +29,7 @@ from planner_core.domain.ingredient_category import IngredientCategory
 from planner_core.domain.recipe import MealSnapshot
 from planner_core.domain.rules import RuleSet
 from planner_core.ports.ai_provider import AiProviderError
-from planner_core.ports.generation_queue import PerSlotResult, StoredGeneration
+from planner_core.ports.generation_queue import ResultPayload, StoredGeneration
 
 WEEK = IsoWeek(2026, 34)
 KEY = "hash-1"
@@ -203,11 +203,9 @@ def test_record_result_runs_after_the_last_week_write() -> None:
             return super().save_slot(week, slot, contents)
 
     class _Queue(FakeGenerationQueue):
-        def record_result(
-            self, idempotency_key: str, status: str, per_slot: list[PerSlotResult]
-        ) -> None:
+        def record_result(self, idempotency_key: str, status: str, payload: ResultPayload) -> None:
             events.append("record")
-            super().record_result(idempotency_key, status, per_slot)
+            super().record_result(idempotency_key, status, payload)
 
     queue = _Queue()
     queue.stored[KEY] = StoredGeneration(idempotency_key=KEY, status="pending")

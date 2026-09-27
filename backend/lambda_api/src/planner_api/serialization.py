@@ -20,7 +20,14 @@ from planner_core.domain.errors import (
     EmptyTool,
     PlannerError,
 )
-from planner_core.domain.generation import GenerationMode, GenerationTargets, RuleOverride
+from planner_core.domain.generation import (
+    GenerationMode,
+    GenerationTargets,
+    ReferenceSource,
+    RuleOverride,
+    SingleRecipeRequest,
+    SpecificationSource,
+)
 from planner_core.domain.ingredient_category import parse_category
 from planner_core.domain.recipe import (
     Ingredient,
@@ -336,3 +343,71 @@ def encode_generation_targets(targets: GenerationTargets) -> dict[str, Any]:
             {**encode_slot_ref(s.slot), "recipeId": s.pin.recipe_id} for s in targets.skipped_pins
         ],
     }
+
+
+def _require_object(payload: Any) -> dict[str, Any]:
+    if not isinstance(payload, dict):
+        raise MalformedRequest
+    return payload
+
+
+def _string_list(value: Any) -> tuple[str, ...]:
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        raise MalformedRequest
+    return tuple(value)
+
+
+def _decode_slot_target(target: dict[str, Any]) -> SlotRef:
+    week = parse_week_id(str(require_field(target, "weekId")))
+    day = require_field(target, "day")
+    slot = require_field(target, "slot")
+    if isinstance(day, bool) or not isinstance(day, int) or day not in range(1, 8):
+        raise MalformedRequest
+    if isinstance(slot, bool) or not isinstance(slot, int):
+        raise MalformedRequest
+    return resolve_slot_ref(week, day, parse_slot(str(slot)))
+
+
+def decode_single_recipe_request(body: dict[str, Any]) -> SingleRecipeRequest:
+    """`POST /v1/generations` with `type: "recipe"` (rest_api_contract.md section 3.6).
+    `attempt` is server-authoritative, so a client-supplied one is a 400 (section 7 Q3)."""
+    reject_keys(body, "attempt")
+    target = _require_object(require_field(body, "target"))
+    target_kind = require_field(target, "kind")
+    if target_kind == "library":
+        slot_ref = None
+    elif target_kind == "slot":
+        slot_ref = _decode_slot_target(target)
+    else:
+        raise MalformedRequest
+
+    source = _require_object(require_field(body, "source"))
+    source_kind = require_field(source, "kind")
+    if source_kind == "specification":
+        # Absent lists read as empty -> 422, as decode_recipe does (section 4).
+        return SingleRecipeRequest(
+            slot_ref,
+            SpecificationSource(
+                ingredients=_string_list(source.get("ingredients", [])),
+                tools=_string_list(source.get("tools", [])),
+            ),
+        )
+    if source_kind == "reference":
+        recipe_id = require_field(source, "recipeId")
+        if not isinstance(recipe_id, str) or recipe_id == "":
+            raise MalformedRequest
+        extra = _string_list(require_field(source, "extraSpecifications"))
+        return SingleRecipeRequest(slot_ref, ReferenceSource(recipe_id, extra))
+    raise MalformedRequest
+
+
+def decode_generation_result(result: str | None) -> Any:
+    """A single-recipe result is a JSON object and goes out as one (section 3.6);
+    the whole-week per-slot list stays the opaque string it always was."""
+    if result is None:
+        return None
+    try:
+        parsed = json.loads(result)
+    except json.JSONDecodeError:
+        return result
+    return parsed if isinstance(parsed, dict) else result

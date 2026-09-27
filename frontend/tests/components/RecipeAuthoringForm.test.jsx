@@ -102,10 +102,11 @@ describe('RecipeAuthoringForm', () => {
     expect(screen.getByText('g')).not.toBeNull(); // UNIT_LABELS.g
   });
 
-  it('does not render the library or scratch content on the ai tab, only the disabled notice', () => {
+  it('does not render the library or scratch content on the ai tab, nor an unavailable notice (R40)', () => {
     render(<RecipeAuthoringForm {...baseProps({ method: 'ai' })} />);
 
-    expect(screen.getByText(MESSAGES.AI_GENERATION_UNAVAILABLE)).not.toBeNull();
+    expect(screen.getByText(MESSAGES.AI_GENERATE)).not.toBeNull();
+    expect(screen.queryByText('La generación con IA todavía no está disponible.')).toBeNull();
     expect(screen.queryByText(MESSAGES.RECIPE_AUTHORING_NAME_LABEL)).toBeNull();
   });
 
@@ -116,12 +117,10 @@ describe('RecipeAuthoringForm', () => {
     expect(screen.getByText(MESSAGES.LIBRARY_PICKER_NAME_LABEL)).not.toBeNull();
   });
 
-  it('the ai tab submit control is disabled (design.md section 1.3)', () => {
+  it('the ai generate control is disabled while ai.canGenerate is false (feature 28)', () => {
     render(<RecipeAuthoringForm {...baseProps({ method: 'ai' })} />);
 
-    expect(screen.getByText(MESSAGES.RECIPE_AUTHORING_SUBMIT).closest('button').disabled).toBe(
-      true,
-    );
+    expect(screen.getByText(MESSAGES.AI_GENERATE).closest('button').disabled).toBe(true);
   });
 
   it('renders LibraryRecipePicker on the library tab (T27)', () => {
@@ -172,14 +171,11 @@ describe('RecipeAuthoringForm', () => {
     expect(submit).toHaveBeenCalledTimes(1);
   });
 
-  // T88 guard: AiStubFields hardcodes `disabled` regardless of canSubmit
-  // (T22, design.md section 1.3) - `canSubmit: true` here still must not
-  // enable it, protecting the stub from a future T87-style restyle regression.
-  it('the ai tab stub submit stays disabled even when canSubmit is true (T88)', () => {
-    render(<RecipeAuthoringForm {...baseProps({ method: 'ai', canSubmit: true })} />);
+  it('the ai tab has no stub save button; generate follows ai.canGenerate (feature 28)', () => {
+    const ai = { phase: 'idle', isLoading: false, canGenerate: false };
+    render(<RecipeAuthoringForm {...baseProps({ method: 'ai', canSubmit: true, ai })} />);
 
-    expect(screen.getByText(MESSAGES.RECIPE_AUTHORING_SUBMIT).closest('button').disabled).toBe(
-      true,
-    );
+    expect(screen.queryByText(MESSAGES.RECIPE_AUTHORING_SUBMIT)).toBeNull();
+    expect(screen.getByText(MESSAGES.AI_GENERATE).closest('button').disabled).toBe(true);
   });
 });

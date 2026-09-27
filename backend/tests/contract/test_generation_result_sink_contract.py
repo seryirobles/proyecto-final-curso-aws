@@ -77,3 +77,18 @@ def test_record_result_writes_the_terminal_status_and_payload(
     status, payload = _read(sink, "k")
     assert status == "completed"
     assert payload == _PER_SLOT
+
+
+@pytest.mark.parametrize("factory", IMPLEMENTATIONS)
+def test_record_result_accepts_a_single_recipe_dict_payload(
+    factory: Callable[[], GenerationResultSink],
+) -> None:
+    """specs/single_recipe_generation R23: the bare recipe dict is the payload."""
+    sink = factory()
+    _seed_pending(sink, "k")
+    sink.claim("k")
+    recipe = {"name": "Tortilla", "ingredients": [], "tools": ["sarten"]}
+
+    sink.record_result("k", "completed", recipe)
+
+    assert _read(sink, "k") == ("completed", recipe)

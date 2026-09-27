@@ -569,7 +569,7 @@
         "Frontend: replaces feature 20's disabled AI-tab stub with the real submit + poll UI (spec-input form for from-scratch, reference-recipe picker for library-based, wired to this feature's POST /v1/generations body and GET /v1/generations/{id} polling) - React/Vite, no business logic in the client, per architecture.md section 1.1"
       ],
       "sdd": true,
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": 29,

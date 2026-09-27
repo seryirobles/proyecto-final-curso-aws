@@ -1,9 +1,10 @@
 // Shared authoring flow (T22, design.md section 5.1): three methods for
-// candidate authoring, two for library authoring (R6-R8). "ai" is a
-// disabled stub. See progress/impl_frontend_spa.md, "The shared authoring flow".
+// candidate authoring, two for library authoring (R6-R8). "ai" drives
+// useAiGeneration (feature 28). See progress/impl_frontend_spa.md, "The shared authoring flow".
 
 import { useCallback, useMemo, useState } from 'react';
 import { useLibraryPicker } from './useLibraryPicker.js';
+import { useAiGeneration } from './useAiGeneration.js';
 
 const CANDIDATE_METHODS = ['library', 'scratch', 'ai'];
 const LIBRARY_METHODS = ['scratch', 'ai'];
@@ -70,12 +71,51 @@ function buildManualRecipe(form) {
   };
 }
 
+// Free-text list fields (one item per line or comma) -> the wire's string lists.
+function splitList(text) {
+  return text
+    .split(/[\n,]/)
+    .map((item) => item.trim())
+    .filter((item) => item !== '');
+}
+
+// rest_api_contract.md section 3.6: a picked reference recipe means a
+// `reference` source; otherwise the ingredients and tools form a `specification`.
+function buildAiSource(aiSpec, referenceRecipeId) {
+  if (referenceRecipeId != null) {
+    return {
+      kind: 'reference',
+      recipeId: referenceRecipeId,
+      extraSpecifications: splitList(aiSpec.notes),
+    };
+  }
+  return {
+    kind: 'specification',
+    ingredients: splitList(aiSpec.ingredients),
+    tools: splitList(aiSpec.tools),
+  };
+}
+
+// `aiTarget` is the slot being authored ({ weekId, day, slot }); library
+// authoring has none (FR-CAND-03).
+function buildAiTarget(mode, aiTarget) {
+  if (mode === 'library') return { kind: 'library' };
+  if (!aiTarget?.weekId) return null;
+  return {
+    kind: 'slot',
+    weekId: aiTarget.weekId,
+    day: Number(aiTarget.day),
+    slot: Number(aiTarget.slot),
+  };
+}
+
 export function useRecipeAuthoring({
   mode,
   onSubmit,
   initialRecipe = null,
   initialMethod = null,
   active = true,
+  aiTarget = null,
 }) {
   const methods = mode === 'candidate' ? CANDIDATE_METHODS : LIBRARY_METHODS;
   const [method, setMethod] = useState(initialMethod ?? methods[0]);
@@ -157,6 +197,45 @@ export function useRecipeAuthoring({
     setAiSpec((current) => ({ ...current, [field]: value }));
   }, []);
 
+  // R35: candidate authoring accepts through the `generation` source; the
+  // library takes the previewed body as a manual recipe.
+  const handleAccept = useCallback(
+    ({ generationId, recipe }) => {
+      if (mode === 'candidate') onSubmit({ source: 'generation', generationId });
+      else onSubmit({ source: 'manual', recipe });
+    },
+    [mode, onSubmit],
+  );
+  const aiTargetBody = useMemo(
+    () => buildAiTarget(mode, aiTarget),
+    // Keyed by value so a fresh object with the same slot does not reset a run.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mode, aiTarget?.weekId, aiTarget?.day, aiTarget?.slot],
+  );
+  const aiGeneration = useAiGeneration({ target: aiTargetBody, onAccept: handleAccept });
+  const aiSource = useMemo(
+    () => buildAiSource(aiSpec, referenceRecipeId),
+    [aiSpec, referenceRecipeId],
+  );
+  const aiCanGenerate =
+    aiTargetBody != null &&
+    !aiGeneration.isLoading &&
+    (aiSource.kind === 'reference' ||
+      (aiSource.ingredients.length > 0 && aiSource.tools.length > 0));
+  // R37: regenerate re-POSTs whatever the form holds now, adjusted or not.
+  const generate = useCallback(() => aiGeneration.generate(aiSource), [aiGeneration, aiSource]);
+  const ai = {
+    phase: aiGeneration.phase,
+    isLoading: aiGeneration.isLoading,
+    recipe: aiGeneration.recipe,
+    failureMessage: aiGeneration.failureMessage,
+    canGenerate: aiCanGenerate,
+    generate,
+    regenerate: generate,
+    accept: aiGeneration.accept,
+    discard: aiGeneration.discard,
+  };
+
   const canSubmit = useMemo(() => {
     if (method === 'scratch') {
       // Each section needs at least one item (issue
@@ -170,7 +249,7 @@ export function useRecipeAuthoring({
       return !isInvalidPositive(form.servings);
     }
     if (method === 'library') return libraryRecipeId != null;
-    return false; // ai - design.md section 1.3 stub, never submittable
+    return false; // ai submits through `ai.generate`, not `submit`
   }, [method, form, libraryRecipeId]);
 
   const submit = useCallback(() => {
@@ -207,6 +286,7 @@ export function useRecipeAuthoring({
     referencePicker,
     aiSpec,
     updateAiSpec,
+    ai,
     canSubmit,
     submit,
   };

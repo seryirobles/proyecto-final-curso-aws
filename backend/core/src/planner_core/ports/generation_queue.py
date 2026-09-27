@@ -11,11 +11,16 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
-from planner_core.domain.generation import GenerationRequest
+from planner_core.domain.generation import GenerationRequest, SingleRecipeRequest
+from planner_core.domain.recipe import Recipe
 from planner_core.domain.rules import RuleSet
 
 PerSlotResult = Mapping[str, object]
 """One entry of record_result's per_slot payload: {day, slot, status, message}."""
+
+ResultPayload = list[PerSlotResult] | Mapping[str, object]
+"""record_result's payload: the whole-week per-slot list, or a single-recipe
+result dict (the wire recipe, or {"error": {...}}) (specs/single_recipe_generation)."""
 
 
 @dataclass(frozen=True)
@@ -44,13 +49,10 @@ class GenerationResultSink(Protocol):
         (R37) — the idempotent-consumer guard (docs/data_model.md section 4.6)."""
         ...
 
-    def record_result(
-        self, idempotency_key: str, status: str, per_slot: list[PerSlotResult]
-    ) -> None:
-        """Write the run's terminal estado and its per-slot resultado payload
-        (R38). Unconditional — the preceding claim established ownership (R39).
-        per_slot is a list of {day, slot, status, message} dicts, surfaced
-        verbatim by GET /v1/generations/{id} (docs/data_model.md section 4.6)."""
+    def record_result(self, idempotency_key: str, status: str, payload: ResultPayload) -> None:
+        """Write the terminal estado and resultado (R38), unconditionally (R39).
+        payload: whole-week per-slot list or single-recipe dict
+        (docs/data_model.md section 4.6)."""
         ...
 
 
@@ -78,6 +80,20 @@ class GenerationQueue(GenerationResultSink, Protocol):
         travel on the hand-off so the worker holds no RuleRepository/ConfigPort
         (R40, specs/ai_lambda/design.md section 8). effective_rules is required —
         an un-enriched message must never generate against empty rules (finding 1)."""
+        ...
+
+    def submit_recipe(
+        self,
+        idempotency_key: str,
+        request: SingleRecipeRequest,
+        *,
+        reference_recipe: Recipe | None,
+        prompt_version_id: str,
+        author: str,
+    ) -> None:
+        """Hand a single-recipe request off (AP25 + enqueue), like `submit`. The
+        reference recipe snapshot travels on the message so the worker holds no
+        RecipeRepository (specs/single_recipe_generation/design.md section 3)."""
         ...
 
     def discard(self, idempotency_key: str) -> None:

@@ -1912,3 +1912,48 @@ alone (those match the current "no review report files" convention).
 - Also pending: 17 `ai_lambda`, 26 `realtime_channel_transport`, 20
   `frontend_spa` (deps not yet done). Blocked: 19 (parked), 21–23
   (human-owned).
+
+## 2026-09-06 to 2026-09-24 — `current.md` folded (features 16/17/24/26/27/20/28, issues 1-12)
+
+Folded at the owner's command on 2026-09-24. `current.md` had grown to ~2,300
+lines and was never reset between sessions; the full text of everything below
+except the 2026-09-24 entries is in git (`9032aeb`, `progress/current.md`).
+
+- **09-06 to 09-11 — features 16/17/27 bundle.** Bundled implementer, reviewer
+  rounds (CHANGES_REQUESTED, fix round 1, verification run APPROVED). Feature
+  16 closed by the owner 09-06, 17 opened; 17/27 committed 09-11, a correction
+  reopened feature 24.
+- **09-12 — feature 26 `realtime_channel_transport`.** Spec + gate rulings,
+  fix round 1 (2 findings). A data-loss incident wiped an uncommitted entry of
+  this file; reconstructed. Lesson: subagents Read before Edit.
+- **09-13 to 09-14 — feature 20 `frontend_spa` T1-T63.** Shared
+  infrastructure, week planner, library, rules, shopping, summary, app shell,
+  auth screens, cross-cutting guards; many fix rounds. Also the `recipeName`
+  reopen of features 16/27 (`GET /v1/rules`) and local dev tooling.
+- **09-16 — feature 20 visual-fidelity reopen T64-T94** (Tiers A-F), feature
+  17 reopen to OpenAI GPT-5.6 Terra via Bedrock Converse (+ fix round 2,
+  region default `eu-south-2`), local SQS + `ai` worker, DB seed script,
+  container readiness race.
+- **09-22 to 09-23 — issues 1-12.** Batches and fix rounds; `G-89`/`G-90`/`G-91`
+  (Parts Y/Z/AA); `requirements.md` FR-LIB-03/FR-AI-13 rows updated for them
+  (struck-through history kept) at the owner's direct command; issue 12
+  confirmed a general fix. All twelve `done`; `issue_list.json` emptied
+  2026-09-24 (next issue id **13**).
+- **09-24 — feature 28 `single_recipe_generation`.** Spec R1-R41 / T1-T13
+  approved and implemented; reviewer CHANGES_REQUESTED (1 surviving mutant, 2
+  docstrings, 1 missing test module), all fixed and verified, 0 survivors.
+  Rulings: attempt by probing AP26, NO per-slot concurrency limit (marker item
+  + `429` proposed and cancelled), empty ingredients/tools `422`, lost-response
+  repay accepted; an attempt-free overwrite was reviewed (opus) and rejected
+  (needs a `runId`). Owner-commanded doc edits: contract §3.5/§3.6/§4/§7 Q3/
+  L171, gaps Part AB / `G-92`. `./init.sh` green, 1035 backend tests. Report:
+  `progress/impl_single_recipe_generation.md`. Feature stays `in_progress`
+  until the owner marks it `done`.
+
+**Open carried forward (non-blocking):** F5 (feature 16) `EXPECTED_ROUTES` in
+`test_routing_table.py` is a hand-maintained literal; `specs/recipe_metadata_fields/`
+may want a note that the metadata instruction also lives in the versioned prompt
+block. Pending features: 29 `rules_dropdown_constraints_wiring`, 30
+`library_delete_pin_cascade_ui`.
+
+---

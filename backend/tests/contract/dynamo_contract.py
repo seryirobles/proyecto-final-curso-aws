@@ -37,6 +37,17 @@ def aws_backend() -> Iterator[None]:
         yield
 
 
+def received_generation_messages() -> list[str]:
+    """The raw bodies now waiting on the moto-mocked generation queue."""
+    import boto3
+
+    sqs = boto3.client("sqs", region_name=os.environ["AWS_DEFAULT_REGION"])
+    received = sqs.receive_message(
+        QueueUrl=os.environ["GENERATION_QUEUE_URL"], MaxNumberOfMessages=10
+    )
+    return [str(message["Body"]) for message in received.get("Messages", [])]
+
+
 def dynamo_account_repository() -> AccountRepository:
     from planner_api.adapters.dynamo.accounts import DynamoAccountRepository
 

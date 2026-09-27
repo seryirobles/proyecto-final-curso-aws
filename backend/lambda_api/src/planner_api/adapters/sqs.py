@@ -12,11 +12,19 @@ from typing import Any
 import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
-from planner_core.domain.generation import GenerationRequest, RuleOverride
+from planner_core.domain.calendar import IsoWeek
+from planner_core.domain.generation import (
+    GenerationRequest,
+    RuleOverride,
+    SingleRecipeRequest,
+    SpecificationSource,
+)
+from planner_core.domain.recipe import Recipe
 from planner_core.domain.rules import RuleSet
-from planner_core.ports.generation_queue import PerSlotResult, StoredGeneration
+from planner_core.ports.generation_queue import ResultPayload, StoredGeneration
 
 from planner_api.adapters.dynamo import _table
+from planner_api.serialization import encode_recipe
 
 _RESULT_TTL_SECONDS = 7 * 24 * 3600
 _METADATA_SK = "METADATA"
@@ -65,6 +73,43 @@ def _rule_set_payload(rules: RuleSet) -> dict[str, Any]:
     }
 
 
+def _recipe_message(
+    idempotency_key: str,
+    request: SingleRecipeRequest,
+    reference_recipe: Recipe | None,
+    prompt_version_id: str,
+    author: str,
+) -> dict[str, Any]:
+    target = request.target
+    source = request.source
+    return {
+        "type": "recipe",
+        "idPeticionIA": idempotency_key,
+        "target": {"kind": "library"}
+        if target is None
+        else {
+            "kind": "slot",
+            "weekId": IsoWeek.containing(target.day).week_id,
+            "day": target.day_number,
+            "slot": int(target.slot.value),
+        },
+        "source": {
+            "kind": "specification",
+            "ingredients": list(source.ingredients),
+            "tools": list(source.tools),
+        }
+        if isinstance(source, SpecificationSource)
+        else {
+            "kind": "reference",
+            "recipeId": source.recipe_id,
+            "extraSpecifications": list(source.extra_specifications),
+        },
+        "referenceRecipe": None if reference_recipe is None else encode_recipe(reference_recipe),
+        "promptVersionId": prompt_version_id,
+        "authorUserId": author,
+    }
+
+
 class SqsGenerationQueue:
     """queue_url comes from configuration (feature 16's wiring passes it in)."""
 
@@ -87,15 +132,7 @@ class SqsGenerationQueue:
             result=None if result is None else str(result),
         )
 
-    def submit(
-        self,
-        idempotency_key: str,
-        request: GenerationRequest,
-        *,
-        effective_rules: RuleSet,
-        prompt_version_id: str | None = None,
-        author: str | None = None,
-    ) -> None:
+    def _put_pending(self, idempotency_key: str) -> None:
         # Create-if-absent, mirroring FakeGenerationQueue's setdefault: a concurrent
         # resubmit must never clobber a stored result (docs/data_model.md section 4.6).
         try:
@@ -112,6 +149,17 @@ class SqsGenerationQueue:
         except ClientError as error:
             if error.response["Error"]["Code"] != "ConditionalCheckFailedException":
                 raise
+
+    def submit(
+        self,
+        idempotency_key: str,
+        request: GenerationRequest,
+        *,
+        effective_rules: RuleSet,
+        prompt_version_id: str | None = None,
+        author: str | None = None,
+    ) -> None:
+        self._put_pending(idempotency_key)
         self._sqs().send_message(
             QueueUrl=self._queue_url,
             MessageBody=json.dumps(
@@ -124,6 +172,25 @@ class SqsGenerationQueue:
                     "promptVersionId": prompt_version_id,
                     "authorUserId": author,
                 }
+            ),
+        )
+
+    def submit_recipe(
+        self,
+        idempotency_key: str,
+        request: SingleRecipeRequest,
+        *,
+        reference_recipe: Recipe | None,
+        prompt_version_id: str,
+        author: str,
+    ) -> None:
+        self._put_pending(idempotency_key)
+        self._sqs().send_message(
+            QueueUrl=self._queue_url,
+            MessageBody=json.dumps(
+                _recipe_message(
+                    idempotency_key, request, reference_recipe, prompt_version_id, author
+                )
             ),
         )
 
@@ -149,13 +216,11 @@ class SqsGenerationQueue:
             raise
         return True
 
-    def record_result(
-        self, idempotency_key: str, status: str, per_slot: list[PerSlotResult]
-    ) -> None:
+    def record_result(self, idempotency_key: str, status: str, payload: ResultPayload) -> None:
         # R38/R39: unconditional UpdateItem — the preceding claim established ownership.
         _table.table().update_item(
             Key={"PK": _pk(idempotency_key), "SK": _METADATA_SK},
             UpdateExpression="SET #estado = :estado, #resultado = :resultado",
             ExpressionAttributeNames={"#estado": "estado", "#resultado": "resultado"},
-            ExpressionAttributeValues={":estado": status, ":resultado": json.dumps(per_slot)},
+            ExpressionAttributeValues={":estado": status, ":resultado": json.dumps(payload)},
         )

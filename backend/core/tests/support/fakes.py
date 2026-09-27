@@ -10,7 +10,8 @@ from datetime import datetime
 from planner_core.domain.ai_output import RawIngredient, RawRecipeOutput
 from planner_core.domain.calendar import IsoWeek, SlotRef
 from planner_core.domain.candidate import SlotContents
-from planner_core.domain.generation import GenerationRequest
+from planner_core.domain.generation import GenerationRequest, SingleRecipeRequest
+from planner_core.domain.recipe import Recipe
 from planner_core.domain.rollover import ArchivedWeek
 from planner_core.domain.rules import (
     CategoryCountRule,
@@ -25,7 +26,7 @@ from planner_core.domain.text import normalize
 from planner_core.domain.username_policy import UsernameAlreadyTaken
 from planner_core.ports.accounts import AccountNotFound, AccountRecord
 from planner_core.ports.ai_provider import AiPrompt
-from planner_core.ports.generation_queue import PerSlotResult, StoredGeneration
+from planner_core.ports.generation_queue import ResultPayload, StoredGeneration
 from planner_core.ports.recipes import LibraryRecipe, RecipeNotFound
 from planner_core.ports.shopping_list import ShoppingListLockHeld
 
@@ -345,6 +346,17 @@ class SubmittedGeneration:
 
 
 @dataclass
+class SubmittedRecipe:
+    """One single-recipe hand-off recorded by FakeGenerationQueue."""
+
+    idempotency_key: str
+    request: SingleRecipeRequest
+    reference_recipe: Recipe | None
+    prompt_version_id: str
+    author: str
+
+
+@dataclass
 class FakeGenerationQueue:
     """A `GenerationQueue` over a dict of stored records and a list of submissions.
 
@@ -357,7 +369,8 @@ class FakeGenerationQueue:
     submitted: list[SubmittedGeneration] = field(default_factory=list)
     discards: list[str] = field(default_factory=list)
     claims: list[str] = field(default_factory=list)
-    results: dict[str, list[PerSlotResult]] = field(default_factory=dict)
+    results: dict[str, ResultPayload] = field(default_factory=dict)
+    recipe_submitted: list[SubmittedRecipe] = field(default_factory=list)
 
     def stored_generation(self, idempotency_key: str) -> StoredGeneration | None:
         return self.stored.get(idempotency_key)
@@ -382,6 +395,22 @@ class FakeGenerationQueue:
             idempotency_key, StoredGeneration(idempotency_key=idempotency_key, status="pending")
         )
 
+    def submit_recipe(
+        self,
+        idempotency_key: str,
+        request: SingleRecipeRequest,
+        *,
+        reference_recipe: Recipe | None,
+        prompt_version_id: str,
+        author: str,
+    ) -> None:
+        self.recipe_submitted.append(
+            SubmittedRecipe(idempotency_key, request, reference_recipe, prompt_version_id, author)
+        )
+        self.stored.setdefault(
+            idempotency_key, StoredGeneration(idempotency_key=idempotency_key, status="pending")
+        )
+
     def discard(self, idempotency_key: str) -> None:
         # AP27: drop the record; a missing key is a no-op (HTTP DELETE idempotency).
         self.discards.append(idempotency_key)
@@ -396,13 +425,11 @@ class FakeGenerationQueue:
         self.claims.append(idempotency_key)
         return True
 
-    def record_result(
-        self, idempotency_key: str, status: str, per_slot: list[PerSlotResult]
-    ) -> None:
+    def record_result(self, idempotency_key: str, status: str, payload: ResultPayload) -> None:
         # R38/R39: unconditional; stored_generation then reports estado + resultado.
-        self.results[idempotency_key] = list(per_slot)
+        self.results[idempotency_key] = payload
         self.stored[idempotency_key] = StoredGeneration(
-            idempotency_key, status, json.dumps(per_slot)
+            idempotency_key, status, json.dumps(payload)
         )
 
 

@@ -20,6 +20,7 @@ from planner_core.application import (
     live_weeks,
     rule_editing,
     shopping_editing,
+    single_recipe_submission,
     week_editing,
 )
 from planner_core.domain.authorization import require_admin
@@ -729,7 +730,10 @@ def _submit_generation(
     auth: AuthContext | None,
     deps: Dependencies,
 ) -> RouteResult:
-    if body.get("type", "week") != "week":
+    request_type = body.get("type", "week")
+    if request_type == "recipe":
+        return _submit_single_recipe(body, auth, deps)
+    if request_type != "week":
         raise MalformedRequest
     week = ser.parse_week_id(str(ser.require_field(body, "weekId")))
     mode = ser.parse_generation_mode(str(ser.require_field(body, "mode")))
@@ -767,6 +771,33 @@ def _submit_generation(
     )
 
 
+def _submit_single_recipe(
+    body: dict[str, Any], auth: AuthContext | None, deps: Dependencies
+) -> RouteResult:
+    assert auth is not None
+    outcome = single_recipe_submission.submit_single_recipe(
+        ser.decode_single_recipe_request(body),
+        queue=deps.queue,
+        recipes=deps.recipes,
+        author=auth.user_id,
+        config=deps.config,
+    )
+    if outcome.stored is not None:
+        return RouteResult(
+            200,
+            {
+                "generationId": outcome.idempotency_key,
+                "status": outcome.stored.status,
+                "result": ser.decode_generation_result(outcome.stored.result),
+            },
+        )
+    return RouteResult(
+        202,
+        {"generationId": outcome.idempotency_key, "status": "pending"},
+        location=f"/v1/generations/{outcome.idempotency_key}",
+    )
+
+
 def _get_generation(
     path: dict[str, str],
     query: dict[str, str],
@@ -780,7 +811,11 @@ def _get_generation(
         raise GenerationNotFound(generation_id)
     return RouteResult(
         200,
-        {"generationId": stored.idempotency_key, "status": stored.status, "result": stored.result},
+        {
+            "generationId": stored.idempotency_key,
+            "status": stored.status,
+            "result": ser.decode_generation_result(stored.result),
+        },
     )
 
 

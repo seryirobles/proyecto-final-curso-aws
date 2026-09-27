@@ -11,12 +11,13 @@ import { secondaryButtonStyle } from '../tokens/controlStyles.js';
 
 // `initialRecipe` set (edit path, scope extension) opens straight on the
 // from-scratch tab, seeded with the meal's own content (E5).
-export function CandidateAuthoring({ onSubmit, onClose, initialRecipe = null }) {
+export function CandidateAuthoring({ onSubmit, onClose, initialRecipe = null, target = null }) {
   const authoring = useRecipeAuthoring({
     mode: 'candidate',
     onSubmit,
     initialRecipe,
     initialMethod: initialRecipe ? 'scratch' : null,
+    aiTarget: target,
   });
 
   return (

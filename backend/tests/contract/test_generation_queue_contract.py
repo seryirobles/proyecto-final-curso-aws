@@ -9,12 +9,18 @@ from collections.abc import Callable, Mapping
 
 import pytest
 from planner_core.domain.calendar import IsoWeek
-from planner_core.domain.generation import GenerationMode, GenerationRequest
+from planner_core.domain.generation import (
+    GenerationMode,
+    GenerationRequest,
+    ReferenceSource,
+    SingleRecipeRequest,
+    SpecificationSource,
+)
 from planner_core.domain.rules import RuleSet
 from planner_core.ports.generation_queue import GenerationQueue, StoredGeneration
 from support.fakes import FakeGenerationQueue
 
-from tests.contract.dynamo_contract import sqs_generation_queue
+from tests.contract.dynamo_contract import received_generation_messages, sqs_generation_queue
 
 IMPLEMENTATIONS: list[Callable[[], GenerationQueue]] = [FakeGenerationQueue, sqs_generation_queue]
 
@@ -171,3 +177,88 @@ def test_the_sqs_claim_conditions_only_on_estado_never_the_marker() -> None:
     code = _statement_lines(inspect.getsource(SqsGenerationQueue.claim))
     assert 'ConditionExpression="#estado = :pending"' in code
     assert "marca" not in code.lower()
+
+
+# --- single-recipe hand-off (specs/single_recipe_generation R1, R2, R23, R26) ---
+
+RECIPE_REQUEST = SingleRecipeRequest(None, SpecificationSource(("lentejas",), ("olla",)))
+
+
+@pytest.mark.parametrize("queue_factory", IMPLEMENTATIONS)
+def test_submit_recipe_creates_a_readable_pending_record(
+    queue_factory: Callable[[], GenerationQueue],
+) -> None:
+    queue = queue_factory()
+
+    queue.submit_recipe(
+        "hash-r", RECIPE_REQUEST, reference_recipe=None, prompt_version_id="v1", author="u-1"
+    )
+
+    stored = queue.stored_generation("hash-r")
+    assert stored is not None and stored.status == "pending"
+
+
+@pytest.mark.parametrize("queue_factory", IMPLEMENTATIONS)
+def test_submit_recipe_never_clobbers_a_stored_result(
+    queue_factory: Callable[[], GenerationQueue],
+) -> None:
+    queue = queue_factory()
+    queue.submit_recipe(
+        "hash-r", RECIPE_REQUEST, reference_recipe=None, prompt_version_id="v1", author="u-1"
+    )
+    _force_done(queue, "hash-r", '{"ok": true}')
+
+    queue.submit_recipe(
+        "hash-r", RECIPE_REQUEST, reference_recipe=None, prompt_version_id="v1", author="u-1"
+    )
+
+    assert queue.stored_generation("hash-r") == StoredGeneration("hash-r", "done", '{"ok": true}')
+
+
+@pytest.mark.parametrize("queue_factory", IMPLEMENTATIONS)
+def test_record_result_accepts_a_single_recipe_dict_payload(
+    queue_factory: Callable[[], GenerationQueue],
+) -> None:
+    queue = queue_factory()
+    queue.submit_recipe(
+        "hash-r", RECIPE_REQUEST, reference_recipe=None, prompt_version_id="v1", author="u-1"
+    )
+    queue.claim("hash-r")
+    payload = {"error": {"code": "invalid_output", "message": "x"}}
+
+    queue.record_result("hash-r", "failed", payload)
+
+    stored = queue.stored_generation("hash-r")
+    assert stored is not None and stored.status == "failed"
+    assert stored.result is not None and json.loads(stored.result) == payload
+
+
+def test_the_sqs_recipe_message_carries_type_source_and_reference_snapshot() -> None:
+    """R2 — the worker holds no RecipeRepository, so the snapshot rides the message."""
+    from planner_core.domain.ingredient_category import IngredientCategory
+    from planner_core.domain.recipe import Recipe
+
+    queue = sqs_generation_queue()
+    recipe = Recipe(
+        name="Tortilla",
+        ingredients=(),
+        tools=("sarten",),
+        procedure=(),
+        category=IngredientCategory.MEAT,
+    )
+    request = SingleRecipeRequest(None, ReferenceSource("r1", ("sin gluten",)))
+
+    queue.submit_recipe(
+        "hash-r", request, reference_recipe=recipe, prompt_version_id="v1", author="u-1"
+    )
+
+    body = json.loads(received_generation_messages()[0])
+    assert body["type"] == "recipe" and body["idPeticionIA"] == "hash-r"
+    assert body["target"] == {"kind": "library"}
+    assert body["source"] == {
+        "kind": "reference",
+        "recipeId": "r1",
+        "extraSpecifications": ["sin gluten"],
+    }
+    assert body["referenceRecipe"]["name"] == "Tortilla"
+    assert (body["promptVersionId"], body["authorUserId"]) == ("v1", "u-1")

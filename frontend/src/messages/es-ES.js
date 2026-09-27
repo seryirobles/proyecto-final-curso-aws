@@ -72,9 +72,16 @@ export const MESSAGES = {
   RECIPE_AUTHORING_ADD_STEP: 'Añadir paso',
   RECIPE_AUTHORING_REMOVE_STEP: 'Quitar paso',
   RECIPE_AUTHORING_SUBMIT: 'Guardar receta',
-  AI_GENERATION_UNAVAILABLE: 'La generación con IA todavía no está disponible.',
   RECIPE_AUTHORING_REFERENCE_RECIPE_LABEL: 'Receta de referencia',
   RECIPE_AUTHORING_NOTES_LABEL: 'Notas',
+  // Single-recipe AI generation (feature 28)
+  AI_LIST_HINT: 'Separa cada elemento con una coma o un salto de línea.',
+  AI_GENERATE: 'Generar receta',
+  AI_GENERATING: 'Generando la receta…',
+  AI_PREVIEW_TITLE: 'Receta generada',
+  AI_ACCEPT: 'Aceptar receta',
+  AI_DISCARD: 'Descartar',
+  AI_REGENERATE: 'Volver a generar',
 
   // Library recipe picker + library view (feature 20 T25-T31)
   LIBRARY_PICKER_NAME_LABEL: 'Buscar por nombre',

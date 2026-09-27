@@ -2,14 +2,17 @@
 // tabs plus manual-form fields, pure function of useRecipeAuthoring's return
 // shape. See progress/impl_frontend_spa.md, "The shared authoring flow".
 
-// Non-AI parts styled off tokens; `AiStubFields` stays untouched - feature
-// 28's territory (T87, design.md 10.6). See progress/impl_frontend_spa.md,
-// "Tier E - library".
+// The AI tab (feature 28) renders `ai` from useRecipeAuthoring; the rest is
+// styled off tokens. See progress/impl_frontend_spa.md, "Tier E - library".
 
 import { tokens } from '../tokens/index.js';
 import { MESSAGES } from '../messages/index.js';
 import { CATEGORY_LABELS, UNIT_LABELS } from '../domain/labels.js';
 import { LibraryRecipePicker } from './LibraryRecipePicker.jsx';
+import { LoadingState } from './LoadingState.jsx';
+import { AiRecipePreview } from './AiRecipePreview.jsx';
+
+const IDLE_AI = { phase: 'idle', isLoading: false, canGenerate: false };
 
 const METHOD_LABELS = {
   library: MESSAGES.RECIPE_AUTHORING_METHOD_LIBRARY,
@@ -283,26 +286,31 @@ function ScratchFields({
   );
 }
 
-function AiStubFields({
+function AiFields({
   aiSpec,
   updateAiSpec,
   referenceRecipeId,
   selectReferenceRecipe,
   referencePicker,
+  ai = IDLE_AI,
 }) {
   return (
     <div>
-      <p style={{ color: tokens.color.ink2 }}>{MESSAGES.AI_GENERATION_UNAVAILABLE}</p>
-      <label>
+      <label style={fieldLabelStyle}>
         {MESSAGES.RECIPE_AUTHORING_INGREDIENTS_LABEL}
         <textarea
           value={aiSpec.ingredients}
           onChange={(e) => updateAiSpec('ingredients', e.target.value)}
+          style={fieldInputStyle}
         />
       </label>
-      <label>
+      <label style={fieldLabelStyle}>
         {MESSAGES.RECIPE_AUTHORING_TOOLS_LABEL}
-        <textarea value={aiSpec.tools} onChange={(e) => updateAiSpec('tools', e.target.value)} />
+        <textarea
+          value={aiSpec.tools}
+          onChange={(e) => updateAiSpec('tools', e.target.value)}
+          style={fieldInputStyle}
+        />
       </label>
       <h3 style={{ margin: tokens.space.none }}>
         {MESSAGES.RECIPE_AUTHORING_REFERENCE_RECIPE_LABEL}
@@ -312,15 +320,41 @@ function AiStubFields({
         selectedRecipeId={referenceRecipeId}
         onSelect={selectReferenceRecipe}
       />
-      <label>
+      <label style={fieldLabelStyle}>
         {MESSAGES.RECIPE_AUTHORING_NOTES_LABEL}
-        <textarea value={aiSpec.notes} onChange={(e) => updateAiSpec('notes', e.target.value)} />
+        <textarea
+          value={aiSpec.notes}
+          onChange={(e) => updateAiSpec('notes', e.target.value)}
+          style={fieldInputStyle}
+        />
       </label>
+      <p style={{ color: tokens.color.ink2, fontSize: tokens.fontSize.xs }}>
+        {MESSAGES.AI_LIST_HINT}
+      </p>
       <div style={{ marginTop: tokens.space.md }}>
-        <button type="button" disabled>
-          {MESSAGES.RECIPE_AUTHORING_SUBMIT}
+        <button
+          type="button"
+          onClick={ai.generate}
+          disabled={!ai.canGenerate}
+          style={submitButtonStyle}
+        >
+          {MESSAGES.AI_GENERATE}
         </button>
       </div>
+      {ai.isLoading ? <LoadingState message={MESSAGES.AI_GENERATING} /> : null}
+      {ai.phase === 'failed' ? (
+        <p style={{ color: tokens.color.honey, fontSize: tokens.fontSize.sm }}>
+          {ai.failureMessage}
+        </p>
+      ) : null}
+      {ai.phase === 'completed' ? (
+        <AiRecipePreview
+          recipe={ai.recipe}
+          onAccept={ai.accept}
+          onDiscard={ai.discard}
+          onRegenerate={ai.regenerate}
+        />
+      ) : null}
     </div>
   );
 }
@@ -376,7 +410,7 @@ export function RecipeAuthoringForm(props) {
 
       {method === 'library' ? <LibraryMethodFields {...props} /> : null}
       {method === 'scratch' ? <ScratchFields {...props} /> : null}
-      {method === 'ai' ? <AiStubFields {...props} /> : null}
+      {method === 'ai' ? <AiFields {...props} /> : null}
     </div>
   );
 }

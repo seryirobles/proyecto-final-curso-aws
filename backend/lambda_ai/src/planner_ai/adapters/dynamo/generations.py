@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 
 from botocore.exceptions import ClientError
-from planner_core.ports.generation_queue import PerSlotResult
+from planner_core.ports.generation_queue import ResultPayload
 
 from planner_ai.adapters.dynamo import _table
 
@@ -44,13 +44,11 @@ class DynamoGenerationRecords:
             raise
         return True
 
-    def record_result(
-        self, idempotency_key: str, status: str, per_slot: list[PerSlotResult]
-    ) -> None:
+    def record_result(self, idempotency_key: str, status: str, payload: ResultPayload) -> None:
         # R14/R39: unconditional UpdateItem — the preceding claim established ownership.
         _table.table().update_item(
             Key={"PK": _pk(idempotency_key), "SK": _METADATA_SK},
             UpdateExpression="SET #estado = :estado, #resultado = :resultado",
             ExpressionAttributeNames={"#estado": "estado", "#resultado": "resultado"},
-            ExpressionAttributeValues={":estado": status, ":resultado": json.dumps(per_slot)},
+            ExpressionAttributeValues={":estado": status, ":resultado": json.dumps(payload)},
         )

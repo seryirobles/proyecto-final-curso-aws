@@ -52,6 +52,9 @@ Reopened 2026-09-06 (feature 17 gate): add `claim(idempotency_key: str) -> bool`
 and `record_result(idempotency_key: str, status: str, per_slot: list) -> None`
 (`R36`–`R39`) — the `ai` worker's idempotent-consumer guard and result write-back
 (§3b).
+Reopened 2026-09-24 (feature 28 `single_recipe_generation`, `G-92`): add
+`submit_recipe` and widen `record_result`'s payload type to carry a
+single-recipe result; specified in `specs/single_recipe_generation/design.md`.
 
 **`backend/core/src/planner_core/domain/rules.py`** — add `DisabledDay`; add the
 `rule_id` derivation helper.

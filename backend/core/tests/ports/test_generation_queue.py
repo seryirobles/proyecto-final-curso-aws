@@ -42,7 +42,14 @@ def test_the_port_names_no_queue_technology() -> None:
 
     signatures = "".join(
         str(inspect.signature(getattr(GenerationQueue, name)))
-        for name in ("stored_generation", "submit", "discard", "claim", "record_result")
+        for name in (
+            "stored_generation",
+            "submit",
+            "submit_recipe",
+            "discard",
+            "claim",
+            "record_result",
+        )
     )
     for banned in ("sqs", "kinesis", "sns", "kafka", "queue_url", "boto", "Message"):
         assert banned not in signatures
