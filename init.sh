@@ -294,6 +294,17 @@ PY
 
 if [ $? -ne 0 ]; then EXIT_CODE=1; fi
 
+# Stop-hook fast path (opt-in): skip the slow gates when backend/ + frontend/
+# are unchanged since the last green run. A manual ./init.sh always runs them.
+STAMP="$(git rev-parse --git-dir 2>/dev/null)/harness-init.stamp"
+TREE_HASH=$( { git rev-parse HEAD; git diff HEAD --binary -- backend frontend init.sh; \
+  git ls-files -o --exclude-standard -- backend frontend | git hash-object --stdin-paths; } 2>/dev/null | sha1sum | cut -c1-40 )
+if [ "${INIT_SKIP_IF_UNCHANGED:-0}" = 1 ] && [ $EXIT_CODE -eq 0 ] \
+   && [ "$(cat "$STAMP" 2>/dev/null)" = "$TREE_HASH" ]; then
+  ok "Quality gates skipped — backend/ and frontend/ unchanged since the last green run"
+  exit 0
+fi
+
 echo ""
 echo "── 5. Quality gates ────────────────────────────────────"
 
@@ -350,7 +361,7 @@ else
 
   run_gate "prettier --check" npx prettier --check .
   run_gate "eslint"           npx eslint .
-  run_gate "vitest"           npx vitest run
+  run_gate "vitest"           npx vitest run --pool=threads
 fi
 
 echo ""
@@ -362,4 +373,5 @@ else
   fail "Environment NOT ready. Fix the errors above before proceeding."
 fi
 
+[ $EXIT_CODE -eq 0 ] && echo "$TREE_HASH" > "$STAMP"
 exit $EXIT_CODE
