@@ -7,6 +7,7 @@
 
 import { tokens } from '../tokens/index.js';
 import { MESSAGES } from '../messages/index.js';
+import { disabledStyle } from '../tokens/controlStyles.js';
 
 const actionButtonStyle = {
   display: 'inline-flex',
@@ -95,6 +96,9 @@ export function MealCard({
   onClear,
   onEdit,
   onRemove,
+  isPromoting = false,
+  isClearing = false,
+  isRemoving = false,
 }) {
   return (
     <div
@@ -152,7 +156,12 @@ export function MealCard({
           <button
             type="button"
             onClick={onClear}
-            style={{ ...actionButtonStyle, color: tokens.color.ink3 }}
+            disabled={isClearing}
+            style={{
+              ...actionButtonStyle,
+              color: tokens.color.ink3,
+              ...(isClearing ? disabledStyle : null),
+            }}
           >
             <ClearIcon />
             {MESSAGES.WEEK_PLANNER_CLEAR_DEFINITIVE}
@@ -161,7 +170,12 @@ export function MealCard({
           <button
             type="button"
             onClick={onPromote}
-            style={{ ...actionButtonStyle, color: tokens.color.terra }}
+            disabled={isPromoting}
+            style={{
+              ...actionButtonStyle,
+              color: tokens.color.terra,
+              ...(isPromoting ? disabledStyle : null),
+            }}
           >
             <CheckIcon />
             {MESSAGES.WEEK_PLANNER_PROMOTE_DEFINITIVE}
@@ -178,7 +192,12 @@ export function MealCard({
         <button
           type="button"
           onClick={onRemove}
-          style={{ ...actionButtonStyle, color: tokens.color.ink3 }}
+          disabled={isRemoving}
+          style={{
+            ...actionButtonStyle,
+            color: tokens.color.ink3,
+            ...(isRemoving ? disabledStyle : null),
+          }}
         >
           <RemoveIcon />
           {MESSAGES.WEEK_PLANNER_REMOVE_CANDIDATE}

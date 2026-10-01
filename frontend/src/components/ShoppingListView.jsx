@@ -2,7 +2,10 @@
 // checked sections (FR-SHOP-08, checked items greyed via tokens.color.ink3),
 // add/edit/remove, and a week-scoped resync button (R21, FR-SHOP-05).
 
+import { useRef } from 'react';
 import { tokens } from '../tokens/index.js';
+import { useScrollIntoView } from '../hooks/useScrollIntoView.js';
+import { handleFormSubmit } from '../hooks/formSubmit.js';
 import { MESSAGES } from '../messages/index.js';
 import { UNIT_LABELS } from '../domain/labels.js';
 import { formatNumber } from '../locale.js';
@@ -23,7 +26,10 @@ import { ConfirmDialog } from './ConfirmDialog.jsx';
 import { WeekLabel } from './WeekLabel.jsx';
 import { Banner } from './Banner.jsx';
 
-function ItemRow({ item, onToggle, onEdit, onRemove }) {
+// Default for views rendered without a hook's `pending` set (R33).
+const NO_PENDING = new Set();
+
+function ItemRow({ item, onToggle, onEdit, onRemove, isRemoving }) {
   return (
     <li
       style={{
@@ -46,7 +52,12 @@ function ItemRow({ item, onToggle, onEdit, onRemove }) {
           {MESSAGES.SHOPPING_LIST_EDIT}
         </button>
       ) : null}
-      <button type="button" onClick={() => onRemove(item.id)} style={ghostButtonStyle}>
+      <button
+        type="button"
+        onClick={() => onRemove(item.id)}
+        disabled={isRemoving}
+        style={ghostButtonStyle}
+      >
         {MESSAGES.SHOPPING_LIST_REMOVE}
       </button>
     </li>
@@ -87,9 +98,22 @@ function ResyncScope({ liveWeeks, isResyncing, resync }) {
   );
 }
 
-function ItemForm({ isEditing, draft, updateDraftField, canSaveItem, saveItem, closeForm }) {
+function ItemForm({
+  isEditing,
+  isSaving,
+  draft,
+  updateDraftField,
+  canSaveItem,
+  saveItem,
+  closeForm,
+}) {
+  const ref = useRef(null);
+  useScrollIntoView(ref, isEditing ? 'edit' : 'new'); // mounted only while open (R10, R14)
+
   return (
-    <div
+    <form
+      ref={ref}
+      onSubmit={(e) => handleFormSubmit(e, canSaveItem, saveItem)}
       style={{
         padding: tokens.space.md,
         backgroundColor: tokens.color.surface,
@@ -99,6 +123,9 @@ function ItemForm({ isEditing, draft, updateDraftField, canSaveItem, saveItem, c
         marginTop: tokens.space.md,
       }}
     >
+      <h3 style={headingStyle}>
+        {isEditing ? MESSAGES.EDIT_SHOPPING_ITEM_TITLE : MESSAGES.ADD_SHOPPING_ITEM_TITLE}
+      </h3>
       <label>
         {MESSAGES.SHOPPING_LIST_NAME_LABEL}
         <input
@@ -134,10 +161,9 @@ function ItemForm({ isEditing, draft, updateDraftField, canSaveItem, saveItem, c
       </label>
       <div style={{ display: 'flex', gap: tokens.space.sm, marginTop: tokens.space.md }}>
         <button
-          type="button"
-          onClick={saveItem}
-          disabled={!canSaveItem}
-          style={primaryButtonStyle(!canSaveItem)}
+          type="submit"
+          disabled={!canSaveItem || isSaving}
+          style={primaryButtonStyle(!canSaveItem || isSaving)}
         >
           {isEditing ? MESSAGES.SHOPPING_LIST_SAVE_EDIT : MESSAGES.SHOPPING_LIST_SAVE_ADD}
         </button>
@@ -145,7 +171,7 @@ function ItemForm({ isEditing, draft, updateDraftField, canSaveItem, saveItem, c
           {MESSAGES.SHOPPING_LIST_CANCEL}
         </button>
       </div>
-    </div>
+    </form>
   );
 }
 
@@ -169,6 +195,7 @@ export function ShoppingListView({
   isResyncing,
   resync,
   error,
+  pending = NO_PENDING,
 }) {
   if (isLoading) return <LoadingState />;
 
@@ -187,7 +214,11 @@ export function ShoppingListView({
       </h2>
       {!isFormOpen ? <Banner>{error}</Banner> : null}
 
-      <ResyncScope liveWeeks={liveWeeks} isResyncing={isResyncing} resync={resync} />
+      <ResyncScope
+        liveWeeks={liveWeeks}
+        isResyncing={isResyncing || pending.has('resync')}
+        resync={resync}
+      />
 
       <button
         type="button"
@@ -211,6 +242,7 @@ export function ShoppingListView({
                   onToggle={setChecked}
                   onEdit={openEdit}
                   onRemove={remove}
+                  isRemoving={pending.has(`remove:${item.id}`)}
                 />
               ))}
             </ul>
@@ -226,6 +258,7 @@ export function ShoppingListView({
                   onToggle={setChecked}
                   onEdit={openEdit}
                   onRemove={remove}
+                  isRemoving={pending.has(`remove:${item.id}`)}
                 />
               ))}
             </ul>
@@ -236,6 +269,7 @@ export function ShoppingListView({
       {isFormOpen ? <Banner>{error}</Banner> : null}
       {isFormOpen ? (
         <ItemForm
+          isSaving={pending.has('saveItem')}
           isEditing={isEditing}
           draft={draft}
           updateDraftField={updateDraftField}

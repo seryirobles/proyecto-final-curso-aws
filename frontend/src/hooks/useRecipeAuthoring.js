@@ -3,6 +3,7 @@
 // useAiGeneration (feature 28). See progress/impl_frontend_spa.md, "The shared authoring flow".
 
 import { useCallback, useMemo, useState } from 'react';
+import { usePendingGuard } from './pendingGuard.js';
 import { useLibraryPicker } from './useLibraryPicker.js';
 import { useAiGeneration } from './useAiGeneration.js';
 
@@ -252,15 +253,16 @@ export function useRecipeAuthoring({
     return false; // ai submits through `ai.generate`, not `submit`
   }, [method, form, libraryRecipeId]);
 
+  const { run, pending } = usePendingGuard();
   const submit = useCallback(() => {
     if (!canSubmit) return;
-    if (method === 'scratch') {
-      onSubmit({ source: 'manual', recipe: buildManualRecipe(form) });
-    } else if (method === 'library') {
-      onSubmit({ source: 'library', recipeId: libraryRecipeId });
-    }
     // "ai" never reaches here - canSubmit is always false for it.
-  }, [canSubmit, method, form, libraryRecipeId, onSubmit]);
+    if (method === 'scratch') {
+      run('submit', () => onSubmit({ source: 'manual', recipe: buildManualRecipe(form) }));
+    } else if (method === 'library') {
+      run('submit', () => onSubmit({ source: 'library', recipeId: libraryRecipeId }));
+    }
+  }, [canSubmit, method, form, libraryRecipeId, onSubmit, run]);
 
   return {
     mode,
@@ -289,5 +291,6 @@ export function useRecipeAuthoring({
     ai,
     canSubmit,
     submit,
+    pending,
   };
 }

@@ -15,11 +15,16 @@ import { LoadingState } from './LoadingState.jsx';
 import { ConfirmDialog } from './ConfirmDialog.jsx';
 import { AccountRow } from './AccountRow.jsx';
 import { Banner } from './Banner.jsx';
+import { handleFormSubmit } from '../hooks/formSubmit.js';
+
+// Default for views rendered without a hook's `pending` set (R33).
+const NO_PENDING = new Set();
 
 export function AdminAccountsView({
   accounts,
   isLoading,
   error,
+  pending = NO_PENDING,
   actingUserId,
   newUsername,
   setNewUsername,
@@ -61,7 +66,8 @@ export function AdminAccountsView({
       </h2>
       {!isRowFormOpen ? <Banner>{error}</Banner> : null}
 
-      <div
+      <form
+        onSubmit={(e) => handleFormSubmit(e, canCreate, create)}
         style={{
           ...cardStyle,
           display: 'flex',
@@ -73,6 +79,10 @@ export function AdminAccountsView({
           {MESSAGES.ADMIN_ACCOUNTS_NEW_USERNAME_LABEL}
           <input
             type="text"
+            name="newUsername"
+            autoComplete="off"
+            spellCheck={false}
+            autoCapitalize="none"
             value={newUsername}
             onChange={(e) => setNewUsername(e.target.value)}
             style={inputStyle}
@@ -82,20 +92,21 @@ export function AdminAccountsView({
           {MESSAGES.ADMIN_ACCOUNTS_TEMP_PASSWORD_LABEL}
           <input
             type="password"
+            name="newTemporaryPassword"
+            autoComplete="new-password"
             value={newTemporaryPassword}
             onChange={(e) => setNewTemporaryPassword(e.target.value)}
             style={inputStyle}
           />
         </label>
         <button
-          type="button"
-          onClick={create}
-          disabled={!canCreate}
-          style={primaryButtonStyle(!canCreate)}
+          type="submit"
+          disabled={!canCreate || pending.has('create')}
+          style={primaryButtonStyle(!canCreate || pending.has('create'))}
         >
           {MESSAGES.ADMIN_ACCOUNTS_CREATE}
         </button>
-      </div>
+      </form>
 
       {accounts.length === 0 ? (
         <EmptyState message={MESSAGES.ADMIN_ACCOUNTS_VIEW_EMPTY} />
@@ -130,6 +141,9 @@ export function AdminAccountsView({
               onCancelReset={cancelReset}
               onRemove={() => remove(account)}
               error={error}
+              isSavingRename={pending.has('saveRename')}
+              isSavingReset={pending.has('saveReset')}
+              isRemoving={pending.has(`remove:${account.userId}`)}
             />
           ))}
         </ul>

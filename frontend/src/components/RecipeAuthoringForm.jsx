@@ -11,6 +11,11 @@ import { CATEGORY_LABELS, UNIT_LABELS } from '../domain/labels.js';
 import { LibraryRecipePicker } from './LibraryRecipePicker.jsx';
 import { LoadingState } from './LoadingState.jsx';
 import { AiRecipePreview } from './AiRecipePreview.jsx';
+import { handleFormSubmit } from '../hooks/formSubmit.js';
+import { disabledStyle } from '../tokens/controlStyles.js';
+
+// Default for views rendered without a hook's `pending` set (R33).
+const NO_PENDING = new Set();
 
 const IDLE_AI = { phase: 'idle', isLoading: false, canGenerate: false };
 
@@ -92,7 +97,8 @@ const addRowButtonStyle = {
   width: '100%',
 };
 
-const submitButtonStyle = {
+const submitButtonStyle = (disabled) => ({
+  ...(disabled ? disabledStyle : null),
   border: 'none',
   backgroundColor: tokens.color.terra,
   color: tokens.color.surface,
@@ -100,7 +106,7 @@ const submitButtonStyle = {
   padding: `${tokens.space.sm} ${tokens.space.md}`,
   fontWeight: 700,
   fontSize: tokens.fontSize.sm,
-};
+});
 
 function ScratchFields({
   form,
@@ -115,7 +121,7 @@ function ScratchFields({
   updateProcedureStep,
   removeProcedureStep,
   canSubmit,
-  submit,
+  pending = NO_PENDING,
 }) {
   return (
     <div>
@@ -309,7 +315,11 @@ function ScratchFields({
       </button>
 
       <div style={{ marginTop: tokens.space.md }}>
-        <button type="button" onClick={submit} disabled={!canSubmit} style={submitButtonStyle}>
+        <button
+          type="submit"
+          disabled={!canSubmit || pending.has('submit')}
+          style={submitButtonStyle(!canSubmit || pending.has('submit'))}
+        >
           {MESSAGES.RECIPE_AUTHORING_SUBMIT}
         </button>
       </div>
@@ -367,7 +377,7 @@ function AiFields({
           type="button"
           onClick={ai.generate}
           disabled={!ai.canGenerate}
-          style={submitButtonStyle}
+          style={submitButtonStyle(!ai.canGenerate)}
         >
           {MESSAGES.AI_GENERATE}
         </button>
@@ -395,7 +405,7 @@ function LibraryMethodFields({
   libraryRecipeId,
   selectLibraryRecipe,
   canSubmit,
-  submit,
+  pending = NO_PENDING,
 }) {
   return (
     <div>
@@ -405,7 +415,11 @@ function LibraryMethodFields({
         onSelect={selectLibraryRecipe}
       />
       <div style={{ marginTop: tokens.space.md }}>
-        <button type="button" onClick={submit} disabled={!canSubmit} style={submitButtonStyle}>
+        <button
+          type="submit"
+          disabled={!canSubmit || pending.has('submit')}
+          style={submitButtonStyle(!canSubmit || pending.has('submit'))}
+        >
           {MESSAGES.RECIPE_AUTHORING_SUBMIT}
         </button>
       </div>
@@ -414,10 +428,11 @@ function LibraryMethodFields({
 }
 
 export function RecipeAuthoringForm(props) {
-  const { methods, method, setMethod } = props;
+  const { methods, method, setMethod, canSubmit, submit } = props;
 
   return (
-    <div
+    <form
+      onSubmit={(e) => handleFormSubmit(e, canSubmit, submit)}
       style={{
         padding: tokens.space.lg,
         backgroundColor: tokens.color.surface,
@@ -449,6 +464,6 @@ export function RecipeAuthoringForm(props) {
       {method === 'library' ? <LibraryMethodFields {...props} /> : null}
       {method === 'scratch' ? <ScratchFields {...props} /> : null}
       {method === 'ai' ? <AiFields {...props} /> : null}
-    </div>
+    </form>
   );
 }

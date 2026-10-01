@@ -7,13 +7,14 @@ import { apiFetch, ApiError } from '../api/client.js';
 import { usePolling } from './usePolling.js';
 import { useLibraryPicker } from './useLibraryPicker.js';
 import { useConfirm } from './useConfirm.js';
+import { usePendingGuard } from './pendingGuard.js';
 import { parseMarker } from '../realtime/etag.js';
 import { MESSAGES } from '../messages/index.js';
 import { CATEGORY_LABELS, DAY_LABELS, SLOT_LABELS } from '../domain/labels.js';
 
 const RULES_URL = '/v1/rules';
 
-function computeRuleId(rule) {
+export function computeRuleId(rule) {
   if (rule.type === 'categoryCount') return `cat#${rule.category}`;
   if (rule.type === 'pin') return `pin#${rule.day}#${rule.slot}`;
   return `day#${rule.day}`;
@@ -64,6 +65,7 @@ function toRuleErrorDetail(err) {
 export function useRules({ active = true } = {}) {
   const poll = usePolling(RULES_URL, undefined, { enabled: active });
   const confirm = useConfirm();
+  const { run, pending } = usePendingGuard();
   // R12 - RulesView's own instance (T32/T33); `active` gates both polls
   // (App shell fix round 1, finding 1).
   const picker = useLibraryPicker({ enabled: active });
@@ -125,23 +127,25 @@ export function useRules({ active = true } = {}) {
 
   const remove = useCallback(
     (rule) => {
-      confirm.requestConfirm(MESSAGES.CONFIRM_REMOVE_RULE, async () => {
-        // R18
-        try {
-          let marker = null;
-          await apiFetch(`${RULES_URL}/${encodeURIComponent(computeRuleId(rule))}`, {
-            method: 'DELETE',
-            onHeaders: (headers) => (marker = parseMarker(headers.get('ETag'))),
-          });
-          poll.applyMutationMarker(marker);
-          poll.refetchNow(); // issue ui-not-reflecting-mutations, E3
-          setError(null);
-        } catch (err) {
-          setError(toRuleErrorDetail(err));
-        }
-      });
+      confirm.requestConfirm(MESSAGES.CONFIRM_REMOVE_RULE, () =>
+        run(`remove:${computeRuleId(rule)}`, async () => {
+          // R18
+          try {
+            let marker = null;
+            await apiFetch(`${RULES_URL}/${encodeURIComponent(computeRuleId(rule))}`, {
+              method: 'DELETE',
+              onHeaders: (headers) => (marker = parseMarker(headers.get('ETag'))),
+            });
+            poll.applyMutationMarker(marker);
+            poll.refetchNow(); // issue ui-not-reflecting-mutations, E3
+            setError(null);
+          } catch (err) {
+            setError(toRuleErrorDetail(err));
+          }
+        }),
+      );
     },
-    [confirm, poll],
+    [confirm, poll, run],
   );
 
   const [categoryCountDraft, setCategoryCountDraft] = useState(emptyCategoryCountDraft);
@@ -169,13 +173,15 @@ export function useRules({ active = true } = {}) {
     categoryCountDraft.category !== '' && categoryCountDraft.count !== '';
   const saveCategoryCount = useCallback(async () => {
     if (!canSaveCategoryCount) return;
-    const ok = await putRule({
-      type: 'categoryCount',
-      category: categoryCountDraft.category,
-      count: Number(categoryCountDraft.count),
+    await run('saveCategoryCount', async () => {
+      const ok = await putRule({
+        type: 'categoryCount',
+        category: categoryCountDraft.category,
+        count: Number(categoryCountDraft.count),
+      });
+      if (ok) setCategoryCountDraft(emptyCategoryCountDraft());
     });
-    if (ok) setCategoryCountDraft(emptyCategoryCountDraft());
-  }, [canSaveCategoryCount, categoryCountDraft, putRule]);
+  }, [canSaveCategoryCount, categoryCountDraft, putRule, run]);
 
   const [pinDraft, setPinDraft] = useState(emptyPinDraft);
   const [pinRecipeId, setPinRecipeId] = useState(null);
@@ -184,26 +190,30 @@ export function useRules({ active = true } = {}) {
   const canSavePin = pinDraft.day !== '' && pinDraft.slot !== '' && pinRecipeId != null;
   const savePin = useCallback(async () => {
     if (!canSavePin) return;
-    const ok = await putRule({
-      type: 'pin',
-      day: Number(pinDraft.day),
-      slot: Number(pinDraft.slot),
-      recipeId: pinRecipeId,
+    await run('savePin', async () => {
+      const ok = await putRule({
+        type: 'pin',
+        day: Number(pinDraft.day),
+        slot: Number(pinDraft.slot),
+        recipeId: pinRecipeId,
+      });
+      if (ok) {
+        setPinDraft(emptyPinDraft());
+        setPinRecipeId(null);
+      }
     });
-    if (ok) {
-      setPinDraft(emptyPinDraft());
-      setPinRecipeId(null);
-    }
-  }, [canSavePin, pinDraft, pinRecipeId, putRule]);
+  }, [canSavePin, pinDraft, pinRecipeId, putRule, run]);
 
   const [disabledDayDraft, setDisabledDayDraft] = useState(emptyDisabledDayDraft);
   const setDisabledDayDay = useCallback((day) => setDisabledDayDraft({ day }), []);
   const canSaveDisabledDay = disabledDayDraft.day !== '';
   const saveDisabledDay = useCallback(async () => {
     if (!canSaveDisabledDay) return;
-    const ok = await putRule({ type: 'disabledDay', day: Number(disabledDayDraft.day) });
-    if (ok) setDisabledDayDraft(emptyDisabledDayDraft());
-  }, [canSaveDisabledDay, disabledDayDraft, putRule]);
+    await run('saveDisabledDay', async () => {
+      const ok = await putRule({ type: 'disabledDay', day: Number(disabledDayDraft.day) });
+      if (ok) setDisabledDayDraft(emptyDisabledDayDraft());
+    });
+  }, [canSaveDisabledDay, disabledDayDraft, putRule, run]);
 
   return {
     categoryCounts,
@@ -211,6 +221,7 @@ export function useRules({ active = true } = {}) {
     disabledDays,
     isLoading: poll.data === null,
     connectionLost: poll.connectionLost,
+    pending,
     error,
     confirm,
     remove,

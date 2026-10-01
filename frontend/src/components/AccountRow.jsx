@@ -13,6 +13,7 @@ import {
   cardStyle,
 } from '../tokens/controlStyles.js';
 import { Banner } from './Banner.jsx';
+import { handleFormSubmit } from '../hooks/formSubmit.js';
 
 // T92 (design.md 10.6): avatar-circle (initials, no image dependency) plus
 // role/status pill badges. Purely presentational - the R36/R37 gating below
@@ -20,6 +21,13 @@ import { Banner } from './Banner.jsx';
 function initials(username) {
   return username.slice(0, 2).toUpperCase();
 }
+
+const rowFormStyle = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  alignItems: 'center',
+  gap: tokens.space.sm,
+};
 
 const badgeStyle = {
   display: 'inline-block',
@@ -48,6 +56,9 @@ export function AccountRow({
   onCancelReset,
   onRemove,
   error = null,
+  isSavingRename = false,
+  isSavingReset = false,
+  isRemoving = false,
 }) {
   // R37, fail-closed (fix round 1 finding 1): unknown actingUserId hides
   // reset on every row rather than showing it on every row.
@@ -110,25 +121,31 @@ export function AccountRow({
       ) : null}
 
       {isRenaming ? (
-        <>
+        <form
+          onSubmit={(e) => handleFormSubmit(e, canSaveRename, onSaveRename)}
+          style={rowFormStyle}
+        >
           <input
             type="text"
+            name="username"
+            autoComplete="off"
+            spellCheck={false}
+            autoCapitalize="none"
             value={renameDraft}
             onChange={(e) => onRenameDraftChange(e.target.value)}
             style={inputStyle}
           />
           <button
-            type="button"
-            onClick={onSaveRename}
-            disabled={!canSaveRename}
-            style={primaryButtonStyle(!canSaveRename)}
+            type="submit"
+            disabled={!canSaveRename || isSavingRename}
+            style={primaryButtonStyle(!canSaveRename || isSavingRename)}
           >
             {MESSAGES.ADMIN_ACCOUNTS_RENAME}
           </button>
           <button type="button" onClick={onCancelRename} style={secondaryButtonStyle}>
             {MESSAGES.ADMIN_ACCOUNTS_CANCEL}
           </button>
-        </>
+        </form>
       ) : (
         <button type="button" onClick={onOpenRename} style={secondaryButtonStyle}>
           {MESSAGES.ADMIN_ACCOUNTS_RENAME}
@@ -137,25 +154,29 @@ export function AccountRow({
 
       {!isOwnRow ? (
         isResetting ? (
-          <>
+          <form
+            onSubmit={(e) => handleFormSubmit(e, canSaveReset, onSaveReset)}
+            style={rowFormStyle}
+          >
             <input
               type="password"
+              name="password"
+              autoComplete="new-password"
               value={resetDraft}
               onChange={(e) => onResetDraftChange(e.target.value)}
               style={inputStyle}
             />
             <button
-              type="button"
-              onClick={onSaveReset}
-              disabled={!canSaveReset}
-              style={primaryButtonStyle(!canSaveReset)}
+              type="submit"
+              disabled={!canSaveReset || isSavingReset}
+              style={primaryButtonStyle(!canSaveReset || isSavingReset)}
             >
               {MESSAGES.ADMIN_ACCOUNTS_RESET_PASSWORD}
             </button>
             <button type="button" onClick={onCancelReset} style={secondaryButtonStyle}>
               {MESSAGES.ADMIN_ACCOUNTS_CANCEL}
             </button>
-          </>
+          </form>
         ) : (
           <button type="button" onClick={onOpenReset} style={secondaryButtonStyle}>
             {MESSAGES.ADMIN_ACCOUNTS_RESET_PASSWORD}
@@ -164,7 +185,7 @@ export function AccountRow({
       ) : null}
 
       {!isAdminRow ? (
-        <button type="button" onClick={onRemove} style={ghostButtonStyle}>
+        <button type="button" onClick={onRemove} disabled={isRemoving} style={ghostButtonStyle}>
           {MESSAGES.ADMIN_ACCOUNTS_REMOVE}
         </button>
       ) : null}

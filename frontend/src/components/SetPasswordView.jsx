@@ -5,6 +5,8 @@
 import { tokens } from '../tokens/index.js';
 import { MESSAGES } from '../messages/index.js';
 import { Banner } from './Banner.jsx';
+import { disabledStyle } from '../tokens/controlStyles.js';
+import { handleFormSubmit } from '../hooks/formSubmit.js';
 
 function pageStyle() {
   return {
@@ -83,8 +85,9 @@ function inputStyle() {
   };
 }
 
-function submitButtonStyle() {
+function submitButtonStyle(disabled) {
   return {
+    ...(disabled ? disabledStyle : null),
     width: '100%',
     marginTop: tokens.space.md,
     border: 'none',
@@ -142,13 +145,18 @@ export function SetPasswordView({
 
   return (
     <div style={pageStyle()}>
-      <div style={cardStyle()}>
+      <form
+        style={cardStyle()}
+        onSubmit={(e) => handleFormSubmit(e, canSubmit && !isSubmitting, submit)}
+      >
         <div style={badgeStyle()}>{MESSAGES.APP_TITLE.charAt(0)}</div>
         <h2 style={titleStyle()}>{MESSAGES.SET_PASSWORD_VIEW_TITLE}</h2>
         <label style={{ display: 'block', marginTop: tokens.space.md }}>
           <span style={fieldLabelStyle()}>{MESSAGES.SET_PASSWORD_NEW_LABEL}</span>
           <input
             type="password"
+            name="newPassword"
+            autoComplete="new-password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             style={inputStyle()}
@@ -158,6 +166,8 @@ export function SetPasswordView({
           <span style={fieldLabelStyle()}>{MESSAGES.SET_PASSWORD_CONFIRM_LABEL}</span>
           <input
             type="password"
+            name="confirmPassword"
+            autoComplete="new-password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             style={inputStyle()}
@@ -166,17 +176,16 @@ export function SetPasswordView({
         {mismatch ? <p style={mismatchStyle()}>{MESSAGES.SET_PASSWORD_MISMATCH}</p> : null}
         <Banner>{error}</Banner>
         <button
-          type="button"
-          onClick={submit}
+          type="submit"
           disabled={!canSubmit || isSubmitting}
-          style={submitButtonStyle()}
+          style={submitButtonStyle(!canSubmit || isSubmitting)}
         >
-          {MESSAGES.SET_PASSWORD_SUBMIT}
+          {isSubmitting ? MESSAGES.SET_PASSWORD_SUBMITTING : MESSAGES.SET_PASSWORD_SUBMIT}
         </button>
         <button type="button" onClick={cancel} style={cancelButtonStyle()}>
           {MESSAGES.SET_PASSWORD_CANCEL}
         </button>
-      </div>
+      </form>
     </div>
   );
 }

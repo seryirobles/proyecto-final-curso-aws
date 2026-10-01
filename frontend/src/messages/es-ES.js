@@ -12,6 +12,14 @@ export const MESSAGES = {
   // Shared infrastructure (feature 20 T1-T13)
   GENERIC_ERROR: 'Se ha producido un error inesperado. Inténtalo de nuevo más tarde.',
   ERROR_PREFIX: 'Error:',
+
+  // Authoring form titles (frontend_ux_phase1 R11-R13)
+  ADD_CANDIDATE_TITLE: (day, slot) => `Añadir a ${day} · ${slot}`,
+  EDIT_CANDIDATE_TITLE: (day, slot) => `Editar · ${day} · ${slot}`,
+  NEW_RECIPE_TITLE: 'Nueva receta',
+  EDIT_RECIPE_TITLE: 'Editar receta',
+  ADD_SHOPPING_ITEM_TITLE: 'Añadir elemento',
+  EDIT_SHOPPING_ITEM_TITLE: 'Editar elemento',
   CONFIRM_DIALOG_CONFIRM: 'Confirmar',
   CONFIRM_DIALOG_CANCEL: 'Cancelar',
   LOADING_STATE_DEFAULT: 'Cargando…',
@@ -161,6 +169,7 @@ export const MESSAGES = {
   LOGIN_USERNAME_LABEL: 'Usuario',
   LOGIN_PASSWORD_LABEL: 'Contraseña',
   LOGIN_SUBMIT: 'Entrar',
+  LOGIN_SUBMITTING: 'Entrando…',
   // Auth screens - card styling reopen (feature 20 T79-T80, design.md 10.6)
   LOGIN_NO_REGISTRATION_NOTE: 'Sin registro público. Las cuentas las crea el administrador.',
   SET_PASSWORD_VIEW_TITLE: 'Nueva contraseña',
@@ -168,6 +177,7 @@ export const MESSAGES = {
   SET_PASSWORD_CONFIRM_LABEL: 'Confirmar contraseña',
   SET_PASSWORD_MISMATCH: 'Las contraseñas no coinciden.',
   SET_PASSWORD_SUBMIT: 'Guardar y entrar',
+  SET_PASSWORD_SUBMITTING: 'Guardando…',
   SET_PASSWORD_CANCEL: 'Cancelar',
 
   // Auth screens - admin accounts + app-shell logout (feature 20 T54-T60)

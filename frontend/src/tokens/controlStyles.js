@@ -19,8 +19,12 @@ export const selectStyle = {
 
 export const inputStyle = selectStyle;
 
+// Disabled look for submit buttons whose inline colours would hide it (R30).
+export const disabledStyle = { opacity: tokens.opacity.disabled, cursor: 'not-allowed' };
+
 export function primaryButtonStyle(disabled) {
   return {
+    ...(disabled ? disabledStyle : null),
     border: 'none',
     backgroundColor: disabled ? tokens.color.line2 : tokens.color.terra,
     color: disabled ? tokens.color.ink3 : tokens.color.surface,

@@ -14,6 +14,9 @@ import { LoadingState } from './LoadingState.jsx';
 import { CandidateAuthoring } from './CandidateAuthoring.jsx';
 import { Banner } from './Banner.jsx';
 
+// Default for views rendered without a hook's `pending` set (R33).
+const NO_PENDING = new Set();
+
 export function WeekPlannerView({
   liveWeeks,
   designation,
@@ -37,6 +40,7 @@ export function WeekPlannerView({
   detailError,
   closeDetail,
   error,
+  pending = NO_PENDING,
 }) {
   if (isLoading) return <LoadingState />;
 
@@ -63,6 +67,7 @@ export function WeekPlannerView({
             onClear={clearDefinitive}
             onEdit={openCandidateEdit}
             onRemove={removeCandidate}
+            pending={pending}
           />
         ))}
       </div>

@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiFetch, ApiError } from '../api/client.js';
 import { usePolling } from './usePolling.js';
 import { useConfirm } from './useConfirm.js';
+import { usePendingGuard } from './pendingGuard.js';
 import { parseMarker } from '../realtime/etag.js';
 import { MESSAGES } from '../messages/index.js';
 
@@ -31,6 +32,7 @@ function toDetail(err) {
 export function useShoppingList({ active = true } = {}) {
   const poll = usePolling(SHOPPING_LIST_URL, undefined, { enabled: active });
   const confirm = useConfirm();
+  const { run, pending } = usePendingGuard();
   const [liveWeeks, setLiveWeeks] = useState(null);
   const [editingItem, setEditingItem] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -83,22 +85,24 @@ export function useShoppingList({ active = true } = {}) {
     const path = editingItem
       ? `${SHOPPING_LIST_URL}/items/${editingItem.id}`
       : `${SHOPPING_LIST_URL}/items`;
-    try {
-      let marker = null;
-      await apiFetch(path, {
-        method: editingItem ? 'PUT' : 'POST',
-        body: { name: draft.name, quantity: Number(draft.quantity), unit: draft.unit },
-        onHeaders: (headers) => (marker = parseMarker(headers.get('ETag'))),
-      });
-      poll.applyMutationMarker(marker); // design.md section 4.2
-      poll.refetchNow(); // issue ui-not-reflecting-mutations, E4/E5
-      setError(null);
-      setIsFormOpen(false);
-      setEditingItem(null);
-    } catch (err) {
-      setError(toDetail(err));
-    }
-  }, [canSaveItem, editingItem, draft, poll]);
+    await run('saveItem', async () => {
+      try {
+        let marker = null;
+        await apiFetch(path, {
+          method: editingItem ? 'PUT' : 'POST',
+          body: { name: draft.name, quantity: Number(draft.quantity), unit: draft.unit },
+          onHeaders: (headers) => (marker = parseMarker(headers.get('ETag'))),
+        });
+        poll.applyMutationMarker(marker); // design.md section 4.2
+        poll.refetchNow(); // issue ui-not-reflecting-mutations, E4/E5
+        setError(null);
+        setIsFormOpen(false);
+        setEditingItem(null);
+      } catch (err) {
+        setError(toDetail(err));
+      }
+    });
+  }, [canSaveItem, editingItem, draft, poll, run]);
 
   const setChecked = useCallback(
     async (item, checked) => {
@@ -121,50 +125,55 @@ export function useShoppingList({ active = true } = {}) {
 
   const remove = useCallback(
     (itemId) => {
-      confirm.requestConfirm(MESSAGES.CONFIRM_REMOVE_SHOPPING_ITEM, async () => {
-        // R18
-        try {
-          let marker = null;
-          await apiFetch(`${SHOPPING_LIST_URL}/items/${itemId}`, {
-            method: 'DELETE',
-            onHeaders: (headers) => (marker = parseMarker(headers.get('ETag'))),
-          });
-          poll.applyMutationMarker(marker);
-          poll.refetchNow(); // issue ui-not-reflecting-mutations, E7
-          setError(null);
-        } catch (err) {
-          setError(toDetail(err));
-        }
-      });
+      confirm.requestConfirm(MESSAGES.CONFIRM_REMOVE_SHOPPING_ITEM, () =>
+        run(`remove:${itemId}`, async () => {
+          // R18
+          try {
+            let marker = null;
+            await apiFetch(`${SHOPPING_LIST_URL}/items/${itemId}`, {
+              method: 'DELETE',
+              onHeaders: (headers) => (marker = parseMarker(headers.get('ETag'))),
+            });
+            poll.applyMutationMarker(marker);
+            poll.refetchNow(); // issue ui-not-reflecting-mutations, E7
+            setError(null);
+          } catch (err) {
+            setError(toDetail(err));
+          }
+        }),
+      );
     },
-    [confirm, poll],
+    [confirm, poll, run],
   );
 
   // No retry loop on a lock-held 409: a second press is by definition a
   // duplicate of the one already running (rest_api_contract.md section 3.3).
   const resync = useCallback(async () => {
-    setIsResyncing(true);
-    try {
-      let marker = null;
-      await apiFetch(`${SHOPPING_LIST_URL}/resync`, {
-        method: 'POST',
-        onHeaders: (headers) => (marker = parseMarker(headers.get('ETag'))),
-      });
-      poll.applyMutationMarker(marker);
-      poll.refetchNow(); // issue ui-not-reflecting-mutations, E8
-      setError(null);
-    } catch (err) {
-      setError(toDetail(err));
-    } finally {
-      setIsResyncing(false);
-    }
-  }, [poll]);
+    await run('resync', async () => {
+      setIsResyncing(true);
+      try {
+        let marker = null;
+        await apiFetch(`${SHOPPING_LIST_URL}/resync`, {
+          method: 'POST',
+          onHeaders: (headers) => (marker = parseMarker(headers.get('ETag'))),
+        });
+        poll.applyMutationMarker(marker);
+        poll.refetchNow(); // issue ui-not-reflecting-mutations, E8
+        setError(null);
+      } catch (err) {
+        setError(toDetail(err));
+      } finally {
+        setIsResyncing(false);
+      }
+    });
+  }, [poll, run]);
 
   return {
     uncheckedItems,
     checkedItems,
     isLoading: poll.data === null, // R20
     connectionLost: poll.connectionLost,
+    pending,
     liveWeeks,
     isFormOpen,
     isEditing: editingItem != null,

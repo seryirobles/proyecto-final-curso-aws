@@ -5,6 +5,8 @@
 import { tokens } from '../tokens/index.js';
 import { MESSAGES } from '../messages/index.js';
 import { Banner } from './Banner.jsx';
+import { disabledStyle } from '../tokens/controlStyles.js';
+import { handleFormSubmit } from '../hooks/formSubmit.js';
 
 function pageStyle() {
   return {
@@ -85,8 +87,9 @@ function inputStyle() {
   };
 }
 
-function submitButtonStyle() {
+function submitButtonStyle(disabled) {
   return {
+    ...(disabled ? disabledStyle : null),
     width: '100%',
     marginTop: tokens.space.md,
     border: 'none',
@@ -123,13 +126,20 @@ export function LoginView({
 }) {
   return (
     <div style={pageStyle()}>
-      <div style={cardStyle()}>
+      <form
+        style={cardStyle()}
+        onSubmit={(e) => handleFormSubmit(e, canSubmit && !isSubmitting, submit)}
+      >
         <div style={badgeStyle()}>{MESSAGES.APP_TITLE.charAt(0)}</div>
         <h2 style={titleStyle()}>{MESSAGES.LOGIN_VIEW_TITLE}</h2>
         <label style={{ display: 'block', marginTop: tokens.space.md }}>
           <span style={fieldLabelStyle()}>{MESSAGES.LOGIN_USERNAME_LABEL}</span>
           <input
             type="text"
+            name="username"
+            autoComplete="username"
+            spellCheck={false}
+            autoCapitalize="none"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             style={inputStyle()}
@@ -139,6 +149,8 @@ export function LoginView({
           <span style={fieldLabelStyle()}>{MESSAGES.LOGIN_PASSWORD_LABEL}</span>
           <input
             type="password"
+            name="password"
+            autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             style={inputStyle()}
@@ -146,15 +158,14 @@ export function LoginView({
         </label>
         <Banner>{error}</Banner>
         <button
-          type="button"
-          onClick={submit}
+          type="submit"
           disabled={!canSubmit || isSubmitting}
-          style={submitButtonStyle()}
+          style={submitButtonStyle(!canSubmit || isSubmitting)}
         >
-          {MESSAGES.LOGIN_SUBMIT}
+          {isSubmitting ? MESSAGES.LOGIN_SUBMITTING : MESSAGES.LOGIN_SUBMIT}
         </button>
         <p style={footerNoteStyle()}>{MESSAGES.LOGIN_NO_REGISTRATION_NOTE}</p>
-      </div>
+      </form>
     </div>
   );
 }

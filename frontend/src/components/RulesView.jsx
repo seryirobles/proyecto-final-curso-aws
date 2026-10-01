@@ -5,7 +5,7 @@
 import { tokens } from '../tokens/index.js';
 import { MESSAGES } from '../messages/index.js';
 import { CATEGORY_LABELS, SLOT_LABELS } from '../domain/labels.js';
-import { describeRule } from '../hooks/useRules.js';
+import { describeRule, computeRuleId } from '../hooks/useRules.js';
 import {
   selectStyle,
   primaryButtonStyle,
@@ -21,12 +21,16 @@ import { LoadingState } from './LoadingState.jsx';
 import { ConfirmDialog } from './ConfirmDialog.jsx';
 import { LibraryRecipePicker } from './LibraryRecipePicker.jsx';
 import { Banner } from './Banner.jsx';
+import { handleFormSubmit } from '../hooks/formSubmit.js';
 
-function RuleRow({ label, onRemove }) {
+// Default for views rendered without a hook's `pending` set (R33).
+const NO_PENDING = new Set();
+
+function RuleRow({ label, onRemove, isRemoving }) {
   return (
     <li style={listRowStyle}>
       <span>{label}</span>
-      <button type="button" onClick={onRemove} style={ghostButtonStyle}>
+      <button type="button" onClick={onRemove} disabled={isRemoving} style={ghostButtonStyle}>
         {MESSAGES.RULES_REMOVE}
       </button>
     </li>
@@ -80,6 +84,7 @@ export function RulesView({
   setDisabledDayDay,
   canSaveDisabledDay,
   saveDisabledDay,
+  pending = NO_PENDING,
 }) {
   if (isLoading) return <LoadingState />;
 
@@ -111,11 +116,13 @@ export function RulesView({
                 key={rule.category}
                 label={describeRule(rule)}
                 onRemove={() => remove(rule)}
+                isRemoving={pending.has(`remove:${computeRuleId(rule)}`)}
               />
             ))}
           </ul>
         ) : null}
-        <div
+        <form
+          onSubmit={(e) => handleFormSubmit(e, canSaveCategoryCount, saveCategoryCount)}
           style={{
             display: 'flex',
             flexWrap: 'wrap',
@@ -154,14 +161,13 @@ export function RulesView({
             </select>
           </label>
           <button
-            type="button"
-            onClick={saveCategoryCount}
-            disabled={!canSaveCategoryCount}
-            style={primaryButtonStyle(!canSaveCategoryCount)}
+            type="submit"
+            disabled={!canSaveCategoryCount || pending.has('saveCategoryCount')}
+            style={primaryButtonStyle(!canSaveCategoryCount || pending.has('saveCategoryCount'))}
           >
             {MESSAGES.RULES_SAVE}
           </button>
-        </div>
+        </form>
       </div>
 
       <div style={ruleGroupStyle}>
@@ -175,11 +181,13 @@ export function RulesView({
                 key={`${rule.day}#${rule.slot}`}
                 label={`${describeRule(rule)} · ${rule.recipeName}`}
                 onRemove={() => remove(rule)}
+                isRemoving={pending.has(`remove:${computeRuleId(rule)}`)}
               />
             ))}
           </ul>
         ) : null}
-        <div
+        <form
+          onSubmit={(e) => handleFormSubmit(e, canSavePin, savePin)}
           style={{
             display: 'flex',
             flexWrap: 'wrap',
@@ -217,20 +225,19 @@ export function RulesView({
               ))}
             </select>
           </label>
-        </div>
-        <LibraryRecipePicker
-          {...picker}
-          selectedRecipeId={pinRecipeId}
-          onSelect={selectPinRecipe}
-        />
-        <button
-          type="button"
-          onClick={savePin}
-          disabled={!canSavePin}
-          style={primaryButtonStyle(!canSavePin)}
-        >
-          {MESSAGES.RULES_SAVE}
-        </button>
+          <LibraryRecipePicker
+            {...picker}
+            selectedRecipeId={pinRecipeId}
+            onSelect={selectPinRecipe}
+          />
+          <button
+            type="submit"
+            disabled={!canSavePin || pending.has('savePin')}
+            style={primaryButtonStyle(!canSavePin || pending.has('savePin'))}
+          >
+            {MESSAGES.RULES_SAVE}
+          </button>
+        </form>
       </div>
 
       <div style={ruleGroupStyle}>
@@ -240,11 +247,17 @@ export function RulesView({
         {disabledDays.length > 0 ? (
           <ul style={listResetStyle}>
             {disabledDays.map((rule) => (
-              <RuleRow key={rule.day} label={describeRule(rule)} onRemove={() => remove(rule)} />
+              <RuleRow
+                key={rule.day}
+                label={describeRule(rule)}
+                onRemove={() => remove(rule)}
+                isRemoving={pending.has(`remove:${computeRuleId(rule)}`)}
+              />
             ))}
           </ul>
         ) : null}
-        <div
+        <form
+          onSubmit={(e) => handleFormSubmit(e, canSaveDisabledDay, saveDisabledDay)}
           style={{
             display: 'flex',
             flexWrap: 'wrap',
@@ -268,14 +281,13 @@ export function RulesView({
             </select>
           </label>
           <button
-            type="button"
-            onClick={saveDisabledDay}
-            disabled={!canSaveDisabledDay}
-            style={primaryButtonStyle(!canSaveDisabledDay)}
+            type="submit"
+            disabled={!canSaveDisabledDay || pending.has('saveDisabledDay')}
+            style={primaryButtonStyle(!canSaveDisabledDay || pending.has('saveDisabledDay'))}
           >
             {MESSAGES.RULES_SAVE}
           </button>
-        </div>
+        </form>
       </div>
 
       <ConfirmDialog

@@ -43,6 +43,7 @@ export function DaySlot({
   onClear,
   onEdit,
   onRemove,
+  pending,
 }) {
   const status = STATUS_STYLES[dayStatus(slots)];
 
@@ -124,6 +125,9 @@ export function DaySlot({
                   onClear={() => onClear(day, slotState.slot)}
                   onEdit={() => onEdit(day, slotState.slot, candidate)}
                   onRemove={() => onRemove(day, slotState.slot, candidate.id)}
+                  isPromoting={pending?.has(`promote:${day}:${slotState.slot}`)}
+                  isClearing={pending?.has(`clear:${day}:${slotState.slot}`)}
+                  isRemoving={pending?.has(`remove:${candidate.id}`)}
                 />
               ))
             )}

@@ -55,6 +55,9 @@ const SAFE_ATTR_NAMES = new Set([
   // G-90) - HTML range limits, never copy.
   'min',
   'max',
+  // Browser form hints (frontend_ux_phase1 R16, R20) - never copy.
+  'autoComplete',
+  'autoCapitalize',
 ]);
 const ATTR_ASSIGNMENT = /([A-Za-z][\w-]*)\s*=\s*("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g;
 // A string literal counts as a rendered branch/fallback only right after one

@@ -621,7 +621,7 @@
         "./init.sh passes"
       ],
       "sdd": true,
-      "status": "spec_ready"
+      "status": "done"
     }
   ]
 }

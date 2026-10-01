@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiFetch, ApiError } from '../api/client.js';
 import { usePolling } from './usePolling.js';
 import { useConfirm } from './useConfirm.js';
+import { usePendingGuard } from './pendingGuard.js';
 import { useRecipeDetail, normalizeRecipeDetail } from './useRecipeDetail.js';
 import { parseMarker } from '../realtime/etag.js';
 import { MESSAGES } from '../messages/index.js';
@@ -73,6 +74,7 @@ export function useWeekPlanner({ active = true } = {}) {
   const [detailSource, setDetailSource] = useState(null);
   const [error, setError] = useState(null);
   const confirm = useConfirm();
+  const { run, pending } = usePendingGuard();
 
   // Gated on `active` (issue stuck-loading-after-login): a mount-once read
   // fails SESSION_EXPIRED before login and never re-runs, same pattern
@@ -120,20 +122,22 @@ export function useWeekPlanner({ active = true } = {}) {
       if (!authoringTarget) return;
       const { weekId, day, slot } = authoringTarget;
       if (!weekId) return;
-      try {
-        const marker = await mutateWithMarker(candidatesUrl(weekId, day, slot), {
-          method: 'POST',
-          body: input,
-        });
-        weekPoll.applyMutationMarker(marker);
-        weekPoll.refetchNow(); // issue ui-not-reflecting-mutations; same root cause as E9/E10
-        setError(null);
-        setAuthoringTarget(null);
-      } catch (err) {
-        setError(toDetail(err));
-      }
+      await run('submitCandidate', async () => {
+        try {
+          const marker = await mutateWithMarker(candidatesUrl(weekId, day, slot), {
+            method: 'POST',
+            body: input,
+          });
+          weekPoll.applyMutationMarker(marker);
+          weekPoll.refetchNow(); // issue ui-not-reflecting-mutations; same root cause as E9/E10
+          setError(null);
+          setAuthoringTarget(null);
+        } catch (err) {
+          setError(toDetail(err));
+        }
+      });
     },
-    [authoringTarget, weekPoll],
+    [authoringTarget, weekPoll, run],
   );
 
   // Scope extension (E5-E10): a separate target from `authoringTarget`, so
@@ -156,41 +160,45 @@ export function useWeekPlanner({ active = true } = {}) {
       if (!editingTarget) return;
       const { weekId, day, slot, candidateId } = editingTarget;
       if (!weekId) return;
-      try {
-        const marker = await mutateWithMarker(candidateUrl(weekId, day, slot, candidateId), {
-          method: 'PUT',
-          body: input,
-        });
-        weekPoll.applyMutationMarker(marker);
-        weekPoll.refetchNow(); // issue ui-not-reflecting-mutations; same root cause as E9/E10
-        setError(null);
-        setEditingTarget(null);
-      } catch (err) {
-        setError(toDetail(err));
-      }
+      await run('submitCandidateEdit', async () => {
+        try {
+          const marker = await mutateWithMarker(candidateUrl(weekId, day, slot, candidateId), {
+            method: 'PUT',
+            body: input,
+          });
+          weekPoll.applyMutationMarker(marker);
+          weekPoll.refetchNow(); // issue ui-not-reflecting-mutations; same root cause as E9/E10
+          setError(null);
+          setEditingTarget(null);
+        } catch (err) {
+          setError(toDetail(err));
+        }
+      });
     },
-    [editingTarget, weekPoll],
+    [editingTarget, weekPoll, run],
   );
 
   const removeCandidate = useCallback(
     (day, slot, candidateId) => {
       const weekId = selectedWeek?.weekId;
       if (!weekId) return;
-      confirm.requestConfirm(MESSAGES.CONFIRM_REMOVE_CANDIDATE, async () => {
-        // R18 / FR-UX-04
-        try {
-          const marker = await mutateWithMarker(candidateUrl(weekId, day, slot, candidateId), {
-            method: 'DELETE',
-          });
-          weekPoll.applyMutationMarker(marker);
-          weekPoll.refetchNow(); // issue ui-not-reflecting-mutations; same root cause as E9/E10
-          setError(null);
-        } catch (err) {
-          setError(toDetail(err));
-        }
-      });
+      confirm.requestConfirm(MESSAGES.CONFIRM_REMOVE_CANDIDATE, () =>
+        run(`remove:${candidateId}`, async () => {
+          // R18 / FR-UX-04
+          try {
+            const marker = await mutateWithMarker(candidateUrl(weekId, day, slot, candidateId), {
+              method: 'DELETE',
+            });
+            weekPoll.applyMutationMarker(marker);
+            weekPoll.refetchNow(); // issue ui-not-reflecting-mutations; same root cause as E9/E10
+            setError(null);
+          } catch (err) {
+            setError(toDetail(err));
+          }
+        }),
+      );
     },
-    [selectedWeek, weekPoll, confirm],
+    [selectedWeek, weekPoll, confirm, run],
   );
 
   const openDetail = useCallback(
@@ -204,47 +212,50 @@ export function useWeekPlanner({ active = true } = {}) {
       const weekId = selectedWeek?.weekId;
       if (!weekId) return;
       const slotState = week?.days.find((d) => d.day === day)?.slots.find((s) => s.slot === slot);
-      const doPromote = async () => {
-        try {
-          const marker = await mutateWithMarker(definitiveUrl(weekId, day, slot), {
-            method: 'PUT',
-            body: { candidateId },
-          });
-          weekPoll.applyMutationMarker(marker);
-          weekPoll.refetchNow(); // issue ui-not-reflecting-mutations, E9
-          setError(null);
-        } catch (err) {
-          setError(toDetail(err));
-        }
-      };
+      const doPromote = () =>
+        run(`promote:${day}:${slot}`, async () => {
+          try {
+            const marker = await mutateWithMarker(definitiveUrl(weekId, day, slot), {
+              method: 'PUT',
+              body: { candidateId },
+            });
+            weekPoll.applyMutationMarker(marker);
+            weekPoll.refetchNow(); // issue ui-not-reflecting-mutations, E9
+            setError(null);
+          } catch (err) {
+            setError(toDetail(err));
+          }
+        });
       if (slotState?.definitiveId && slotState.definitiveId !== candidateId) {
         confirm.requestConfirm(MESSAGES.CONFIRM_REPLACE_DEFINITIVE, doPromote); // R18
       } else {
         doPromote();
       }
     },
-    [selectedWeek, week, weekPoll, confirm],
+    [selectedWeek, week, weekPoll, confirm, run],
   );
 
   const clearDefinitive = useCallback(
     (day, slot) => {
       const weekId = selectedWeek?.weekId;
       if (!weekId) return;
-      confirm.requestConfirm(MESSAGES.CONFIRM_CLEAR_DEFINITIVE, async () => {
-        // R18
-        try {
-          const marker = await mutateWithMarker(definitiveUrl(weekId, day, slot), {
-            method: 'DELETE',
-          });
-          weekPoll.applyMutationMarker(marker);
-          weekPoll.refetchNow(); // issue ui-not-reflecting-mutations, E10
-          setError(null);
-        } catch (err) {
-          setError(toDetail(err));
-        }
-      });
+      confirm.requestConfirm(MESSAGES.CONFIRM_CLEAR_DEFINITIVE, () =>
+        run(`clear:${day}:${slot}`, async () => {
+          // R18
+          try {
+            const marker = await mutateWithMarker(definitiveUrl(weekId, day, slot), {
+              method: 'DELETE',
+            });
+            weekPoll.applyMutationMarker(marker);
+            weekPoll.refetchNow(); // issue ui-not-reflecting-mutations, E10
+            setError(null);
+          } catch (err) {
+            setError(toDetail(err));
+          }
+        }),
+      );
     },
-    [selectedWeek, weekPoll, confirm],
+    [selectedWeek, weekPoll, confirm, run],
   );
 
   return {
@@ -253,6 +264,7 @@ export function useWeekPlanner({ active = true } = {}) {
     week,
     isLoading: liveWeeks === null || week === null, // R20
     connectionLost: weekPoll.connectionLost,
+    pending,
     switchWeek,
     openCandidateAuthoring,
     authoringTarget,

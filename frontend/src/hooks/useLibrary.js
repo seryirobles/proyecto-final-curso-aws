@@ -7,6 +7,7 @@ import { apiFetch, ApiError } from '../api/client.js';
 import { useLibraryPicker } from './useLibraryPicker.js';
 import { useRecipeAuthoring } from './useRecipeAuthoring.js';
 import { useConfirm } from './useConfirm.js';
+import { usePendingGuard } from './pendingGuard.js';
 import { useRecipeDetail, normalizeRecipeDetail } from './useRecipeDetail.js';
 import { parseMarker } from '../realtime/etag.js';
 import { MESSAGES } from '../messages/index.js';
@@ -31,6 +32,7 @@ function composeCascadeMessage(pins) {
 export function useLibrary({ active = true } = {}) {
   const picker = useLibraryPicker({ enabled: active });
   const confirm = useConfirm();
+  const { run, pending } = usePendingGuard();
   // Holds the whole recipe, not just its id, so useRecipeAuthoring can seed
   // the edit form from real content instead of opening blank (F4 fix round 1).
   const [editingRecipe, setEditingRecipe] = useState(null);
@@ -43,23 +45,25 @@ export function useLibrary({ active = true } = {}) {
   const handleSubmit = useCallback(
     async ({ recipe }) => {
       const path = editingId ? `/v1/library/recipes/${editingId}` : '/v1/library/recipes';
-      try {
-        let marker = null;
-        await apiFetch(path, {
-          method: editingId ? 'PUT' : 'POST',
-          body: { source: 'manual', recipe },
-          onHeaders: (headers) => (marker = parseMarker(headers.get('ETag'))),
-        });
-        picker.applyMutationMarker(marker); // design.md section 4.2
-        picker.refetchNow(); // issue new-recipe-not-shown-in-library, E1/E2
-        setError(null);
-        setIsAuthoringOpen(false);
-        setEditingRecipe(null);
-      } catch (err) {
-        setError(toDetail(err));
-      }
+      await run('submitRecipe', async () => {
+        try {
+          let marker = null;
+          await apiFetch(path, {
+            method: editingId ? 'PUT' : 'POST',
+            body: { source: 'manual', recipe },
+            onHeaders: (headers) => (marker = parseMarker(headers.get('ETag'))),
+          });
+          picker.applyMutationMarker(marker); // design.md section 4.2
+          picker.refetchNow(); // issue new-recipe-not-shown-in-library, E1/E2
+          setError(null);
+          setIsAuthoringOpen(false);
+          setEditingRecipe(null);
+        } catch (err) {
+          setError(toDetail(err));
+        }
+      });
     },
-    [editingId, picker],
+    [editingId, picker, run],
   );
 
   const authoring = useRecipeAuthoring({
@@ -98,27 +102,31 @@ export function useLibrary({ active = true } = {}) {
 
   const remove = useCallback(
     (recipeId) => {
-      confirm.requestConfirm(MESSAGES.CONFIRM_REMOVE_LIBRARY_RECIPE, async () => {
-        // R18
-        try {
-          await deleteRecipe(recipeId, { confirmCascade: false });
-        } catch (err) {
-          if (err instanceof ApiError && err.code === 'PIN_RULES_AFFECTED') {
-            // R1, R2: re-arm the same confirm instance with the cascade prompt.
-            confirm.requestConfirm(composeCascadeMessage(err.details?.pins ?? []), async () => {
-              try {
-                await deleteRecipe(recipeId, { confirmCascade: true }); // R3
-              } catch (retryErr) {
-                setError(toDetail(retryErr)); // R7 fallback, same path as any other failure
-              }
-            });
-          } else {
-            setError(toDetail(err)); // R7
+      confirm.requestConfirm(MESSAGES.CONFIRM_REMOVE_LIBRARY_RECIPE, () =>
+        run(`remove:${recipeId}`, async () => {
+          // R18
+          try {
+            await deleteRecipe(recipeId, { confirmCascade: false });
+          } catch (err) {
+            if (err instanceof ApiError && err.code === 'PIN_RULES_AFFECTED') {
+              // R1, R2: re-arm the same confirm instance with the cascade prompt.
+              confirm.requestConfirm(composeCascadeMessage(err.details?.pins ?? []), () =>
+                run(`remove:${recipeId}`, async () => {
+                  try {
+                    await deleteRecipe(recipeId, { confirmCascade: true }); // R3
+                  } catch (retryErr) {
+                    setError(toDetail(retryErr)); // R7 fallback, same path as any other failure
+                  }
+                }),
+              );
+            } else {
+              setError(toDetail(err)); // R7
+            }
           }
-        }
-      });
+        }),
+      );
     },
-    [confirm, deleteRecipe],
+    [confirm, deleteRecipe, run],
   );
 
   const openDetail = useCallback(
@@ -134,6 +142,7 @@ export function useLibrary({ active = true } = {}) {
     setCategory: picker.setCategory,
     isLoading: picker.isLoading,
     connectionLost: picker.connectionLost,
+    pending,
     isAuthoringOpen,
     isEditing: editingId != null,
     authoring,

@@ -7,7 +7,9 @@
 // progress/impl_frontend_spa.md, "Tier E - library".
 
 import { tokens } from '../tokens/index.js';
-import { secondaryButtonStyle } from '../tokens/controlStyles.js';
+import { useRef } from 'react';
+import { secondaryButtonStyle, headingStyle } from '../tokens/controlStyles.js';
+import { useScrollIntoView } from '../hooks/useScrollIntoView.js';
 import { MESSAGES } from '../messages/index.js';
 import { CATEGORY_COLORS } from '../domain/labels.js';
 import { EmptyState } from './EmptyState.jsx';
@@ -17,6 +19,9 @@ import { RecipeDetailView } from './RecipeDetailView.jsx';
 import { RecipeAuthoringForm } from './RecipeAuthoringForm.jsx';
 import { LibraryFilters } from './LibraryFilters.jsx';
 import { Banner } from './Banner.jsx';
+
+// Default for views rendered without a hook's `pending` set (R33).
+const NO_PENDING = new Set();
 
 function EditIcon() {
   return (
@@ -82,6 +87,7 @@ export function LibraryView({
   setCategory,
   isLoading,
   isAuthoringOpen,
+  isEditing,
   authoring,
   openAdd,
   openEdit,
@@ -93,7 +99,14 @@ export function LibraryView({
   detailError,
   closeDetail,
   error,
+  pending = NO_PENDING,
 }) {
+  // Hooks before the early return; null key = form closed (R10, R14).
+  const formRef = useRef(null);
+  let formKey = null;
+  if (isAuthoringOpen) formKey = isEditing ? 'edit' : 'new';
+  useScrollIntoView(formRef, formKey);
+
   if (isLoading) return <LoadingState />;
 
   return (
@@ -181,7 +194,12 @@ export function LibraryView({
                   <EditIcon />
                   {MESSAGES.LIBRARY_VIEW_EDIT}
                 </button>
-                <button type="button" onClick={() => remove(recipe.id)} style={iconButtonStyle}>
+                <button
+                  type="button"
+                  onClick={() => remove(recipe.id)}
+                  disabled={pending.has(`remove:${recipe.id}`)}
+                  style={iconButtonStyle}
+                >
                   <DeleteIcon />
                   {MESSAGES.LIBRARY_VIEW_REMOVE}
                 </button>
@@ -192,9 +210,14 @@ export function LibraryView({
       )}
 
       {isAuthoringOpen ? (
-        <div>
+        <>
           <Banner>{error}</Banner>
-          <RecipeAuthoringForm {...authoring} />
+          <section ref={formRef}>
+            <h3 style={headingStyle}>
+              {isEditing ? MESSAGES.EDIT_RECIPE_TITLE : MESSAGES.NEW_RECIPE_TITLE}
+            </h3>
+            <RecipeAuthoringForm {...authoring} />
+          </section>
           <button
             type="button"
             onClick={closeAuthoring}
@@ -202,7 +225,7 @@ export function LibraryView({
           >
             {MESSAGES.RECIPE_DETAIL_CLOSE}
           </button>
-        </div>
+        </>
       ) : null}
 
       <ConfirmDialog

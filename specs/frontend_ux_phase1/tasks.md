@@ -31,30 +31,30 @@ Tests first within each slice.
 - [x] T13b — Narrow `tests/test_no_extra_accessibility.test.js` to allow only `role="status"|"alert"` (aria-*, tabIndex, a11y imports stay banned; update the detector self-test). Covers: R37.
 
 ## P1-F Add forms in view
-- [ ] T14 — Add title messages to `es-ES.js`. Covers: R11, R12, R13, R38.
-- [ ] T15 — Hook test `useScrollIntoView`: called once on open, not again when the target object is rebuilt with the same key. Covers: R10, R14.
-- [ ] T16 — Add `hooks/useScrollIntoView.js`. Covers: R10, R14.
-- [ ] T17 — RTL (stub `scrollIntoView`): Week add/edit shows title with day + slot and scrolls; Library new/edit title; Shopping add/edit title. Covers: R10, R11, R12, R13.
-- [ ] T18 — Wrap the forms in a titled `<section ref>` in `CandidateAuthoring.jsx`, `LibraryView.jsx`, `ShoppingListView.jsx`. Covers: R10, R11, R12, R13, R14.
+- [x] T14 — Add title messages to `es-ES.js`. Covers: R11, R12, R13, R38.
+- [x] T15 — Hook test `useScrollIntoView`: called once on open, not again when the target object is rebuilt with the same key. Covers: R10, R14.
+- [x] T16 — Add `hooks/useScrollIntoView.js`. Covers: R10, R14.
+- [x] T17 — RTL (stub `scrollIntoView`): Week add/edit shows title with day + slot and scrolls; Library new/edit title; Shopping add/edit title. Covers: R10, R11, R12, R13.
+- [x] T18 — Wrap the forms in a titled `<section ref>` in `CandidateAuthoring.jsx`, `LibraryView.jsx`, `ShoppingListView.jsx`. Covers: R10, R11, R12, R13, R14.
 
 ## P1-G Native forms: auth + admin
-- [ ] T19 — Test `handleFormSubmit`: preventDefault always; action only when allowed. Covers: R25, R26.
-- [ ] T20 — Add `hooks/formSubmit.js`. Covers: R25, R26.
-- [ ] T21 — Add `opacity.disabled` token and busy-label messages. Covers: R28, R29, R30, R38.
-- [ ] T22 — RTL: login and set-password `<form>` submit calls handler; Enter-equivalent submit ignored when disabled; attributes (`name`, `autoComplete`, `spellCheck`, `autoCapitalize`); busy labels; disabled style. Covers: R15, R16, R17, R18, R25, R28, R29, R30.
-- [ ] T23 — RTL: admin create form and `AccountRow` rename/reset forms submit + autocomplete attributes. Covers: R19, R20, R21.
-- [ ] T24 — Implement in `LoginView.jsx`, `SetPasswordView.jsx`, `AdminAccountsView.jsx`, `AccountRow.jsx`, `controlStyles.primaryButtonStyle`; other buttons `type="button"`. Covers: R15-R21, R26, R27, R28, R29, R30.
+- [x] T19 — Test `handleFormSubmit`: preventDefault always; action only when allowed. Covers: R25, R26.
+- [x] T20 — Add `hooks/formSubmit.js`. Covers: R25, R26.
+- [x] T21 — Add `opacity.disabled` token and busy-label messages. Covers: R28, R29, R30, R38.
+- [x] T22 — RTL: login and set-password `<form>` submit calls handler; Enter-equivalent submit ignored when disabled; attributes (`name`, `autoComplete`, `spellCheck`, `autoCapitalize`); busy labels; disabled style. Covers: R15, R16, R17, R18, R25, R28, R29, R30.
+- [x] T23 — RTL: admin create form and `AccountRow` rename/reset forms submit + autocomplete attributes. Covers: R19, R20, R21.
+- [x] T24 — Implement in `LoginView.jsx`, `SetPasswordView.jsx`, `AdminAccountsView.jsx`, `AccountRow.jsx`, `controlStyles.primaryButtonStyle`; other buttons `type="button"`. Covers: R15-R21, R26, R27, R28, R29, R30.
 
 ## P1-H Native forms: shopping, rules, authoring
-- [ ] T25 — RTL: shopping item form, the 3 rules forms and the recipe authoring form each submit via `fireEvent.submit`; markup scan: every non-submit button in each form has `type="button"`. Covers: R22, R23, R24, R25, R27.
-- [ ] T26 — Wrap forms and fix button types in `ShoppingListView.jsx`, `RulesView.jsx`, `RecipeAuthoringForm.jsx`. Covers: R22, R23, R24, R27.
+- [x] T25 — RTL: shopping item form, the 3 rules forms and the recipe authoring form each submit via `fireEvent.submit`; markup scan: every non-submit button in each form has `type="button"`. Covers: R22, R23, R24, R25, R27.
+- [x] T26 — Wrap forms and fix button types in `ShoppingListView.jsx`, `RulesView.jsx`, `RecipeAuthoringForm.jsx`. Covers: R22, R23, R24, R27.
 
 ## P1-I In-flight guard
-- [ ] T27 — Hook test `usePendingGuard`: two same-tick `run('k')` -> one fn call; different keys independent; `isPending` true while running, false after reject. Covers: R31, R32.
-- [ ] T28 — Add `hooks/pendingGuard.js`. Covers: R31, R32.
-- [ ] T29 — Hook tests per hook (`useWeekPlanner`, `useLibrary`, `useShoppingList`, `useRules`, `useAdminAccounts`, `useRecipeAuthoring`): two rapid calls to each guarded action -> one `apiFetch`. Covers: R32.
-- [ ] T30 — Wire guard and expose `pending` in the six hooks. Covers: R31, R32.
-- [ ] T31 — RTL: trigger buttons disabled while pending. Wire `disabled={pending...}` in the views. Covers: R33.
+- [x] T27 — Hook test `usePendingGuard`: two same-tick `run('k')` -> one fn call; different keys independent; `isPending` true while running, false after reject. Covers: R31, R32.
+- [x] T28 — Add `hooks/pendingGuard.js`. Covers: R31, R32.
+- [x] T29 — Hook tests per hook (`useWeekPlanner`, `useLibrary`, `useShoppingList`, `useRules`, `useAdminAccounts`, `useRecipeAuthoring`): two rapid calls to each guarded action -> one `apiFetch`. Covers: R32.
+- [x] T30 — Wire guard and expose `pending` in the six hooks. Covers: R31, R32.
+- [x] T31 — RTL: trigger buttons disabled while pending. Wire `disabled={pending...}` in the views. Covers: R33.
 
 ## Close-out
-- [ ] T32 — Run full frontend suite; confirm `test_no_extra_accessibility` and `test_all_strings_from_messages` green; write the R -> test table in `progress/impl_frontend_ux_phase1.md`. Covers: R37, R38.
+- [x] T32 — Run full frontend suite; confirm `test_no_extra_accessibility` and `test_all_strings_from_messages` green; write the R -> test table in `progress/impl_frontend_ux_phase1.md`. Covers: R37, R38.

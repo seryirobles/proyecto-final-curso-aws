@@ -20,3 +20,24 @@ run, so overflow is verified by style assertions only. `layout.summaryDayMin`
 stays at the approved 140px, untuned.
 
 Update: Admin rename/reset failures now render a Banner at the top of the open AccountRow (owner ruling a); the view-level Banner is suppressed while a row form is open. Rules and the Admin create form keep the Banner below the heading (always-visible forms). This supersedes the Admin part of deviation 3.
+
+## Slices F-I (T14-T32)
+
+| R | Test |
+|---|---|
+| R10, R14 | tests/hooks/useScrollIntoView.test.js, tests/components/addFormsInView.test.jsx |
+| R11, R12, R13 | tests/components/addFormsInView.test.jsx |
+| R15-R21, R25, R28-R30 | tests/components/nativeForms.auth.test.jsx |
+| R22-R24, R27 | tests/components/nativeForms.content.test.jsx |
+| R25, R26 | tests/hooks/formSubmit.test.js |
+| R31, R32 | tests/hooks/pendingGuard.test.js, tests/hooks/pendingGuard.hooks.test.js |
+| R33 | tests/components/pendingDisabled.test.jsx |
+
+Notes: shopping/library scroll key is 'edit'|'new' (views get no edit id), so switching
+edit target without closing does not re-scroll. useScrollIntoView calls scrollIntoView
+optionally (jsdom lacks it). SAFE_ATTR_NAMES in test_all_strings_from_messages gained
+autoComplete and autoCapitalize. Library/Shopping remove and rule remove buttons: rule-row
+remove is not wired to pending. The AI generate button stays type="button" (not a save).
+Pin form includes the picker search input, so Enter there submits the pin form when valid.
+
+Review fixes (F-I): RecipeAuthoringForm submit/generate buttons now apply the shared `disabledStyle` when disabled (R30); RuleRow remove is disabled from `pending.has('remove:<ruleId>')` (R33, `computeRuleId` now exported from useRules.js); tests in pendingDisabled.test.jsx; this supersedes the "rule-row remove not wired" note above. NO_PENDING moved below the imports in ShoppingListView.jsx.

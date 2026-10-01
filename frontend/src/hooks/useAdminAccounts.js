@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiFetch, ApiError } from '../api/client.js';
 import { useConfirm } from './useConfirm.js';
+import { usePendingGuard } from './pendingGuard.js';
 import { MESSAGES } from '../messages/index.js';
 import { roleFromWire } from '../domain/wireCodes.js';
 
@@ -25,6 +26,7 @@ export function useAdminAccounts({ active = true } = {}) {
   const [accounts, setAccounts] = useState(null); // null = loading
   const [error, setError] = useState(null);
   const confirm = useConfirm();
+  const { run, pending } = usePendingGuard();
 
   const refetch = useCallback(async () => {
     try {
@@ -64,19 +66,21 @@ export function useAdminAccounts({ active = true } = {}) {
 
   const create = useCallback(async () => {
     if (!canCreate) return;
-    try {
-      await apiFetch(USERS_URL, {
-        method: 'POST',
-        body: { username: newUsername, temporaryPassword: newTemporaryPassword },
-      });
-      setNewUsername('');
-      setNewTemporaryPassword('');
-      setError(null);
-      await refetch();
-    } catch (err) {
-      setError(toDetail(err));
-    }
-  }, [canCreate, newUsername, newTemporaryPassword, refetch]);
+    await run('create', async () => {
+      try {
+        await apiFetch(USERS_URL, {
+          method: 'POST',
+          body: { username: newUsername, temporaryPassword: newTemporaryPassword },
+        });
+        setNewUsername('');
+        setNewTemporaryPassword('');
+        setError(null);
+        await refetch();
+      } catch (err) {
+        setError(toDetail(err));
+      }
+    });
+  }, [canCreate, newUsername, newTemporaryPassword, refetch, run]);
 
   // One row open for rename/reset at a time, same "single shared form" idiom
   // as useShoppingList.js's editingItem/draft.
@@ -90,18 +94,20 @@ export function useAdminAccounts({ active = true } = {}) {
   const canSaveRename = renameDraft !== '';
   const saveRename = useCallback(async () => {
     if (!canSaveRename) return;
-    try {
-      await apiFetch(`${USERS_URL}/${renamingId}`, {
-        method: 'PATCH',
-        body: { username: renameDraft },
-      });
-      setRenamingId(null);
-      setError(null);
-      await refetch();
-    } catch (err) {
-      setError(toDetail(err));
-    }
-  }, [canSaveRename, renamingId, renameDraft, refetch]);
+    await run('saveRename', async () => {
+      try {
+        await apiFetch(`${USERS_URL}/${renamingId}`, {
+          method: 'PATCH',
+          body: { username: renameDraft },
+        });
+        setRenamingId(null);
+        setError(null);
+        await refetch();
+      } catch (err) {
+        setError(toDetail(err));
+      }
+    });
+  }, [canSaveRename, renamingId, renameDraft, refetch, run]);
 
   const [resettingId, setResettingId] = useState(null);
   const [resetDraft, setResetDraft] = useState('');
@@ -115,38 +121,46 @@ export function useAdminAccounts({ active = true } = {}) {
     if (!canSaveReset) return;
     const userId = resettingId;
     const temporaryPassword = resetDraft;
-    confirm.requestConfirm(MESSAGES.ADMIN_ACCOUNTS_CONFIRM_RESET, async () => {
-      // R18
-      try {
-        await apiFetch(`${USERS_URL}/${userId}`, { method: 'PATCH', body: { temporaryPassword } });
-        setResettingId(null);
-        setError(null);
-        await refetch();
-      } catch (err) {
-        setError(toDetail(err));
-      }
-    });
-  }, [canSaveReset, resettingId, resetDraft, confirm, refetch]);
-
-  const remove = useCallback(
-    (account) => {
-      confirm.requestConfirm(MESSAGES.ADMIN_ACCOUNTS_CONFIRM_REMOVE, async () => {
+    confirm.requestConfirm(MESSAGES.ADMIN_ACCOUNTS_CONFIRM_RESET, () =>
+      run('saveReset', async () => {
         // R18
         try {
-          await apiFetch(`${USERS_URL}/${account.userId}`, { method: 'DELETE' });
+          await apiFetch(`${USERS_URL}/${userId}`, {
+            method: 'PATCH',
+            body: { temporaryPassword },
+          });
+          setResettingId(null);
           setError(null);
           await refetch();
         } catch (err) {
           setError(toDetail(err));
         }
-      });
+      }),
+    );
+  }, [canSaveReset, resettingId, resetDraft, confirm, refetch, run]);
+
+  const remove = useCallback(
+    (account) => {
+      confirm.requestConfirm(MESSAGES.ADMIN_ACCOUNTS_CONFIRM_REMOVE, () =>
+        run(`remove:${account.userId}`, async () => {
+          // R18
+          try {
+            await apiFetch(`${USERS_URL}/${account.userId}`, { method: 'DELETE' });
+            setError(null);
+            await refetch();
+          } catch (err) {
+            setError(toDetail(err));
+          }
+        }),
+      );
     },
-    [confirm, refetch],
+    [confirm, refetch, run],
   );
 
   return {
     accounts: accounts ?? [],
     isLoading: accounts === null,
+    pending,
     error,
     confirm,
     newUsername,
