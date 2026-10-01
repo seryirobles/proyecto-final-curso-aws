@@ -16,6 +16,7 @@ import { ConfirmDialog } from './ConfirmDialog.jsx';
 import { RecipeDetailView } from './RecipeDetailView.jsx';
 import { RecipeAuthoringForm } from './RecipeAuthoringForm.jsx';
 import { LibraryFilters } from './LibraryFilters.jsx';
+import { Banner } from './Banner.jsx';
 
 function EditIcon() {
   return (
@@ -106,19 +107,7 @@ export function LibraryView({
       >
         {MESSAGES.LIBRARY_VIEW_TITLE}
       </h2>
-      {error ? (
-        <p
-          style={{
-            color: tokens.color.honey,
-            backgroundColor: tokens.color.honeySoft,
-            borderRadius: tokens.radius.sm,
-            padding: tokens.space.md,
-            marginTop: tokens.space.sm,
-          }}
-        >
-          {error}
-        </p>
-      ) : null}
+      {!isAuthoringOpen ? <Banner>{error}</Banner> : null}
 
       <div style={{ marginTop: tokens.space.md }}>
         <LibraryFilters filters={filters} setName={setName} setCategory={setCategory} />
@@ -204,6 +193,7 @@ export function LibraryView({
 
       {isAuthoringOpen ? (
         <div>
+          <Banner>{error}</Banner>
           <RecipeAuthoringForm {...authoring} />
           <button
             type="button"

@@ -9,10 +9,14 @@
  * without a size per component.
  */
 
+// 16px keeps iOS Safari from zooming on focus (frontend_ux_phase1 R7).
+const BODY_SIZE = '16px';
+
 export const FONT_SIZE = {
   xs: '12px',
   sm: '14px',
-  md: '16px',
+  md: BODY_SIZE,
+  input: BODY_SIZE,
   lg: '20px',
   xl: '25px',
   xxl: '31px',

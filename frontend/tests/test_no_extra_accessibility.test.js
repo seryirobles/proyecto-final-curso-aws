@@ -1,6 +1,6 @@
 // R22, design.md section 9 (mirrors backend/core/tests/test_no_ambient_time.py's
-// technique): frontend/src/**/*.jsx source text may carry no aria-* attribute,
-// no explicit role="...", no tabIndex, and no accessibility-library import.
+// technique): frontend/src/**/*.jsx may carry no aria-* attribute, no tabIndex,
+// no a11y-library import and no role other than status/alert (G-93, R37).
 
 import { describe, expect, it } from 'vitest';
 import { readdirSync, readFileSync } from 'node:fs';
@@ -11,7 +11,7 @@ const TESTS_ROOT = dirname(fileURLToPath(import.meta.url));
 const SRC_DIR = join(TESTS_ROOT, '..', 'src');
 
 const ARIA_ATTR = /\baria-[a-zA-Z-]+\s*=/;
-const ROLE_ATTR = /\brole\s*=\s*["']/;
+const ROLE_ATTR = /\brole\s*=(?!=)\s*(?!["'](?:status|alert)["'])/;
 const TAB_INDEX = /\btabIndex\s*=/;
 const A11Y_IMPORT = /from\s*['"][^'"]*(aria|axe|a11y)[^'"]*['"]/i;
 
@@ -32,6 +32,10 @@ describe('no extra accessibility', () => {
   it('the banned patterns detect what they claim to', () => {
     expect(ARIA_ATTR.test('<div aria-label="x">')).toBe(true);
     expect(ROLE_ATTR.test('<div role="button">')).toBe(true);
+    expect(ROLE_ATTR.test('<div role={x}>')).toBe(true);
+    expect(ROLE_ATTR.test('<div role="status">')).toBe(false);
+    expect(ROLE_ATTR.test('<div role="alert">')).toBe(false);
+    expect(ROLE_ATTR.test("session.role === 'Admin'")).toBe(false);
     expect(TAB_INDEX.test('<div tabIndex={0}>')).toBe(true);
     expect(A11Y_IMPORT.test("import { axe } from '@axe-core/react';")).toBe(true);
     expect(A11Y_IMPORT.test("import { render } from '@testing-library/react';")).toBe(false);

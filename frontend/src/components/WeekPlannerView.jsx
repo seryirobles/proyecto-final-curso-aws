@@ -12,6 +12,7 @@ import { RecipeDetailView } from './RecipeDetailView.jsx';
 import { ConfirmDialog } from './ConfirmDialog.jsx';
 import { LoadingState } from './LoadingState.jsx';
 import { CandidateAuthoring } from './CandidateAuthoring.jsx';
+import { Banner } from './Banner.jsx';
 
 export function WeekPlannerView({
   liveWeeks,
@@ -41,18 +42,7 @@ export function WeekPlannerView({
 
   return (
     <div>
-      {error ? (
-        <p
-          style={{
-            color: tokens.color.honey,
-            backgroundColor: tokens.color.honeySoft,
-            borderRadius: tokens.radius.sm,
-            padding: tokens.space.md,
-          }}
-        >
-          {error}
-        </p>
-      ) : null}
+      {!authoringTarget && !editingTarget ? <Banner>{error}</Banner> : null}
       <WeekSwitcher liveWeeks={liveWeeks} designation={designation} onSwitch={switchWeek} />
       <div
         style={{
@@ -76,6 +66,7 @@ export function WeekPlannerView({
           />
         ))}
       </div>
+      {authoringTarget || editingTarget ? <Banner>{error}</Banner> : null}
       {authoringTarget ? (
         <CandidateAuthoring
           onSubmit={submitCandidate}

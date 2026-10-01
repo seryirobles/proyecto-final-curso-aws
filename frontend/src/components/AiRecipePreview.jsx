@@ -50,7 +50,14 @@ export function AiRecipePreview({ recipe, onAccept, onDiscard, onRegenerate }) {
         </div>
       ))}
 
-      <div style={{ display: 'flex', gap: tokens.space.sm, marginTop: tokens.space.md }}>
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: tokens.space.sm,
+          marginTop: tokens.space.md,
+        }}
+      >
         <button type="button" onClick={onAccept} style={primaryButtonStyle(false)}>
           {MESSAGES.AI_ACCEPT}
         </button>

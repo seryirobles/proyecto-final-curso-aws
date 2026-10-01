@@ -5,27 +5,30 @@ Sequential slices; each ends with `npm test` green (incl. `test_no_extra_accessi
 Tests first within each slice.
 
 ## P1-A Focus ring
-- [ ] T1 — Add `tests/test_no_outline_override.test.js` (source scan + detector self-test). Covers: R1.
-- [ ] T2 — Remove `outline: 'none'` from `tokens/controlStyles.js` and `LibraryFilters.jsx`. Covers: R1.
+- [x] T1 — Add `tests/test_no_outline_override.test.js` (source scan + detector self-test). Covers: R1.
+- [x] T2 — Remove `outline: 'none'` from `tokens/controlStyles.js` and `LibraryFilters.jsx`. Covers: R1.
 
 ## P1-B Quantity format
-- [ ] T3 — RTL test: quantity 0.5 renders "0,5". Covers: R2.
-- [ ] T4 — `ShoppingListView.jsx`: render `formatNumber(item.quantity)`. Covers: R2.
+- [x] T3 — RTL test: quantity 0.5 renders "0,5". Covers: R2.
+- [x] T4 — `ShoppingListView.jsx`: render `formatNumber(item.quantity)`. Covers: R2.
 
 ## P1-C Wrap and overflow
-- [ ] T5 — Add `layout.summaryDayMin` token, export via `tokens/index.js`. Covers: R4.
-- [ ] T6 — Style tests (`toHaveStyle`): nav `flexWrap`, summary `auto-fill` grid, each R5 row `flexWrap`, inputs `boxSizing`. Covers: R3, R4, R5, R6.
-- [ ] T7 — Apply wrap/grid/boxSizing changes in `App.jsx`, `SummaryView.jsx`, `RecipeAuthoringForm.jsx`, `RulesView.jsx`, `AdminAccountsView.jsx`, `AccountRow.jsx`, `ShoppingListView.jsx`, `AiRecipePreview.jsx`, `controlStyles.js`, `LoginView.jsx`, `SetPasswordView.jsx`. Covers: R3, R4, R5, R6.
+- [x] T5 — Add `layout.summaryDayMin` token, export via `tokens/index.js`. Covers: R4.
+- [x] T6 — Style tests (`toHaveStyle`): nav `flexWrap`, summary `auto-fill` grid, each R5 row `flexWrap`, inputs `boxSizing`. Covers: R3, R4, R5, R6.
+- [x] T7 — Apply wrap/grid/boxSizing changes in `App.jsx`, `SummaryView.jsx`, `RecipeAuthoringForm.jsx`, `RulesView.jsx`, `AdminAccountsView.jsx`, `AccountRow.jsx`, `ShoppingListView.jsx`, `AiRecipePreview.jsx`, `controlStyles.js`, `LoginView.jsx`, `SetPasswordView.jsx`. Covers: R3, R4, R5, R6.
 - [ ] T8 — Manual check 375/768/1440 px, record in `progress/impl_frontend_ux_phase1.md`. Covers: R3, R4, R5.
 
 ## P1-D Mobile input ergonomics
-- [ ] T9 — Add `fontSize.input` token; add label messages in `es-ES.js`. Covers: R7, R9, R38.
-- [ ] T10 — Tests: input `fontSize`; clicking item text toggles checkbox; `getByLabelText` finds ingredient name/qty, tool, step. Covers: R7, R8, R9.
-- [ ] T11 — Apply font size in `controlStyles.js`, `LibraryFilters.jsx`, `RecipeAuthoringForm.jsx`, auth inputs; `<label>`-wrap shopping rows; label the authoring inputs. Covers: R7, R8, R9.
+- [x] T9 — Add `fontSize.input` token; add label messages in `es-ES.js`. Covers: R7, R9, R38.
+- [x] T10 — Tests: input `fontSize`; clicking item text toggles checkbox; `getByLabelText` finds ingredient name/qty, tool, step. Covers: R7, R8, R9.
+- [x] T11 — Apply font size in `controlStyles.js`, `LibraryFilters.jsx`, `RecipeAuthoringForm.jsx`, auth inputs; `<label>`-wrap shopping rows; label the authoring inputs. Covers: R7, R8, R9.
 
 ## P1-E Banner
-- [ ] T12 — Test `Banner` (null when empty; ink/honeySoft/honey style) and per-view test that each error renders inside it, none when no error. Covers: R34, R35, R36.
-- [ ] T13 — Add `components/Banner.jsx`; replace the error `<p>` in the 8 views. Covers: R34, R35, R36.
+- [x] T12a — Vitest contrast test: compute the WCAG ratio of `tokens.color.ink` on `tokens.color.honeySoft` from `colors.js`; assert >= 4.5 (and ~11.03). Covers: R35.
+- [x] T12b — RTL `Banner` tests: `getByRole('alert')` for error tone with "Error:" prefix from catalogue and `borderLeft` honey 4px; `getByRole('status')` for result tone; renders nothing (`queryByRole` null) with no children. Covers: R34, R39, R41, R43.
+- [x] T12c — Per-view RTL (8 views): force the hook's `error`, assert `getByRole('alert')` contains the catalogue text, sits before the form (Week/Library/Shopping/Admin/Rules with a form open) or after the h2 (Summary), above the submit button (Login/Set-password); no `alert` when no error. Covers: R34, R36, R40, R42, R43.
+- [x] T13 — Add `components/Banner.jsx` and `ERROR_PREFIX` to `es-ES.js`; replace the six plain and two honey error renderings listed in R42. Covers: R34, R35, R36, R39, R40, R41, R42, R43.
+- [x] T13b — Narrow `tests/test_no_extra_accessibility.test.js` to allow only `role="status"|"alert"` (aria-*, tabIndex, a11y imports stay banned; update the detector self-test). Covers: R37.
 
 ## P1-F Add forms in view
 - [ ] T14 — Add title messages to `es-ES.js`. Covers: R11, R12, R13, R38.

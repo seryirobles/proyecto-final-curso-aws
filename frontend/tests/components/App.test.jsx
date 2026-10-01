@@ -109,6 +109,15 @@ describe('App', () => {
     }
   });
 
+  it('lays the navigation pills out in a wrapping flex row (R3)', () => {
+    stubHooks();
+    render(<App />);
+
+    const nav = screen.getByText(MESSAGES.NAV_WEEK).parentElement;
+    expect(nav.style.display).toBe('flex');
+    expect(nav.style.flexWrap).toBe('wrap');
+  });
+
   it('renders the connection-lost banner when the ACTIVE view reports connectionLost (FR-RT-03)', () => {
     stubHooks({ connectionLost: { week: true } });
     render(<App />);

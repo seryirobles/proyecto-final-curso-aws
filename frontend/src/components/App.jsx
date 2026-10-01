@@ -139,7 +139,14 @@ export function App() {
             {MESSAGES.APP_LOGOUT}
           </button>
         </div>
-        <nav style={{ display: 'flex', gap: tokens.space.sm, padding: tokens.space.md }}>
+        <nav
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: tokens.space.sm,
+            padding: tokens.space.md,
+          }}
+        >
           {navItems.map((item) => (
             <button
               key={item.view}

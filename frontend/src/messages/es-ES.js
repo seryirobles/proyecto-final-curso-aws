@@ -11,6 +11,7 @@ export const MESSAGES = {
 
   // Shared infrastructure (feature 20 T1-T13)
   GENERIC_ERROR: 'Se ha producido un error inesperado. Inténtalo de nuevo más tarde.',
+  ERROR_PREFIX: 'Error:',
   CONFIRM_DIALOG_CONFIRM: 'Confirmar',
   CONFIRM_DIALOG_CANCEL: 'Cancelar',
   LOADING_STATE_DEFAULT: 'Cargando…',
@@ -54,6 +55,8 @@ export const MESSAGES = {
   RECIPE_AUTHORING_INGREDIENTS_LABEL: 'Ingredientes',
   RECIPE_AUTHORING_INGREDIENT_NAME_LABEL: 'Nombre del ingrediente',
   RECIPE_AUTHORING_INGREDIENT_QUANTITY_LABEL: 'Cantidad',
+  RECIPE_AUTHORING_TOOL_LABEL: 'Utensilio',
+  RECIPE_AUTHORING_STEP_LABEL: 'Paso',
   // Issue negative-ingredient-quantity, E5/E11: non-blank, non-positive value.
   RECIPE_AUTHORING_INVALID_QUANTITY: 'La cantidad del ingrediente debe ser mayor que cero.',
   RECIPE_AUTHORING_INVALID_SERVINGS: 'El número de comensales debe ser mayor que cero.',

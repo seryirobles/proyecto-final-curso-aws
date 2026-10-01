@@ -5,6 +5,7 @@ import { BREAKPOINT } from './breakpoints.js';
 import { FONT_FAMILY } from './fontFamily.js';
 import { RADIUS } from './borderRadius.js';
 import { SHADOW } from './shadow.js';
+import { LAYOUT } from './layout.js';
 
 /**
  * Single design-tokens module (docs/conventions.md section "Styling: inline
@@ -19,4 +20,5 @@ export const tokens = {
   fontFamily: FONT_FAMILY,
   radius: RADIUS,
   shadow: SHADOW,
+  layout: LAYOUT,
 };

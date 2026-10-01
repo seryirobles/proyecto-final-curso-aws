@@ -54,13 +54,17 @@ const fieldLabelStyle = {
 };
 
 const fieldInputStyle = {
+  boxSizing: 'border-box',
   border: `1px solid ${tokens.color.line2}`,
   backgroundColor: tokens.color.surface2,
   borderRadius: tokens.radius.sm,
   padding: `${tokens.space.xs} ${tokens.space.sm}`,
   color: tokens.color.ink,
-  fontSize: tokens.fontSize.sm,
+  fontSize: tokens.fontSize.input,
 };
+
+// Per-row labels: same look as fieldLabelStyle without the stacked margin.
+const rowFieldLabelStyle = { ...fieldLabelStyle, marginBottom: tokens.space.none };
 
 const sectionHeaderStyle = {
   margin: `${tokens.space.md} 0 ${tokens.space.sm}`,
@@ -174,23 +178,34 @@ function ScratchFields({
       {form.ingredients.map((ingredient, index) => (
         <div
           key={index}
-          style={{ display: 'flex', gap: tokens.space.sm, marginBottom: tokens.space.xs }}
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: tokens.space.sm,
+            marginBottom: tokens.space.xs,
+          }}
         >
-          <input
-            type="text"
-            placeholder={MESSAGES.RECIPE_AUTHORING_INGREDIENT_NAME_LABEL}
-            value={ingredient.name}
-            onChange={(e) => updateIngredient(index, 'name', e.target.value)}
-            style={fieldInputStyle}
-          />
-          <input
-            type="number"
-            placeholder={MESSAGES.RECIPE_AUTHORING_INGREDIENT_QUANTITY_LABEL}
-            value={ingredient.quantity}
-            min="0"
-            onChange={(e) => updateIngredient(index, 'quantity', e.target.value)}
-            style={{ ...fieldInputStyle, width: '80px' }}
-          />
+          <label style={rowFieldLabelStyle}>
+            {MESSAGES.RECIPE_AUTHORING_INGREDIENT_NAME_LABEL}
+            <input
+              type="text"
+              placeholder={MESSAGES.RECIPE_AUTHORING_INGREDIENT_NAME_LABEL}
+              value={ingredient.name}
+              onChange={(e) => updateIngredient(index, 'name', e.target.value)}
+              style={fieldInputStyle}
+            />
+          </label>
+          <label style={rowFieldLabelStyle}>
+            {MESSAGES.RECIPE_AUTHORING_INGREDIENT_QUANTITY_LABEL}
+            <input
+              type="number"
+              placeholder={MESSAGES.RECIPE_AUTHORING_INGREDIENT_QUANTITY_LABEL}
+              value={ingredient.quantity}
+              min="0"
+              onChange={(e) => updateIngredient(index, 'quantity', e.target.value)}
+              style={{ ...fieldInputStyle, width: '80px' }}
+            />
+          </label>
           {/* Issue negative-ingredient-quantity, E5 - non-blank, <= 0 (Part H). */}
           {ingredient.quantity !== '' && Number(ingredient.quantity) <= 0 ? (
             <span style={{ color: tokens.color.honey, fontSize: tokens.fontSize.xs }}>
@@ -229,14 +244,22 @@ function ScratchFields({
       {form.tools.map((tool, index) => (
         <div
           key={index}
-          style={{ display: 'flex', gap: tokens.space.sm, marginBottom: tokens.space.xs }}
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: tokens.space.sm,
+            marginBottom: tokens.space.xs,
+          }}
         >
-          <input
-            type="text"
-            value={tool}
-            onChange={(e) => updateTool(index, e.target.value)}
-            style={fieldInputStyle}
-          />
+          <label style={rowFieldLabelStyle}>
+            {MESSAGES.RECIPE_AUTHORING_TOOL_LABEL}
+            <input
+              type="text"
+              value={tool}
+              onChange={(e) => updateTool(index, e.target.value)}
+              style={fieldInputStyle}
+            />
+          </label>
           <button type="button" onClick={() => removeTool(index)} style={rowButtonStyle}>
             {MESSAGES.RECIPE_AUTHORING_REMOVE_TOOL}
           </button>
@@ -255,14 +278,22 @@ function ScratchFields({
       {form.procedure.map((step, index) => (
         <div
           key={index}
-          style={{ display: 'flex', gap: tokens.space.sm, marginBottom: tokens.space.xs }}
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: tokens.space.sm,
+            marginBottom: tokens.space.xs,
+          }}
         >
-          <input
-            type="text"
-            value={step}
-            onChange={(e) => updateProcedureStep(index, e.target.value)}
-            style={fieldInputStyle}
-          />
+          <label style={rowFieldLabelStyle}>
+            {MESSAGES.RECIPE_AUTHORING_STEP_LABEL}
+            <input
+              type="text"
+              value={step}
+              onChange={(e) => updateProcedureStep(index, e.target.value)}
+              style={fieldInputStyle}
+            />
+          </label>
           <button type="button" onClick={() => removeProcedureStep(index)} style={rowButtonStyle}>
             {MESSAGES.RECIPE_AUTHORING_REMOVE_STEP}
           </button>
@@ -395,7 +426,14 @@ export function RecipeAuthoringForm(props) {
         boxShadow: tokens.shadow.sm,
       }}
     >
-      <div style={{ display: 'flex', gap: tokens.space.sm, marginBottom: tokens.space.md }}>
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: tokens.space.sm,
+          marginBottom: tokens.space.md,
+        }}
+      >
         {methods.map((m) => (
           <button
             key={m}

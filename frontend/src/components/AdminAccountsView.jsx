@@ -14,6 +14,7 @@ import { EmptyState } from './EmptyState.jsx';
 import { LoadingState } from './LoadingState.jsx';
 import { ConfirmDialog } from './ConfirmDialog.jsx';
 import { AccountRow } from './AccountRow.jsx';
+import { Banner } from './Banner.jsx';
 
 export function AdminAccountsView({
   accounts,
@@ -45,6 +46,8 @@ export function AdminAccountsView({
 }) {
   if (isLoading) return <LoadingState />;
 
+  const isRowFormOpen = renamingId != null || resettingId != null;
+
   return (
     <div>
       <h2
@@ -56,12 +59,13 @@ export function AdminAccountsView({
       >
         {MESSAGES.ADMIN_ACCOUNTS_VIEW_TITLE}
       </h2>
-      {error ? <p style={{ color: tokens.color.ink, padding: tokens.space.md }}>{error}</p> : null}
+      {!isRowFormOpen ? <Banner>{error}</Banner> : null}
 
       <div
         style={{
           ...cardStyle,
           display: 'flex',
+          flexWrap: 'wrap',
           gap: tokens.space.sm,
         }}
       >
@@ -125,6 +129,7 @@ export function AdminAccountsView({
               onSaveReset={saveReset}
               onCancelReset={cancelReset}
               onRemove={() => remove(account)}
+              error={error}
             />
           ))}
         </ul>

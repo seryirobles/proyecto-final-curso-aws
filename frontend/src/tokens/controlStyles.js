@@ -12,8 +12,9 @@ export const selectStyle = {
   borderRadius: tokens.radius.sm,
   padding: `${tokens.space.xs} ${tokens.space.sm}`,
   fontWeight: 600,
+  boxSizing: 'border-box',
+  fontSize: tokens.fontSize.input,
   color: tokens.color.ink,
-  outline: 'none',
 };
 
 export const inputStyle = selectStyle;

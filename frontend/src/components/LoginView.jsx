@@ -4,6 +4,7 @@
 
 import { tokens } from '../tokens/index.js';
 import { MESSAGES } from '../messages/index.js';
+import { Banner } from './Banner.jsx';
 
 function pageStyle() {
   return {
@@ -73,11 +74,13 @@ function fieldLabelStyle() {
 function inputStyle() {
   return {
     width: '100%',
+    boxSizing: 'border-box',
     border: `1px solid ${tokens.color.line2}`,
     backgroundColor: tokens.color.surface2,
     borderRadius: tokens.radius.sm,
     padding: tokens.space.sm,
     color: tokens.color.ink,
+    fontSize: tokens.fontSize.input,
     fontFamily: tokens.fontFamily.body,
   };
 }
@@ -123,7 +126,6 @@ export function LoginView({
       <div style={cardStyle()}>
         <div style={badgeStyle()}>{MESSAGES.APP_TITLE.charAt(0)}</div>
         <h2 style={titleStyle()}>{MESSAGES.LOGIN_VIEW_TITLE}</h2>
-        {error ? <p style={{ color: tokens.color.ink }}>{error}</p> : null}
         <label style={{ display: 'block', marginTop: tokens.space.md }}>
           <span style={fieldLabelStyle()}>{MESSAGES.LOGIN_USERNAME_LABEL}</span>
           <input
@@ -142,6 +144,7 @@ export function LoginView({
             style={inputStyle()}
           />
         </label>
+        <Banner>{error}</Banner>
         <button
           type="button"
           onClick={submit}

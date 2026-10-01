@@ -5,6 +5,7 @@
 import { tokens } from '../tokens/index.js';
 import { MESSAGES } from '../messages/index.js';
 import { UNIT_LABELS } from '../domain/labels.js';
+import { formatNumber } from '../locale.js';
 import {
   selectStyle,
   inputStyle,
@@ -20,6 +21,7 @@ import { EmptyState } from './EmptyState.jsx';
 import { LoadingState } from './LoadingState.jsx';
 import { ConfirmDialog } from './ConfirmDialog.jsx';
 import { WeekLabel } from './WeekLabel.jsx';
+import { Banner } from './Banner.jsx';
 
 function ItemRow({ item, onToggle, onEdit, onRemove }) {
   return (
@@ -29,14 +31,16 @@ function ItemRow({ item, onToggle, onEdit, onRemove }) {
         ...(item.checked ? { color: tokens.color.ink3, textDecoration: 'line-through' } : null),
       }}
     >
-      <input
-        type="checkbox"
-        checked={item.checked}
-        onChange={() => onToggle(item, !item.checked)}
-      />
-      <span style={{ flex: 1 }}>
-        {item.name} · {item.quantity} {UNIT_LABELS[item.unit] ?? item.unit}
-      </span>
+      <label style={{ flex: 1, display: 'flex', alignItems: 'center', gap: tokens.space.sm }}>
+        <input
+          type="checkbox"
+          checked={item.checked}
+          onChange={() => onToggle(item, !item.checked)}
+        />
+        <span>
+          {item.name} · {formatNumber(item.quantity)} {UNIT_LABELS[item.unit] ?? item.unit}
+        </span>
+      </label>
       {!item.checked ? (
         <button type="button" onClick={() => onEdit(item)} style={ghostButtonStyle}>
           {MESSAGES.SHOPPING_LIST_EDIT}
@@ -53,7 +57,7 @@ const sectionCardStyle = { ...cardStyle, marginTop: tokens.space.md };
 
 function ResyncScope({ liveWeeks, isResyncing, resync }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: tokens.space.sm }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: tokens.space.sm }}>
       <span>{MESSAGES.SHOPPING_LIST_RESYNC_SCOPE_LABEL}</span>
       {liveWeeks ? (
         <>
@@ -181,7 +185,7 @@ export function ShoppingListView({
       >
         {MESSAGES.SHOPPING_LIST_VIEW_TITLE}
       </h2>
-      {error ? <p style={{ color: tokens.color.ink, padding: tokens.space.md }}>{error}</p> : null}
+      {!isFormOpen ? <Banner>{error}</Banner> : null}
 
       <ResyncScope liveWeeks={liveWeeks} isResyncing={isResyncing} resync={resync} />
 
@@ -229,6 +233,7 @@ export function ShoppingListView({
         </>
       )}
 
+      {isFormOpen ? <Banner>{error}</Banner> : null}
       {isFormOpen ? (
         <ItemForm
           isEditing={isEditing}

@@ -20,6 +20,7 @@ import { EmptyState } from './EmptyState.jsx';
 import { LoadingState } from './LoadingState.jsx';
 import { ConfirmDialog } from './ConfirmDialog.jsx';
 import { LibraryRecipePicker } from './LibraryRecipePicker.jsx';
+import { Banner } from './Banner.jsx';
 
 function RuleRow({ label, onRemove }) {
   return (
@@ -95,7 +96,7 @@ export function RulesView({
       >
         {MESSAGES.RULES_VIEW_TITLE}
       </h2>
-      {error ? <p style={{ color: tokens.color.ink, padding: tokens.space.md }}>{error}</p> : null}
+      <Banner>{error}</Banner>
 
       {isEmpty ? <EmptyState message={MESSAGES.RULES_VIEW_EMPTY} /> : null}
 
@@ -114,7 +115,14 @@ export function RulesView({
             ))}
           </ul>
         ) : null}
-        <div style={{ display: 'flex', gap: tokens.space.sm, marginTop: tokens.space.sm }}>
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: tokens.space.sm,
+            marginTop: tokens.space.sm,
+          }}
+        >
           <label>
             {MESSAGES.RULES_CATEGORY_LABEL}
             <select
@@ -171,7 +179,14 @@ export function RulesView({
             ))}
           </ul>
         ) : null}
-        <div style={{ display: 'flex', gap: tokens.space.sm, marginTop: tokens.space.sm }}>
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: tokens.space.sm,
+            marginTop: tokens.space.sm,
+          }}
+        >
           <label>
             {MESSAGES.RULES_DAY_LABEL}
             <select
@@ -229,7 +244,14 @@ export function RulesView({
             ))}
           </ul>
         ) : null}
-        <div style={{ display: 'flex', gap: tokens.space.sm, marginTop: tokens.space.sm }}>
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: tokens.space.sm,
+            marginTop: tokens.space.sm,
+          }}
+        >
           <label>
             {MESSAGES.RULES_DAY_LABEL}
             <select

@@ -12,6 +12,7 @@ import {
   ghostButtonStyle,
   cardStyle,
 } from '../tokens/controlStyles.js';
+import { Banner } from './Banner.jsx';
 
 // T92 (design.md 10.6): avatar-circle (initials, no image dependency) plus
 // role/status pill badges. Purely presentational - the R36/R37 gating below
@@ -46,6 +47,7 @@ export function AccountRow({
   onSaveReset,
   onCancelReset,
   onRemove,
+  error = null,
 }) {
   // R37, fail-closed (fix round 1 finding 1): unknown actingUserId hides
   // reset on every row rather than showing it on every row.
@@ -57,10 +59,16 @@ export function AccountRow({
       style={{
         ...cardStyle,
         display: 'flex',
+        flexWrap: 'wrap',
         alignItems: 'center',
         gap: tokens.space.sm,
       }}
     >
+      {isRenaming || isResetting ? (
+        <div style={{ flexBasis: '100%' }}>
+          <Banner>{error}</Banner>
+        </div>
+      ) : null}
       <span
         style={{
           display: 'inline-flex',

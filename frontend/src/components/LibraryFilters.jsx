@@ -48,21 +48,22 @@ const filterLabelTextStyle = {
 };
 
 const searchInputStyle = {
+  boxSizing: 'border-box',
   border: 'none',
   backgroundColor: 'transparent',
-  outline: 'none',
   flex: '1',
   color: tokens.color.ink,
-  fontSize: tokens.fontSize.sm,
+  fontSize: tokens.fontSize.input,
 };
 
 const categorySelectStyle = {
+  boxSizing: 'border-box',
   border: `1px solid ${tokens.color.line}`,
   backgroundColor: tokens.color.surface2,
   color: tokens.color.ink2,
   borderRadius: tokens.radius.pill,
   padding: `${tokens.space.xs} ${tokens.space.sm}`,
-  fontSize: tokens.fontSize.xs,
+  fontSize: tokens.fontSize.input,
   fontWeight: 700,
 };
 
