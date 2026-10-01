@@ -424,3 +424,4 @@ Safari + Chrome Android, keyboard-only, and 200 % zoom / 320 px reflow.
 - **Q3:** mobile nav = bottom tab bar. **Q4:** mobile week = day strip with scroll-to-day. **Q5:** yes, view synced to URL hash (History API, no router lib). **Q6:** yes, add a `danger` colour token.
 - **Q7:** accepted — strict 7-column week at ≥1280 px, fluid 4 + 3 at 768–1279 px, day strip below 768 px.
 - **Q2 written 2026-10-01:** `docs/gaps_and_resolutions.md` Part AC / G-93; `FR-UX-07` amended (struck through). Implementer must narrow `frontend/tests/test_no_extra_accessibility.test.js` and refresh `specs/frontend_spa/`.
+- **Spec approved 2026-10-01** (`specs/frontend_ux_phase1/`, feature 31). Error placement: per form in phase 1; **per-field errors = later phase** (needs per-field hook state in each view's hook).

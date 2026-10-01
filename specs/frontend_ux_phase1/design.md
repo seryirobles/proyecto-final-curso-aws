@@ -15,7 +15,7 @@ Plan ids are the audit's (`plan.md` §e). Slices ship **sequentially** (shared
 | P1-B Quantity format | F15 | R2 | S4 (part) |
 | P1-C Wrap and overflow | F02 F03 F05 F06 F07 | R3-R6 | S6 |
 | P1-D Mobile input ergonomics | F18 F19 F20 | R7-R9 | S7 (part) / S18 (part) |
-| P1-E Banner | F12 F13 | R34-R36 | S5 |
+| P1-E Banner | F12 F13 | R34-R36, R39-R43 | S5 |
 | P1-F Add forms in view | F01 | R10-R14 | S13 (without `<dialog>`) |
 | P1-G Native forms: auth + admin | F08 F09 F10 (auth) | R15-R21, R25-R30 | S8 |
 | P1-H Native forms: shopping, rules, authoring | F08 | R22-R24, R25-R27 | S9 |
@@ -45,7 +45,11 @@ New token: `tokens/spacing.js` (or new `tokens/layout.js`, exported via `tokens/
 
 **P1-D** `tokens/typography.js`: add `fontSize.input = '16px'` (same value as `fontSize.md` if that is 16 px; alias, not literal). Used in `controlStyles.js`, `LibraryFilters.jsx` (l.56, 65), `RecipeAuthoringForm.jsx` (l.62), auth inputs. `ShoppingListView.jsx` rows 32-36: `<label>` wrapping checkbox + name. `RecipeAuthoringForm.jsx`: visible `<label>` around ingredient name, quantity, tool, step inputs; texts in `messages/es-ES.js` (`INGREDIENT_NAME_LABEL`, `INGREDIENT_QUANTITY_LABEL`, `TOOL_LABEL`, `STEP_LABEL`). Placeholders stay. Visible, not visually-hidden: a hidden-label trick would need extra CSS and adds noise.
 
-**P1-E** New `components/Banner.jsx` (`{ children }`, returns null when children is falsy; style = `ink` on `honeySoft`, `borderLeft: 4px solid honey`, radius/space tokens; no aria/role). Replace the error `<p>` in `WeekPlannerView`, `LibraryView`, `RulesView`, `ShoppingListView`, `SummaryView`, `AdminAccountsView`, `LoginView`, `SetPasswordView`. `ConnectionLostBanner.jsx` is untouched (already ink on honeySoft); not folded in to keep the slice small. Inline validation `honey` text (F14) is P2: untouched.
+**P1-E** New `components/Banner.jsx`: `Banner({ tone = 'error', children })` returns null when `children` is falsy (R43). `tone: 'error'` renders `role="alert"` (R34) with a leading `ERROR_PREFIX` ("Error:") label (R41); `tone: 'result'` renders `role="status"` (R39) without prefix. Style: `color: tokens.color.ink` on `backgroundColor: tokens.color.honeySoft` (11.03:1, R35), `borderLeft: 4px solid tokens.color.honey`, radius/space tokens. `children` is always a catalogue string passed by the view (R40); Banner holds no text of its own except the prefix, which is also a catalogue entry.
+Replaces eight renderings (audit F12/F13, `plan.md` §b), R42: plain body-ink `<p>` in `RulesView.jsx:98`, `ShoppingListView.jsx:184`, `SummaryView.jsx:30`, `AdminAccountsView.jsx:59`, `LoginView.jsx:126`, `SetPasswordView.jsx:145` (six, not five: F13 lists Login and Set-password too), and `honey`-on-`honeySoft` (2.28:1) in `WeekPlannerView.jsx:44-55`, `LibraryView.jsx:109-121`.
+Placement (R36): views have one `error` state, so the rule is: while an authoring/inline form is open (`authoringTarget`/`editingTarget` in Week, authoring block in Library, item form in Shopping, create/rename/reset in Admin, rule forms in Rules) the Banner renders directly above that form; otherwise directly below the view heading. Login and Set-password: directly above the submit button. No hook state is added; position derives from the form-open state the view already has. **Owner ruling (2026-10-01): per-form placement is final for phase 1; per-field errors are a later phase** (needs per-field hook state; the Banner stays as the form-level summary).
+`danger` token (Q6, approved, later phase) will change the `honey` edge only; the text pair stays ink/honeySoft. `ConnectionLostBanner.jsx` untouched (already ink on honeySoft, FR-RT-03). Inline validation `honey` text (F14) is P2: untouched.
+Narrowing `tests/test_no_extra_accessibility.test.js` is part of this slice (G-93 leaves it to the implementer): `ROLE_ATTR` becomes "any `role=` other than `status`/`alert`", `ARIA_ATTR` and `TAB_INDEX` stay banned, detector self-test updated (R37).
 
 **P1-F** New `hooks/useScrollIntoView.js`: `useScrollIntoView(ref, key)` runs `ref.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })` in an effect keyed on `key`, where `key` is the identity of the open target (day+slot+id, `'new'`, edited id), not the object, so a poll that rebuilds the week does not refire (R14). Wrapper `<section ref>` with `<h3>` title in `CandidateAuthoring.jsx` (receives the target; day/slot labels via `labels.js` + `DAY_LABELS`), in `LibraryView.jsx` (authoring block l.205-216) and `ShoppingListView.jsx` (l.232-241). Titles are message functions/templates in `es-ES.js` (`ADD_CANDIDATE_TITLE(day, slot)`, `EDIT_CANDIDATE_TITLE`, `NEW_RECIPE_TITLE`, `EDIT_RECIPE_TITLE`, `ADD_SHOPPING_ITEM_TITLE`, `EDIT_SHOPPING_ITEM_TITLE`). Refs are the allowed DOM-access idiom (conventions). Existing `authoringTarget`/`editingTarget` state is reused; no hook state is added for the scroll.
 
@@ -65,7 +69,7 @@ export function useScrollIntoView(ref, key) {}                  // effect hook
 // hooks/pendingGuard.js
 export function usePendingGuard() { return { run, isPending } } // run(key, asyncFn) -> Promise|undefined
 // components/Banner.jsx
-export function Banner({ children }) {}
+export function Banner({ tone, children }) {}   // tone: 'error' | 'result'
 ```
 
 No exceptions added. API errors keep flowing through each hook's existing `error`
@@ -86,14 +90,12 @@ assertion, with the real-browser check as the plan's S0/manual matrix (375 px, 7
 
 ## 6. Flags for the owner at the approval gate
 
-- **R34-R36 (Banner) have no FR that speaks to error presentation.** FR-UX-03 only fixes
-  language/format. The change is framed as a consistency fix (ink on honeySoft, as
-  `ConnectionLostBanner` already does), not a contrast target, per the plan's F12 note.
-  FR-UX-07 forbids contrast *targets*; no ratio is asserted anywhere in this spec.
+- Banner requirements (R34-R36, R39-R43) are anchored in FR-UX-07 as amended by G-93
+  (1.4.3, 4.1.3); this spec uses `role="alert"|"status"` only and no `aria-*`.
 - R9 (labels) and R8 (label-wrap) use native `<label>`, not ARIA, so they fit FR-UX-07 as
   restoring browser defaults. Same reasoning for R1 (focus ring) and R15-R24 (`<form>`).
 - No `feature_list.json` entry exists for this spec; the leader owns adding it.
-- Plan values proposed here for approval: `layout.summaryDayMin = 140px`,
+- Values approved by the owner: `layout.summaryDayMin = 140px`,
   `fontSize.input = 16px`, `opacity.disabled = 0.55`.
 
 ## 7. Rejected alternatives

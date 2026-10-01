@@ -604,6 +604,24 @@
       ],
       "sdd": true,
       "status": "done"
+    },
+    {
+      "id": 31,
+      "name": "frontend_ux_phase1",
+      "tier": 4,
+      "title": "Frontend UI/UX phase 1: focus ring, wrapping, forms that behave like forms, errors, quantity format",
+      "description": "First OK-tagged phase of the frontend UI/UX audit (specs/frontend_ux_plan/plan.md). Nine slices: focus ring, shopping quantity format, mobile wrap/overflow, input sizing and labels, shared Banner for errors, titled add-forms scrolled into view, native forms with autocomplete and busy state, in-flight guard against double submit. Later phases (stylesheet, bottom tab bar, day strip, hash sync, danger token, 7-column week) are separate features.",
+      "covers": [],
+      "depends_on": [
+        20
+      ],
+      "acceptance": [
+        "Every requirement R1-R38 in specs/frontend_ux_phase1/requirements.md is met and traced by a test",
+        "test_no_extra_accessibility and test_all_strings_from_messages stay green; a new source-scan test bans outline: 'none'",
+        "./init.sh passes"
+      ],
+      "sdd": true,
+      "status": "spec_ready"
     }
   ]
 }

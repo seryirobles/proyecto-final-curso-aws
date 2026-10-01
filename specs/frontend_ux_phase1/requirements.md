@@ -3,6 +3,9 @@
 Source: `specs/frontend_ux_plan/plan.md` (audit, 2026-10-01), restricted to findings
 tagged **OK**, severity **P0/P1**, that need no base stylesheet, no FR-UX-07 lift, no
 bottom tab bar, day strip, hash sync, `danger` token or desktop week grid.
+(Amended: FR-UX-07 was lifted by G-93; the error Banner uses its 1.4.3 / 4.1.3 subset.
+A `danger` colour token is approved (Q6) but arrives in a later phase; it will replace
+the `honey` edge, not the ink-on-honeySoft text pair.)
 Finding ids `F<nn>` are the audit's. No new FR is invented: every R restates an
 existing FR through the lens of the audit. Where no FR speaks to the behaviour,
 the R cites the nearest FR and `design.md` §6 flags it.
@@ -10,8 +13,8 @@ the R cites the nearest FR and `design.md` §6 flags it.
 `feature_list.json` has no entry for this work (not edited by the spec author).
 The leader must add one (suggested name `frontend_ux_phase1`) before approval.
 
-Gate: every R is OK-tagged: native HTML + inline styles + existing tokens, no
-`aria-*`, `role`, `tabIndex` in `src/**/*.jsx` (R37).
+Gate: every R is native HTML + inline styles + existing tokens. The only aria/role use
+is `role="alert"|"status"` on `Banner` (G-93); no `aria-*`/`tabIndex` (R37).
 
 ## Focus ring (F04)
 
@@ -194,27 +197,57 @@ WHILE a guarded mutation is pending, the system SHALL disable the button that tr
 
 ## Error banner (F12, F13)
 
-## R34
-Implements: FR-UX-03
+Anchor: FR-UX-07 as amended by G-93 (WCAG 1.4.3 text contrast, 4.1.3 status
+messages). Contrast ratios computed with the WCAG relative-luminance formula from
+`tokens/colors.js`: `honey` on `honeySoft` = 2.28:1 (fails; today's Week/Library
+errors); `ink` on `honeySoft` = 11.03:1; `ink2` on `honeySoft` = 4.82:1.
 
-The system SHALL render each view-level error (Week, Library, Rules, Shopping, Summary, Admin, Login, Set-password) inside the shared `Banner` element.
+## R34
+Implements: FR-UX-07 (G-93, 4.1.3)
+
+WHEN a form submit or mutation fails, the system SHALL render its error in the shared `Banner` with `role="alert"`.
 
 ## R35
-Implements: FR-UX-03
+Implements: FR-UX-07 (G-93, 1.4.3)
 
-The system SHALL colour `Banner` text with the `ink` token on a `honeySoft` background with a `honey` edge.
+The system SHALL colour `Banner` error text with the `ink` token (#28331F) on a `honeySoft` (#F8E9C6) background, a pair whose computed contrast ratio is 11.03:1 (at least 4.5:1).
 
 ## R36
-Implements: FR-UX-03
+Implements: FR-UX-07 (G-93, 4.1.3)
 
-IF a view has no error, THEN the system SHALL render no `Banner` for it.
+WHEN a view shows an error, the system SHALL render the `Banner` adjacent to the form or control group whose action failed (directly above its form while an authoring or inline form is open, otherwise directly below the view heading).
+
+## R39
+Implements: FR-UX-07 (G-93, 4.1.3)
+
+WHERE a view shows a non-error result message, the system SHALL render it in the shared `Banner` with `role="status"`.
+
+## R40
+Implements: FR-UX-01, FR-UX-03, FR-UX-07
+
+The system SHALL take the text of every `Banner` message from the messages catalogue, never from a string literal in a component.
+
+## R41
+Implements: FR-UX-07 (G-93, 1.4.1 intent)
+
+The system SHALL convey an error in `Banner` by more than colour: a 4 px solid `honey` left edge and a leading catalogue label (`ERROR_PREFIX`, "Error:").
+
+## R42
+Implements: FR-UX-07 (G-93, 1.4.3)
+
+The system SHALL replace these eight error renderings with `Banner`: plain text in `RulesView.jsx:98`, `ShoppingListView.jsx:184`, `SummaryView.jsx:30`, `AdminAccountsView.jsx:59`, `LoginView.jsx:126`, `SetPasswordView.jsx:145`, and `honey` on `honeySoft` in `WeekPlannerView.jsx:44-55`, `LibraryView.jsx:109-121`.
+
+## R43
+Implements: FR-UX-07 (G-93, 4.1.3)
+
+IF a view has no error, THEN the system SHALL render no `Banner` and no `role="alert"` element for it.
 
 ## Guards
 
 ## R37
 Implements: FR-UX-07
 
-The system SHALL keep `frontend/src/**/*.jsx` free of `aria-*`, `role`, `tabIndex` and accessibility-library imports.
+The system SHALL keep `frontend/src/**/*.jsx` free of `aria-*`, `tabIndex`, accessibility-library imports and any `role` other than `"status"` and `"alert"`.
 
 ## R38
 Implements: FR-UX-01, FR-UX-03
