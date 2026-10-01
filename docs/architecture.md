@@ -634,8 +634,8 @@ not "helpfully" scaffold a `main.tf`.
   queue is signed off — §1.2, decided 2026-08-30.)
 - ❌ Do not build a configuration framework. Configuration is explicit values
   passed in, or a single documented constants module.
-- ❌ Do not add accessibility work — it is an explicit **scope exclusion**
-  (`FR-UX-07`, `G-62`). Browser defaults only.
+- ❌ Do not add accessibility work beyond the WCAG 2.2 AA subset of `FR-UX-07`
+  (amended by `G-93`; was ~~an explicit scope exclusion, browser defaults only~~, `G-62`).
 - ❌ Do not implement anything from the "examined and rejected" list at the end
   of `docs/gaps_and_resolutions.md` (offline support, presence indicators,
   export/print, per-recipe category attribute, GDPR formalities…).

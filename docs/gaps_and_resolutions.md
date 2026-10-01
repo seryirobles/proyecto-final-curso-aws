@@ -1344,3 +1344,39 @@ text is struck through or reworded.
 - **Reasoning:** The owner's call. Two collaborators generating for one slot is
   legitimate use, not a fault to prevent.
 - **Requirements:** `FR-AI-08`, `FR-AI-10` (implemented). `FR-AI-09` unchanged.
+
+## Part AC — Accessibility: browser defaults only is lifted to a WCAG 2.2 AA subset (2026-10-01)
+
+Directed by the requirements owner, in the same manner as Parts I through AB,
+on the strength of the frontend UI/UX audit (`specs/frontend_ux_plan/plan.md`,
+question Q2). The owner commanded the leader to write this Part and the
+amendments below directly. `FR-UX-07`'s original text is struck through, not
+deleted.
+
+### G-93 · `FR-UX-07` lifted: a WCAG 2.2 AA subset is in scope (amends G-62)
+
+- **Gap:** `G-62` closed `PEND-15` as "browser-default accessibility only", and
+  the frontend was built to that line: no `aria-*`, `role` or `tabIndex` in
+  `src/*.jsx`, enforced by a test. The audit found the code does not merely
+  omit accessibility work but *removes* browser defaults (`outline: 'none'`,
+  low-contrast error text, glyph-only buttons with no name, sub-minimum touch
+  targets), so "browser defaults" is not even being met.
+- **Decision:** the following WCAG 2.2 AA criteria become requirements for the
+  SPA: **2.4.7** focus visible, **2.5.8** target size (minimum), **1.4.3** and
+  **1.4.11** contrast (text and UI components), **4.1.2** accessible names for
+  controls that have no text (glyph buttons), **4.1.3** status messages (errors,
+  loading and result messages announced without moving focus). Meeting the
+  subset may use the minimum markup it needs (`aria-label` for 4.1.2,
+  `role="status"` / `role="alert"` for 4.1.3) and a base stylesheet for
+  `:focus-visible` (plan Q1, approved the same day). **Still out of scope:** any
+  claim of full WCAG conformance or a formal audit, custom keyboard schemes
+  (shortcuts, roving focus), and screen-reader test passes; browser defaults
+  remain the baseline for everything outside the subset.
+- **Reasoning:** The owner's call: the subset is cheap, objectively checkable,
+  and fixes defects the current build introduces itself.
+- **Requirements:** `FR-UX-07` (amended — the exclusion becomes the subset above).
+  Sweep: the two "do not add accessibility work" lines in `docs/conventions.md`
+  and `docs/architecture.md` are amended to match. **Left for the implementer:**
+  `frontend/tests/test_no_extra_accessibility.test.js` (R22) must be narrowed to
+  allow only `aria-label` and `role="status"|"alert"`, and
+  `specs/frontend_spa/` still states the old exclusion.

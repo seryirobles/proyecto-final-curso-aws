@@ -313,8 +313,8 @@ what the component produces.
   is the required form here.
 - ❌ Do not duplicate backend domain logic in the client.
 - ❌ Do not hardcode Spanish strings, dates or number formats in components.
-- ❌ Do not add accessibility work beyond browser defaults — explicit scope
-  exclusion (`FR-UX-07`, `G-62`).
+- ❌ Do not add accessibility work beyond the WCAG 2.2 AA subset of `FR-UX-07`
+  (amended by `G-93`; was ~~browser defaults only~~, `G-62`).
 - ❌ Do not add offline support, export/print, or presence indicators — all
   explicitly rejected (`docs/gaps_and_resolutions.md`, Part H).
 

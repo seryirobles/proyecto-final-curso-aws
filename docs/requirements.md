@@ -180,7 +180,7 @@ users.
 | FR-UX-04 | Destructive actions (removing a recipe, candidate, shopping item, or rule; replacing or clearing a definitive meal; removing a user) shall require an **explicit confirmation**. | UX (see G-24) |
 | FR-UX-05 | Views shall include **empty states** with guidance (empty library, day without candidates, empty shopping list) and **loading states** for slow operations. | UX (see G-25) |
 | FR-UX-06 | The UI shall keep the **active week unambiguous** at all times: every week view, summary, and week-scoped action shall be labelled with the week (current / next) and its **Monday–Sunday date range**. | US7, US8 (see G-57) |
-| FR-UX-07 | **Scope exclusion:** the MVP relies on **browser-default accessibility** only — no additional accessibility requirements (keyboard schemes, ARIA annotations, contrast targets) are in scope. | Stakeholder decision (resolves PEND-15, see G-62) |
+| FR-UX-07 | ~~**Scope exclusion:** the MVP relies on **browser-default accessibility** only — no additional accessibility requirements (keyboard schemes, ARIA annotations, contrast targets) are in scope.~~ **The SPA shall meet a WCAG 2.2 AA subset: 2.4.7 focus visible, 2.5.8 target size (minimum), 1.4.3 and 1.4.11 contrast, 4.1.2 accessible names for text-less controls, 4.1.3 status messages** (G-93). Browser defaults remain the baseline outside this subset; a full-conformance claim, a formal audit, custom keyboard schemes and screen-reader test passes stay out of scope. | Stakeholder decision (resolves PEND-15, see G-62; amended by G-93) |
 
 ---
 
