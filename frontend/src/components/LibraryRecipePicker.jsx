@@ -9,9 +9,12 @@ import { MESSAGES } from '../messages/index.js';
 import { CATEGORY_COLORS } from '../domain/labels.js';
 import { EmptyState } from './EmptyState.jsx';
 import { LibraryFilters } from './LibraryFilters.jsx';
+import { targetStyle } from '../tokens/controlStyles.js';
+import { VIEWPORT } from '../hooks/useViewport.js';
 
-function selectButtonStyle(isSelected) {
+function selectButtonStyle(isSelected, viewport) {
   return {
+    ...targetStyle(viewport),
     border: `1px solid ${isSelected ? tokens.color.terra : tokens.color.line2}`,
     backgroundColor: isSelected ? tokens.color.terraSoft : tokens.color.surface2,
     color: isSelected ? tokens.color.terra : tokens.color.ink2,
@@ -29,6 +32,7 @@ export function LibraryRecipePicker({
   recipes,
   selectedRecipeId,
   onSelect,
+  viewport = VIEWPORT.WIDE,
 }) {
   return (
     <div>
@@ -88,7 +92,7 @@ export function LibraryRecipePicker({
                 <button
                   type="button"
                   onClick={() => onSelect(recipe.id)}
-                  style={selectButtonStyle(isSelected)}
+                  style={selectButtonStyle(isSelected, viewport)}
                 >
                   {isSelected ? MESSAGES.LIBRARY_PICKER_SELECTED : MESSAGES.LIBRARY_PICKER_SELECT}
                 </button>

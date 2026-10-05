@@ -8,7 +8,8 @@
 
 import { tokens } from '../tokens/index.js';
 import { useRef } from 'react';
-import { secondaryButtonStyle, headingStyle } from '../tokens/controlStyles.js';
+import { secondaryButtonStyle, headingStyle, targetStyle } from '../tokens/controlStyles.js';
+import { VIEWPORT } from '../hooks/useViewport.js';
 import { useScrollIntoView } from '../hooks/useScrollIntoView.js';
 import { MESSAGES } from '../messages/index.js';
 import { CATEGORY_COLORS } from '../domain/labels.js';
@@ -100,7 +101,9 @@ export function LibraryView({
   closeDetail,
   error,
   pending = NO_PENDING,
+  viewport = VIEWPORT.WIDE,
 }) {
+  const target = targetStyle(viewport);
   // Hooks before the early return; null key = form closed (R10, R14).
   const formRef = useRef(null);
   let formKey = null;
@@ -125,7 +128,7 @@ export function LibraryView({
       <div style={{ marginTop: tokens.space.md }}>
         <LibraryFilters filters={filters} setName={setName} setCategory={setCategory} />
       </div>
-      <button type="button" onClick={openAdd} style={addButtonStyle}>
+      <button type="button" onClick={openAdd} style={{ ...addButtonStyle, ...target }}>
         {MESSAGES.LIBRARY_VIEW_ADD}
       </button>
 
@@ -168,6 +171,7 @@ export function LibraryView({
                   type="button"
                   onClick={() => openDetail(recipe)}
                   style={{
+                    ...target,
                     color: tokens.color.terra,
                     backgroundColor: 'transparent',
                     border: 'none',
@@ -190,7 +194,11 @@ export function LibraryView({
                 {recipe.author}
               </span>
               <div style={{ display: 'flex', gap: tokens.space.xs }}>
-                <button type="button" onClick={() => openEdit(recipe)} style={iconButtonStyle}>
+                <button
+                  type="button"
+                  onClick={() => openEdit(recipe)}
+                  style={{ ...iconButtonStyle, ...target }}
+                >
                   <EditIcon />
                   {MESSAGES.LIBRARY_VIEW_EDIT}
                 </button>
@@ -198,7 +206,7 @@ export function LibraryView({
                   type="button"
                   onClick={() => remove(recipe.id)}
                   disabled={pending.has(`remove:${recipe.id}`)}
-                  style={iconButtonStyle}
+                  style={{ ...iconButtonStyle, ...target }}
                 >
                   <DeleteIcon />
                   {MESSAGES.LIBRARY_VIEW_REMOVE}
@@ -221,7 +229,7 @@ export function LibraryView({
           <button
             type="button"
             onClick={closeAuthoring}
-            style={{ ...secondaryButtonStyle, marginTop: tokens.space.sm }}
+            style={{ ...secondaryButtonStyle, ...target, marginTop: tokens.space.sm }}
           >
             {MESSAGES.RECIPE_DETAIL_CLOSE}
           </button>

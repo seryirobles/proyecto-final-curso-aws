@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { htmlMessages } from '../vite-plugins/htmlMessages.js';
 import { MESSAGES } from '../src/messages/index.js';
@@ -32,5 +33,12 @@ describe('htmlMessages', () => {
     } finally {
       MESSAGES.APP_TITLE = originalTitle;
     }
+  });
+
+  // R20, R21: safe-area insets need viewport-fit=cover; body margin zero.
+  it('index.html covers the viewport and zeroes the body margin', () => {
+    const html = readFileSync('index.html', 'utf8');
+    expect(html).toMatch(/<meta name="viewport"[^>]*viewport-fit=cover/);
+    expect(html).toMatch(/<body[^>]*style="[^"]*margin:\s*0[;"\s]/);
   });
 });

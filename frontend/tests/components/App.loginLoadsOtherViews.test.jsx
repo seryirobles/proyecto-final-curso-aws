@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 // Issue stuck-loading-after-login, blast radius (E3, E4): the summary and the
 // shopping-list scope read live-weeks the same way as the week view.
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockViewport } from '../helpers/viewport.js';
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 
 vi.mock('../../src/api/client.js', async (importOriginal) => {
@@ -57,6 +58,7 @@ async function logInAndOpen(navLabel) {
   fireEvent.click(screen.getByText(navLabel));
 }
 
+beforeEach(() => mockViewport());
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();

@@ -2,7 +2,8 @@
 // Mocks every hook + child view/screen component: proves only App.jsx's own
 // job - which shell mounts, which view, which poll feeds the banner, logout
 // (R23/R30-R32, design.md section 5/5a). See progress/impl_frontend_spa.md.
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockViewport } from '../helpers/viewport.js';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 
 vi.mock('../../src/hooks/useWeekPlanner.js', () => ({ useWeekPlanner: vi.fn() }));
@@ -54,6 +55,10 @@ import { useLoginForm } from '../../src/hooks/useLoginForm.js';
 import { useSetPasswordForm } from '../../src/hooks/useSetPasswordForm.js';
 import { useAdminAccounts } from '../../src/hooks/useAdminAccounts.js';
 
+beforeEach(() => {
+  mockViewport();
+  window.history.replaceState(null, '', '/'); // the view hash persists across tests (R48)
+});
 afterEach(cleanup);
 
 const USER_SESSION = { status: 'authenticated', role: 'User' };

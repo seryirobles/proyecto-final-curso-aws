@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 // Issue stuck-loading-after-login (E1, E2): the app mounts with no session,
 // the user logs in, and the week view must load without a page reload.
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockViewport } from '../helpers/viewport.js';
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 
 vi.mock('../../src/api/client.js', async (importOriginal) => {
@@ -53,6 +54,7 @@ async function logIn() {
   fireEvent.click(screen.getByText(MESSAGES.LOGIN_SUBMIT));
 }
 
+beforeEach(() => mockViewport());
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();

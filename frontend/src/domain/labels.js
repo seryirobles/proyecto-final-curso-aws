@@ -56,3 +56,14 @@ export const DAY_LABELS = Object.fromEntries(
     WEEKDAY_FORMATTER.format(new Date(ISO_MONDAY_UTC + (day - 1) * DAY_MS)),
   ]),
 );
+
+// Visible three-letter day-strip labels, Monday = 1 (frontend_ux_phase2 R31).
+export const DAY_SHORT_LABELS = {
+  1: 'Lun',
+  2: 'Mar',
+  3: 'Mié',
+  4: 'Jue',
+  5: 'Vie',
+  6: 'Sáb',
+  7: 'Dom',
+};

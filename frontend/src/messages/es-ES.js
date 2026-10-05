@@ -154,6 +154,7 @@ export const MESSAGES = {
 
   // Summary view (feature 20 T38-T40)
   SUMMARY_VIEW_TITLE: 'Resumen de la semana',
+  SUMMARY_EMPTY_SLOT: '—',
   SUMMARY_VIEW_EMPTY: 'Todavía no hay platos definitivos para esta semana.',
 
   // App shell (feature 20 T41-T45)
@@ -162,6 +163,8 @@ export const MESSAGES = {
   NAV_RULES: 'Reglas',
   NAV_SHOPPING_LIST: 'Lista de la compra',
   NAV_SUMMARY: 'Resumen',
+  NAV_SHOPPING_LIST_SHORT: 'Compra', // tab bar label, five across at 375 px
+  DOCUMENT_TITLE: (view, app) => `${view} · ${app}`,
   CONNECTION_LOST: 'Se ha perdido la conexión. Reconectando…',
 
   // Auth screens - login, set-password (feature 20 T46-T53)

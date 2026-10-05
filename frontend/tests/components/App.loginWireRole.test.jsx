@@ -2,7 +2,8 @@
 // Issue blank-screen-after-login (E1, E2): POST /v1/session answers with the
 // backend's wire role ("user"/"admin"), and the shell must mount from it
 // without a page reload.
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockViewport } from '../helpers/viewport.js';
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 
 vi.mock('../../src/api/client.js', async (importOriginal) => {
@@ -35,6 +36,7 @@ import { apiFetch, ApiError } from '../../src/api/client.js';
 import { App } from '../../src/components/App.jsx';
 import { MESSAGES } from '../../src/messages/index.js';
 
+beforeEach(() => mockViewport());
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();

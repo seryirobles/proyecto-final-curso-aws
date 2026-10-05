@@ -132,6 +132,7 @@ describe('mobile layout styles', () => {
         openDetail={noop}
         detail={null}
         closeDetail={noop}
+        viewport="medium"
       />,
     );
 

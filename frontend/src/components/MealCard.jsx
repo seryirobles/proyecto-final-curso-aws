@@ -7,7 +7,8 @@
 
 import { tokens } from '../tokens/index.js';
 import { MESSAGES } from '../messages/index.js';
-import { disabledStyle } from '../tokens/controlStyles.js';
+import { disabledStyle, targetStyle } from '../tokens/controlStyles.js';
+import { VIEWPORT } from '../hooks/useViewport.js';
 
 const actionButtonStyle = {
   display: 'inline-flex',
@@ -99,7 +100,9 @@ export function MealCard({
   isPromoting = false,
   isClearing = false,
   isRemoving = false,
+  viewport = VIEWPORT.WIDE,
 }) {
+  const target = targetStyle(viewport);
   return (
     <div
       style={{
@@ -115,6 +118,7 @@ export function MealCard({
         type="button"
         onClick={() => onOpenDetail(candidate)}
         style={{
+          ...target,
           color: tokens.color.terra,
           backgroundColor: 'transparent',
           border: 'none',
@@ -159,6 +163,7 @@ export function MealCard({
             disabled={isClearing}
             style={{
               ...actionButtonStyle,
+              ...target,
               color: tokens.color.ink3,
               ...(isClearing ? disabledStyle : null),
             }}
@@ -173,6 +178,7 @@ export function MealCard({
             disabled={isPromoting}
             style={{
               ...actionButtonStyle,
+              ...target,
               color: tokens.color.terra,
               ...(isPromoting ? disabledStyle : null),
             }}
@@ -184,7 +190,7 @@ export function MealCard({
         <button
           type="button"
           onClick={onEdit}
-          style={{ ...actionButtonStyle, color: tokens.color.ink2 }}
+          style={{ ...actionButtonStyle, ...target, color: tokens.color.ink2 }}
         >
           <EditIcon />
           {MESSAGES.WEEK_PLANNER_EDIT_CANDIDATE}
@@ -195,6 +201,7 @@ export function MealCard({
           disabled={isRemoving}
           style={{
             ...actionButtonStyle,
+            ...target,
             color: tokens.color.ink3,
             ...(isRemoving ? disabledStyle : null),
           }}

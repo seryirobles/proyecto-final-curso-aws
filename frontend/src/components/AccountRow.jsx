@@ -11,9 +11,11 @@ import {
   secondaryButtonStyle,
   ghostButtonStyle,
   cardStyle,
+  targetStyle,
 } from '../tokens/controlStyles.js';
 import { Banner } from './Banner.jsx';
 import { handleFormSubmit } from '../hooks/formSubmit.js';
+import { VIEWPORT } from '../hooks/useViewport.js';
 
 // T92 (design.md 10.6): avatar-circle (initials, no image dependency) plus
 // role/status pill badges. Purely presentational - the R36/R37 gating below
@@ -59,7 +61,9 @@ export function AccountRow({
   isSavingRename = false,
   isSavingReset = false,
   isRemoving = false,
+  viewport = VIEWPORT.WIDE,
 }) {
+  const target = targetStyle(viewport);
   // R37, fail-closed (fix round 1 finding 1): unknown actingUserId hides
   // reset on every row rather than showing it on every row.
   const isOwnRow = actingUserId == null || account.userId === actingUserId;
@@ -138,16 +142,20 @@ export function AccountRow({
           <button
             type="submit"
             disabled={!canSaveRename || isSavingRename}
-            style={primaryButtonStyle(!canSaveRename || isSavingRename)}
+            style={{ ...primaryButtonStyle(!canSaveRename || isSavingRename), ...target }}
           >
             {MESSAGES.ADMIN_ACCOUNTS_RENAME}
           </button>
-          <button type="button" onClick={onCancelRename} style={secondaryButtonStyle}>
+          <button
+            type="button"
+            onClick={onCancelRename}
+            style={{ ...secondaryButtonStyle, ...target }}
+          >
             {MESSAGES.ADMIN_ACCOUNTS_CANCEL}
           </button>
         </form>
       ) : (
-        <button type="button" onClick={onOpenRename} style={secondaryButtonStyle}>
+        <button type="button" onClick={onOpenRename} style={{ ...secondaryButtonStyle, ...target }}>
           {MESSAGES.ADMIN_ACCOUNTS_RENAME}
         </button>
       )}
@@ -169,23 +177,36 @@ export function AccountRow({
             <button
               type="submit"
               disabled={!canSaveReset || isSavingReset}
-              style={primaryButtonStyle(!canSaveReset || isSavingReset)}
+              style={{ ...primaryButtonStyle(!canSaveReset || isSavingReset), ...target }}
             >
               {MESSAGES.ADMIN_ACCOUNTS_RESET_PASSWORD}
             </button>
-            <button type="button" onClick={onCancelReset} style={secondaryButtonStyle}>
+            <button
+              type="button"
+              onClick={onCancelReset}
+              style={{ ...secondaryButtonStyle, ...target }}
+            >
               {MESSAGES.ADMIN_ACCOUNTS_CANCEL}
             </button>
           </form>
         ) : (
-          <button type="button" onClick={onOpenReset} style={secondaryButtonStyle}>
+          <button
+            type="button"
+            onClick={onOpenReset}
+            style={{ ...secondaryButtonStyle, ...target }}
+          >
             {MESSAGES.ADMIN_ACCOUNTS_RESET_PASSWORD}
           </button>
         )
       ) : null}
 
       {!isAdminRow ? (
-        <button type="button" onClick={onRemove} disabled={isRemoving} style={ghostButtonStyle}>
+        <button
+          type="button"
+          onClick={onRemove}
+          disabled={isRemoving}
+          style={{ ...ghostButtonStyle, ...target }}
+        >
           {MESSAGES.ADMIN_ACCOUNTS_REMOVE}
         </button>
       ) : null}

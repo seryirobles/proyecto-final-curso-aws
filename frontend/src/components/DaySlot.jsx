@@ -1,5 +1,5 @@
 // One day's lunch + dinner slots (structural, R1; design.md section 5).
-// Empty/loading obligations (R19) render through `EmptyState`.
+// An empty slot is one compact line (frontend_ux_phase2 R40).
 
 // Day-card shape + status pill (T81, design.md 10.6) - a presentation-only
 // aggregation of the already-fetched slots, not a recomputed domain rule.
@@ -7,8 +7,9 @@
 import { tokens } from '../tokens/index.js';
 import { MESSAGES } from '../messages/index.js';
 import { DAY_LABELS, SLOT_LABELS } from '../domain/labels.js';
-import { EmptyState } from './EmptyState.jsx';
 import { MealCard } from './MealCard.jsx';
+import { targetStyle } from '../tokens/controlStyles.js';
+import { VIEWPORT } from '../hooks/useViewport.js';
 
 const STATUS_STYLES = {
   definitive: {
@@ -44,12 +45,16 @@ export function DaySlot({
   onEdit,
   onRemove,
   pending,
+  cardRef,
+  viewport = VIEWPORT.WIDE,
 }) {
   const status = STATUS_STYLES[dayStatus(slots)];
 
   return (
     <div
+      ref={cardRef}
       style={{
+        scrollMarginTop: `calc(${tokens.layout.headerHeight} + ${tokens.layout.dayStripHeight})`,
         backgroundColor: tokens.color.surface,
         border: `1px solid ${tokens.color.line}`,
         borderRadius: tokens.radius.md,
@@ -113,7 +118,15 @@ export function DaySlot({
               {SLOT_LABELS[slotState.slot]}
             </p>
             {slotState.isEmpty ? (
-              <EmptyState message={MESSAGES.WEEK_PLANNER_EMPTY_SLOT} />
+              <p
+                style={{
+                  margin: tokens.space.none,
+                  fontSize: tokens.fontSize.sm,
+                  color: tokens.color.ink2,
+                }}
+              >
+                {MESSAGES.WEEK_PLANNER_EMPTY_SLOT}
+              </p>
             ) : (
               slotState.candidates.map((candidate) => (
                 <MealCard
@@ -128,6 +141,7 @@ export function DaySlot({
                   isPromoting={pending?.has(`promote:${day}:${slotState.slot}`)}
                   isClearing={pending?.has(`clear:${day}:${slotState.slot}`)}
                   isRemoving={pending?.has(`remove:${candidate.id}`)}
+                  viewport={viewport}
                 />
               ))
             )}
@@ -135,6 +149,7 @@ export function DaySlot({
               type="button"
               onClick={() => onAddCandidate(day, slotState.slot)}
               style={{
+                ...targetStyle(viewport),
                 width: '100%',
                 marginTop: tokens.space.xs,
                 border: `1px dashed ${tokens.color.line2}`,

@@ -9,6 +9,23 @@ import { LoadingState } from './LoadingState.jsx';
 import { DAY_LABELS, SLOT_LABELS } from '../domain/labels.js';
 import { MESSAGES } from '../messages/index.js';
 import { Banner } from './Banner.jsx';
+import { VIEWPORT } from '../hooks/useViewport.js';
+import { targetStyle } from '../tokens/controlStyles.js';
+
+// Day-grid columns per viewport tier (frontend_ux_phase2 R22-R24).
+function summaryColumns(viewport) {
+  if (viewport === VIEWPORT.COMPACT) return '1fr';
+  if (viewport === VIEWPORT.WIDE) return 'repeat(7, minmax(0, 1fr))';
+  return `repeat(auto-fill, minmax(min(100%, ${tokens.layout.summaryDayMin}), 1fr))`;
+}
+
+const SLOT_LABEL_STYLE = {
+  margin: tokens.space.none,
+  fontFamily: tokens.fontFamily.label,
+  fontSize: tokens.fontSize.xs,
+  textTransform: 'uppercase',
+  color: tokens.color.ink2,
+};
 
 // T89 (design.md 10.6): per-meal card shape + a "definitive" pill matching
 // MealCard's (T82) treatment - every entry here already is the definitive
@@ -23,6 +40,7 @@ export function SummaryView({
   detailError,
   closeDetail,
   error,
+  viewport = VIEWPORT.WIDE,
 }) {
   if (isLoading) return <LoadingState />;
 
@@ -45,7 +63,7 @@ export function SummaryView({
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${tokens.layout.summaryDayMin}), 1fr))`,
+            gridTemplateColumns: summaryColumns(viewport),
             gap: tokens.space.md,
             marginTop: tokens.space.md,
           }}
@@ -74,21 +92,12 @@ export function SummaryView({
                       boxShadow: tokens.shadow.sm,
                     }}
                   >
-                    <p
-                      style={{
-                        margin: tokens.space.none,
-                        fontFamily: tokens.fontFamily.label,
-                        fontSize: tokens.fontSize.xs,
-                        textTransform: 'uppercase',
-                        color: tokens.color.ink2,
-                      }}
-                    >
-                      {SLOT_LABELS[slotState.slot]}
-                    </p>
+                    <p style={SLOT_LABEL_STYLE}>{SLOT_LABELS[slotState.slot]}</p>
                     <button
                       type="button"
                       onClick={() => openDetail(slotState.candidate)}
                       style={{
+                        ...targetStyle(viewport),
                         color: tokens.color.terra,
                         backgroundColor: 'transparent',
                         border: 'none',
@@ -114,7 +123,14 @@ export function SummaryView({
                       {MESSAGES.WEEK_PLANNER_DEFINITIVE_BADGE}
                     </span>
                   </div>
-                ) : null,
+                ) : (
+                  <div key={slotState.slot} style={{ marginTop: tokens.space.sm }}>
+                    <p style={SLOT_LABEL_STYLE}>{SLOT_LABELS[slotState.slot]}</p>
+                    <p style={{ margin: tokens.space.none, color: tokens.color.ink3 }}>
+                      {MESSAGES.SUMMARY_EMPTY_SLOT}
+                    </p>
+                  </div>
+                ),
               )}
             </div>
           ))}

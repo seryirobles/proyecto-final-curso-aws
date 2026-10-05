@@ -15,6 +15,7 @@ import {
   accentDotStyle,
   cardStyle,
   headingStyle,
+  targetStyle,
 } from '../tokens/controlStyles.js';
 import { EmptyState } from './EmptyState.jsx';
 import { LoadingState } from './LoadingState.jsx';
@@ -22,15 +23,21 @@ import { ConfirmDialog } from './ConfirmDialog.jsx';
 import { LibraryRecipePicker } from './LibraryRecipePicker.jsx';
 import { Banner } from './Banner.jsx';
 import { handleFormSubmit } from '../hooks/formSubmit.js';
+import { VIEWPORT } from '../hooks/useViewport.js';
 
 // Default for views rendered without a hook's `pending` set (R33).
 const NO_PENDING = new Set();
 
-function RuleRow({ label, onRemove, isRemoving }) {
+function RuleRow({ label, onRemove, isRemoving, viewport }) {
   return (
     <li style={listRowStyle}>
       <span>{label}</span>
-      <button type="button" onClick={onRemove} disabled={isRemoving} style={ghostButtonStyle}>
+      <button
+        type="button"
+        onClick={onRemove}
+        disabled={isRemoving}
+        style={{ ...ghostButtonStyle, ...targetStyle(viewport) }}
+      >
         {MESSAGES.RULES_REMOVE}
       </button>
     </li>
@@ -85,7 +92,9 @@ export function RulesView({
   canSaveDisabledDay,
   saveDisabledDay,
   pending = NO_PENDING,
+  viewport = VIEWPORT.WIDE,
 }) {
+  const target = targetStyle(viewport);
   if (isLoading) return <LoadingState />;
 
   const isEmpty = categoryCounts.length === 0 && pins.length === 0 && disabledDays.length === 0;
@@ -113,6 +122,7 @@ export function RulesView({
           <ul style={listResetStyle}>
             {categoryCounts.map((rule) => (
               <RuleRow
+                viewport={viewport}
                 key={rule.category}
                 label={describeRule(rule)}
                 onRemove={() => remove(rule)}
@@ -163,7 +173,10 @@ export function RulesView({
           <button
             type="submit"
             disabled={!canSaveCategoryCount || pending.has('saveCategoryCount')}
-            style={primaryButtonStyle(!canSaveCategoryCount || pending.has('saveCategoryCount'))}
+            style={{
+              ...primaryButtonStyle(!canSaveCategoryCount || pending.has('saveCategoryCount')),
+              ...target,
+            }}
           >
             {MESSAGES.RULES_SAVE}
           </button>
@@ -178,6 +191,7 @@ export function RulesView({
           <ul style={listResetStyle}>
             {pins.map((rule) => (
               <RuleRow
+                viewport={viewport}
                 key={`${rule.day}#${rule.slot}`}
                 label={`${describeRule(rule)} · ${rule.recipeName}`}
                 onRemove={() => remove(rule)}
@@ -229,11 +243,12 @@ export function RulesView({
             {...picker}
             selectedRecipeId={pinRecipeId}
             onSelect={selectPinRecipe}
+            viewport={viewport}
           />
           <button
             type="submit"
             disabled={!canSavePin || pending.has('savePin')}
-            style={primaryButtonStyle(!canSavePin || pending.has('savePin'))}
+            style={{ ...primaryButtonStyle(!canSavePin || pending.has('savePin')), ...target }}
           >
             {MESSAGES.RULES_SAVE}
           </button>
@@ -248,6 +263,7 @@ export function RulesView({
           <ul style={listResetStyle}>
             {disabledDays.map((rule) => (
               <RuleRow
+                viewport={viewport}
                 key={rule.day}
                 label={describeRule(rule)}
                 onRemove={() => remove(rule)}
@@ -283,7 +299,10 @@ export function RulesView({
           <button
             type="submit"
             disabled={!canSaveDisabledDay || pending.has('saveDisabledDay')}
-            style={primaryButtonStyle(!canSaveDisabledDay || pending.has('saveDisabledDay'))}
+            style={{
+              ...primaryButtonStyle(!canSaveDisabledDay || pending.has('saveDisabledDay')),
+              ...target,
+            }}
           >
             {MESSAGES.RULES_SAVE}
           </button>

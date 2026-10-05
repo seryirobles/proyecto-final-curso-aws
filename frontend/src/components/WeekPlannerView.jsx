@@ -2,8 +2,7 @@
 // function of `useWeekPlanner`'s return shape - the App shell (a later
 // section) is what wires `<WeekPlannerView {...useWeekPlanner()} />`.
 
-// Fluid day-card grid (T81, design.md 10.6): `auto-fill`/`minmax` so
-// DaySlot's card shape collapses gracefully - no fixed breakpoint added.
+// Day-card grid columns come from `weekGridColumns(viewport)` (frontend_ux_phase2 R26-R28).
 
 import { tokens } from '../tokens/index.js';
 import { WeekSwitcher } from './WeekSwitcher.jsx';
@@ -13,6 +12,10 @@ import { ConfirmDialog } from './ConfirmDialog.jsx';
 import { LoadingState } from './LoadingState.jsx';
 import { CandidateAuthoring } from './CandidateAuthoring.jsx';
 import { Banner } from './Banner.jsx';
+import { weekGridColumns } from '../tokens/controlStyles.js';
+import { VIEWPORT } from '../hooks/useViewport.js';
+import { useDayStrip } from '../hooks/useDayStrip.js';
+import { DayStrip } from './DayStrip.jsx';
 
 // Default for views rendered without a hook's `pending` set (R33).
 const NO_PENDING = new Set();
@@ -41,17 +44,26 @@ export function WeekPlannerView({
   closeDetail,
   error,
   pending = NO_PENDING,
+  viewport = VIEWPORT.WIDE,
 }) {
+  const { registerDay, scrollToDay, selectedDay } = useDayStrip();
   if (isLoading) return <LoadingState />;
+  const showStrip = viewport === VIEWPORT.COMPACT || viewport === VIEWPORT.NARROW;
 
   return (
     <div>
       {!authoringTarget && !editingTarget ? <Banner>{error}</Banner> : null}
-      <WeekSwitcher liveWeeks={liveWeeks} designation={designation} onSwitch={switchWeek} />
+      <WeekSwitcher
+        liveWeeks={liveWeeks}
+        designation={designation}
+        onSwitch={switchWeek}
+        viewport={viewport}
+      />
+      {showStrip ? <DayStrip selectedDay={selectedDay} onSelect={scrollToDay} /> : null}
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 260px), 1fr))',
+          gridTemplateColumns: weekGridColumns(viewport),
           gap: tokens.space.md,
           marginTop: tokens.space.md,
         }}
@@ -68,6 +80,8 @@ export function WeekPlannerView({
             onEdit={openCandidateEdit}
             onRemove={removeCandidate}
             pending={pending}
+            cardRef={registerDay(day.day)}
+            viewport={viewport}
           />
         ))}
       </div>

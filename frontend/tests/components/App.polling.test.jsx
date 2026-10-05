@@ -5,6 +5,7 @@
 // the other 4 stay flat. See progress/impl_frontend_spa.md, "App shell".
 import { act, render, cleanup } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockViewport } from '../helpers/viewport.js';
 
 vi.mock('../../src/api/client.js', async (importOriginal) => {
   const actual = await importOriginal();
@@ -38,6 +39,7 @@ describe('App polling (finding 1 proof)', () => {
     });
   });
 
+  beforeEach(() => mockViewport());
   afterEach(() => {
     cleanup();
     vi.useRealTimers();

@@ -19,21 +19,26 @@ import {
   listResetStyle,
   cardStyle,
   headingStyle,
+  targetStyle,
 } from '../tokens/controlStyles.js';
 import { EmptyState } from './EmptyState.jsx';
 import { LoadingState } from './LoadingState.jsx';
 import { ConfirmDialog } from './ConfirmDialog.jsx';
 import { WeekLabel } from './WeekLabel.jsx';
 import { Banner } from './Banner.jsx';
+import { VIEWPORT } from '../hooks/useViewport.js';
 
 // Default for views rendered without a hook's `pending` set (R33).
 const NO_PENDING = new Set();
 
-function ItemRow({ item, onToggle, onEdit, onRemove, isRemoving }) {
+function ItemRow({ item, onToggle, onEdit, onRemove, isRemoving, viewport }) {
+  const target = targetStyle(viewport);
+  const isMobile = viewport === VIEWPORT.COMPACT || viewport === VIEWPORT.NARROW;
   return (
     <li
       style={{
         ...listRowStyle,
+        ...(isMobile ? { minHeight: tokens.layout.listRowMobile } : null),
         ...(item.checked ? { color: tokens.color.ink3, textDecoration: 'line-through' } : null),
       }}
     >
@@ -48,7 +53,11 @@ function ItemRow({ item, onToggle, onEdit, onRemove, isRemoving }) {
         </span>
       </label>
       {!item.checked ? (
-        <button type="button" onClick={() => onEdit(item)} style={ghostButtonStyle}>
+        <button
+          type="button"
+          onClick={() => onEdit(item)}
+          style={{ ...ghostButtonStyle, ...target }}
+        >
           {MESSAGES.SHOPPING_LIST_EDIT}
         </button>
       ) : null}
@@ -56,7 +65,7 @@ function ItemRow({ item, onToggle, onEdit, onRemove, isRemoving }) {
         type="button"
         onClick={() => onRemove(item.id)}
         disabled={isRemoving}
-        style={ghostButtonStyle}
+        style={{ ...ghostButtonStyle, ...target }}
       >
         {MESSAGES.SHOPPING_LIST_REMOVE}
       </button>
@@ -66,7 +75,7 @@ function ItemRow({ item, onToggle, onEdit, onRemove, isRemoving }) {
 
 const sectionCardStyle = { ...cardStyle, marginTop: tokens.space.md };
 
-function ResyncScope({ liveWeeks, isResyncing, resync }) {
+function ResyncScope({ liveWeeks, isResyncing, resync, viewport }) {
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: tokens.space.sm }}>
       <span>{MESSAGES.SHOPPING_LIST_RESYNC_SCOPE_LABEL}</span>
@@ -89,7 +98,7 @@ function ResyncScope({ liveWeeks, isResyncing, resync }) {
         type="button"
         onClick={resync}
         disabled={isResyncing}
-        style={primaryButtonStyle(isResyncing)}
+        style={{ ...primaryButtonStyle(isResyncing), ...targetStyle(viewport) }}
       >
         {MESSAGES.SHOPPING_LIST_RESYNC}
       </button>
@@ -106,6 +115,7 @@ function ItemForm({
   canSaveItem,
   saveItem,
   closeForm,
+  viewport,
 }) {
   const ref = useRef(null);
   useScrollIntoView(ref, isEditing ? 'edit' : 'new'); // mounted only while open (R10, R14)
@@ -163,11 +173,15 @@ function ItemForm({
         <button
           type="submit"
           disabled={!canSaveItem || isSaving}
-          style={primaryButtonStyle(!canSaveItem || isSaving)}
+          style={{ ...primaryButtonStyle(!canSaveItem || isSaving), ...targetStyle(viewport) }}
         >
           {isEditing ? MESSAGES.SHOPPING_LIST_SAVE_EDIT : MESSAGES.SHOPPING_LIST_SAVE_ADD}
         </button>
-        <button type="button" onClick={closeForm} style={secondaryButtonStyle}>
+        <button
+          type="button"
+          onClick={closeForm}
+          style={{ ...secondaryButtonStyle, ...targetStyle(viewport) }}
+        >
           {MESSAGES.SHOPPING_LIST_CANCEL}
         </button>
       </div>
@@ -196,6 +210,7 @@ export function ShoppingListView({
   resync,
   error,
   pending = NO_PENDING,
+  viewport = VIEWPORT.WIDE,
 }) {
   if (isLoading) return <LoadingState />;
 
@@ -218,12 +233,17 @@ export function ShoppingListView({
         liveWeeks={liveWeeks}
         isResyncing={isResyncing || pending.has('resync')}
         resync={resync}
+        viewport={viewport}
       />
 
       <button
         type="button"
         onClick={openAdd}
-        style={{ ...primaryButtonStyle(false), marginTop: tokens.space.sm }}
+        style={{
+          ...primaryButtonStyle(false),
+          ...targetStyle(viewport),
+          marginTop: tokens.space.sm,
+        }}
       >
         {MESSAGES.SHOPPING_LIST_ADD}
       </button>
@@ -243,6 +263,7 @@ export function ShoppingListView({
                   onEdit={openEdit}
                   onRemove={remove}
                   isRemoving={pending.has(`remove:${item.id}`)}
+                  viewport={viewport}
                 />
               ))}
             </ul>
@@ -259,6 +280,7 @@ export function ShoppingListView({
                   onEdit={openEdit}
                   onRemove={remove}
                   isRemoving={pending.has(`remove:${item.id}`)}
+                  viewport={viewport}
                 />
               ))}
             </ul>
@@ -276,6 +298,7 @@ export function ShoppingListView({
           canSaveItem={canSaveItem}
           saveItem={saveItem}
           closeForm={closeForm}
+          viewport={viewport}
         />
       ) : null}
 

@@ -87,6 +87,22 @@ export const cardStyle = {
   padding: tokens.space.sm,
 };
 
+// Week day-card grid columns per viewport tier (frontend_ux_phase2 R26-R28).
+export function weekGridColumns(viewport) {
+  if (viewport === 'wide') return 'repeat(7, minmax(0, 1fr))';
+  if (viewport === 'medium') return 'repeat(4, minmax(0, 1fr))';
+  return 'minmax(0, 1fr)';
+}
+
+// Minimum touch target: 44 px below 768 px, 24 px from 768 px (frontend_ux_phase2 R41-R43).
+export function targetStyle(viewport) {
+  const size =
+    viewport === 'compact' || viewport === 'narrow'
+      ? tokens.layout.targetMobile
+      : tokens.layout.targetDesktop;
+  return { minHeight: size, minWidth: size };
+}
+
 export const headingStyle = {
   margin: tokens.space.none,
   fontFamily: tokens.fontFamily.heading,

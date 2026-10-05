@@ -9,6 +9,7 @@ import {
   primaryButtonStyle,
   cardStyle,
   listResetStyle,
+  targetStyle,
 } from '../tokens/controlStyles.js';
 import { EmptyState } from './EmptyState.jsx';
 import { LoadingState } from './LoadingState.jsx';
@@ -16,6 +17,7 @@ import { ConfirmDialog } from './ConfirmDialog.jsx';
 import { AccountRow } from './AccountRow.jsx';
 import { Banner } from './Banner.jsx';
 import { handleFormSubmit } from '../hooks/formSubmit.js';
+import { VIEWPORT } from '../hooks/useViewport.js';
 
 // Default for views rendered without a hook's `pending` set (R33).
 const NO_PENDING = new Set();
@@ -48,6 +50,7 @@ export function AdminAccountsView({
   cancelReset,
   remove,
   confirm,
+  viewport = VIEWPORT.WIDE,
 }) {
   if (isLoading) return <LoadingState />;
 
@@ -102,7 +105,10 @@ export function AdminAccountsView({
         <button
           type="submit"
           disabled={!canCreate || pending.has('create')}
-          style={primaryButtonStyle(!canCreate || pending.has('create'))}
+          style={{
+            ...primaryButtonStyle(!canCreate || pending.has('create')),
+            ...targetStyle(viewport),
+          }}
         >
           {MESSAGES.ADMIN_ACCOUNTS_CREATE}
         </button>
@@ -124,6 +130,7 @@ export function AdminAccountsView({
             <AccountRow
               key={account.userId}
               account={account}
+              viewport={viewport}
               actingUserId={actingUserId}
               isRenaming={renamingId === account.userId}
               renameDraft={renameDraft}
