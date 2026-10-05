@@ -622,6 +622,25 @@
       ],
       "sdd": true,
       "status": "done"
+    },
+    {
+      "id": 32,
+      "name": "frontend_ux_phase2",
+      "tier": 4,
+      "title": "Frontend UI/UX phase 2: responsive shell, week view, targets and URL hash sync",
+      "description": "Layout phase of the frontend UI/UX plan (specs/frontend_ux_plan/plan.md Phase 4, S15-S19): useViewport with four tiers, bottom tab bar on compact screens, responsive summary, week view (7-column desktop grid, 4+3 medium, mobile day strip), touch targets, and active-view URL hash sync via the History API. The base stylesheet, danger token and overlays are separate features.",
+      "covers": [],
+      "depends_on": [
+        20,
+        31
+      ],
+      "acceptance": [
+        "Every requirement R1-R56 in specs/frontend_ux_phase2/requirements.md is met and traced by a test",
+        "Manual check at 375/768/1280/1440 px recorded in progress/impl_frontend_ux_phase2.md",
+        "test_no_extra_accessibility stays green with only the documented aria-label allowance; ./init.sh passes"
+      ],
+      "sdd": true,
+      "status": "done"
     }
   ]
 }
