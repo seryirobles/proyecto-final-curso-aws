@@ -31,6 +31,12 @@ describe('LoginView', () => {
     expect(screen.getByText(MESSAGES.LOGIN_SUBMIT)).not.toBeNull();
   });
 
+  it('shows no "no public registration" note (owner request 2026-10-06)', () => {
+    render(<LoginView {...baseProps()} />);
+
+    expect(screen.queryByText(/Sin registro público/)).toBeNull();
+  });
+
   it('masks the password field (security-relevant: type="password")', () => {
     render(<LoginView {...baseProps()} />);
 

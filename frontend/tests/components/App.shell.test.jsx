@@ -97,7 +97,7 @@ describe('App shell, compact (tab bar)', () => {
 
   it('marks the active tab bold with a terra border (R14)', () => {
     render(<App />);
-    const active = screen.getByRole('button', { name: MESSAGES.NAV_WEEK });
+    const active = screen.getByRole('button', { name: MESSAGES.NAV_SUMMARY });
     const other = screen.getByRole('button', { name: MESSAGES.NAV_RULES });
     expect(active.style.fontWeight).toBe('700');
     expect(active.style.border).toContain(TERRA_RGB);
@@ -129,7 +129,7 @@ describe('App shell, medium (pill row)', () => {
 
   it('marks the active pill bold with a terra border (R14)', () => {
     render(<App />);
-    const active = screen.getByRole('button', { name: MESSAGES.NAV_WEEK });
+    const active = screen.getByRole('button', { name: MESSAGES.NAV_SUMMARY });
     expect(active.style.fontWeight).toBe('700');
     expect(active.style.border).toContain(TERRA_RGB);
   });
@@ -162,7 +162,7 @@ describe('App shell, common', () => {
     mockViewport(1440);
     stub();
     render(<App />);
-    expect(document.title).toBe(`${MESSAGES.NAV_WEEK} · ${MESSAGES.APP_TITLE}`);
+    expect(document.title).toBe(`${MESSAGES.NAV_SUMMARY} · ${MESSAGES.APP_TITLE}`);
     expect(window.scrollTo).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: MESSAGES.NAV_RULES }));

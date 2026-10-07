@@ -44,10 +44,25 @@ Tests first within each slice. Every layout slice ends with a manual check at
 
 ## L7 View URL sync
 - [x] T26 — Unit tests for `viewHash` (five slugs both ways, `null` for unknown/empty). Covers: R45, R50.
-- [x] T27 — `useApp` hook tests with `history.pushState`/`replaceState` spies and `PopStateEvent`: push on change, no push for the same view, initial view from hash, popstate updates the view, unknown/empty hash replaces with `#/semana` (no push), no writes for anonymous/Admin/password-reset sessions, logout clears the hash. Covers: R46, R47, R48, R49, R50, R51, R52.
+- [x] T27 — `useApp` hook tests with `history.pushState`/`replaceState` spies and `PopStateEvent`: push on change, no push for the same view, initial view from hash, popstate updates the view, unknown/empty hash replaces with `#/semana` (no push) [superseded by T32: now `#/resumen`], no writes for anonymous/Admin/password-reset sessions, logout clears the hash. Covers: R46, R47, R48, R49, R50, R51, R52.
 - [x] T28 — Source-scan test: no `react-router`/routing-library import in `src/`. Covers: R53.
 - [x] T29 — Implement `hooks/viewHash.js` and the `useApp.js` changes. Covers: R45-R52.
 - [ ] T30 — Manual check: Back/Forward, refresh keeps the view, deep link `#/reglas`, at 375 px and 1440 px. Covers: R46-R50.
 
 ## Wrap-up
 - [ ] T31 — Run the full `npm test`, and record the traceability table (R -> test) plus the manual-check results (375/768/1280/1440 px) in `progress/impl_frontend_ux_phase2.md`. Covers: R56.
+
+## L8 Summary as default view + shortcut (owner change 2026-10-05; Covers listed per task)
+- [x] T32 — Hook tests first in `tests/hooks/useApp.test.js`: empty/unknown hash gives `summary` and `replaceState` with `#/resumen` (no push); `#/semana` still opens `week`; logout resets the view to `summary`; Admin/anonymous/password-reset still never write the hash. Update the existing cases that expect `week`/`#/semana`. Covers: R58, R59, R48, R51.
+- [x] T33 — Add `SUMMARY_EDIT_WEEK` to `es-ES.js`. Covers: R60, R56.
+- [x] T34 — `SummaryView` RTL: shortcut button present with the catalogue text directly after the h2 in loaded, empty and error states and calls `onEditWeek` once; `compact`/`narrow` -> 44 px min size, `medium`/`wide` -> 24 px; styled with `primaryButtonStyle(false)` (background `terra`); no `aria-*`/`role` attribute. Covers: R60, R61, R62, R63, R64, R65.
+- [x] T35 — App-level RTL (User session): lands on summary with `#/resumen`; clicking the shortcut shows the week view and calls `pushState` once with `#/semana`; clicking it again from week is not offered. Covers: R58, R62.
+- [x] T36 — Implement `useApp.js` default and logout reset, `SummaryView.jsx`, `App.jsx` wiring. Update the existing tests listed in `design.md` §6a that assumed `week` as default. Covers: R58-R65.
+- [ ] T37 — Manual check at 375/768/1280/1440 px: shortcut visible under the heading without scrolling, not clipped, Back from week returns to summary. Record in `progress/impl_frontend_ux_phase2.md`. Covers: R60-R64.
+
+## L9 Nav order: Resumen first (owner ruling 2026-10-05)
+Sequencing: do NOT implement until the reviewer has finished L8; both touch `useApp.js`, `App.jsx` and the same tests.
+- [x] T38 — Tests first: `useApp` `VIEWS`/`navTargets` equal `['summary','week','library','rules','shoppingList']` for a User and `[]` for Admin; App RTL at `compact` (tab bar) and `wide` (pills): button names in DOM order Resumen, Semana, Biblioteca, Reglas, Compra / Lista de la compra; Admin shell renders no nav. Update existing assertions of the old order in the files listed in `design.md` §6a. Covers: R66, R67, R68.
+- [x] T39 — Reorder `VIEWS` in `hooks/useApp.js`; confirm `App.jsx` renders from `navTargets` with no second list. Covers: R66, R67, R68.
+- [ ] T40 — Manual check at 375/768/1280/1440 px: tab bar and pill order, active-state styling still correct. Record in `progress/impl_frontend_ux_phase2.md`. Covers: R67, R68.
+

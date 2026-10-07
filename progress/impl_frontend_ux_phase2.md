@@ -45,3 +45,28 @@ App.viewportProp.test.jsx beforeEach now clear the hash (it persists across test
 Manual checks T10, T13, T21, T25, T30 not done (no browser); unticked. T31 not done.
 
 Review fixes (L5-L7): DayStrip test now asserts the selected border colour is terra (unselected is not); the always-`line` mutant dies, DayStrip.jsx restored by cmp. useApp.js header cut to 2 lines. Gates green (691 tests).
+
+## L8 Summary as default view + shortcut (T32-T36 done, T37 manual NOT done: no browser)
+
+| R | Test |
+|---|---|
+| R58 | tests/hooks/useApp.hash.test.js, useApp.test.js, tests/components/App.summaryShortcut.test.jsx |
+| R59 | tests/hooks/useApp.hash.test.js (logout reset, re-login) |
+| R48 | useApp.hash.test.js (`#/semana` still opens week) |
+| R60-R65 | tests/components/SummaryView.shortcut.test.jsx |
+| R62 (single push) | tests/components/App.summaryShortcut.test.jsx |
+
+Tests went red first (16 failures), then green. Existing tests edited (default week -> summary only):
+useApp.test.js, useApp.hash.test.js, App.test.jsx, App.polling.test.jsx (summary URL now polled, week flat),
+App.loginLoadsWeek (asserts summary title), App.loginWireRole (stubs SummaryView with a marker),
+App.shell (active tab/title = Resumen), App.viewportProp (summary first, then click Semana),
+touchTargets.views (SummaryView button count 1 -> 2: recipe link + shortcut).
+Behaviour change: first landing fetches the summary (not the week); connection-lost banner follows the summary hook.
+
+## L8 fix + L9 Resumen first tab (T38-T39 done, T40 manual NOT done: no browser)
+- R64 test now compares the shortcut style to `primaryButtonStyle(false)`; mutant `primaryButtonStyle(true)` killed (restored, cmp clean).
+- R66: `VIEWS` reordered in useApp.js (App.jsx already renders from navTargets). Tests: useApp.test.js (new order case), tests/components/App.navOrder.test.jsx (tab bar, pills, Admin no nav; R67, R68).
+- No existing test needed an order edit; all 117 files / 710 tests green.
+
+## Login note removed (2026-10-06)
+- Removed LOGIN_NO_REGISTRATION_NOTE, its `<p>` and footerNoteStyle; absence test in LoginView.test.jsx (red then green); gates green.

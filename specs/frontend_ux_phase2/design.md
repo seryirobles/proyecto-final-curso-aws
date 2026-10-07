@@ -145,6 +145,15 @@ and R53 (no `react-router` / `history` package import). Real-browser check
 - Q-G: summary shows 7 columns from 1280 px.
 - Not covered (needs the Q1 stylesheet): hover, focus-visible styling, reduced motion, media queries.
 
+## 6a. Owner ruling 2026-10-05: summary is the landing view
+
+- "Edit tab" = the Semana (week) view; summary is the read-only landing view.
+- Default view is `summary` (`#/resumen`) for an empty/unknown hash, the replaceState fallback and the post-logout reset (R58, R59 supersede the `week` default of R50). An explicit valid hash, `#/semana` included, still wins (R48). Admin/anonymous/password-reset behaviour unchanged (R51).
+- Code touched: `hooks/useApp.js` (`DEFAULT_VIEW = 'summary'` in place of the three `'week'` literals; logout resets `activeView`), `hooks/viewHash.js` untouched. `SummaryView.jsx` takes `onEditWeek` (App passes `() => navigateTo('week')`, the same function the nav uses) and `viewport`; button sits right after the `<h2>`, before the Banner, outside the `isLoading`-independent branches (rendered in loaded, empty and error states; the loading state is the only one without it). Style `{ ...primaryButtonStyle(false), ...targetStyle(viewport) }`, text `SUMMARY_EDIT_WEEK: 'Editar semana'`. `primaryButtonStyle` suits as is (terra on surface); no new token.
+- Side effect to confirm: `useSummary` polls only while `activeView === 'summary'`, so a landing on summary starts that fetch first instead of the week's.
+- **Ruling 2026-10-05, tab order:** Resumen becomes the FIRST tab: Resumen, Semana, Biblioteca, Reglas, Compra (R66-R68). Change is the `VIEWS` array order in `hooks/useApp.js`; `App.jsx` builds both nav layouts from `navTargets`, so tab bar and pills follow without a second list. Admin has no nav (`navTargets` is empty) and is unaffected. Slice L9.
+- Tests that assumed `week` as default: `tests/hooks/useApp.test.js`, `tests/components/App.test.jsx`, `App.loginLoadsWeek.test.jsx`, `App.loginLoadsOtherViews.test.jsx`, `App.polling.test.jsx`, `App.loginWireRole.test.jsx`, and any L7 hash tests; `SummaryView.test.jsx` gains shortcut cases. Tests that may assert the old nav order (L9): `tests/hooks/useApp.test.js`, `tests/components/App.shell.test.jsx`, `App.test.jsx`, `App.touchTargets.test.jsx`, `App.viewportProp.test.jsx`, `App.loginWireRole.test.jsx`, `App.loginLoadsOtherViews.test.jsx`, `tests/hooks/useDocumentTitle.test.js`.
+
 ## 7. Rejected alternatives
 
 1. **Call `useBreakpoint` per component (or CSS `@media` via the Q1 stylesheet).**

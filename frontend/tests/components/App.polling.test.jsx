@@ -46,7 +46,7 @@ describe('App polling (finding 1 proof)', () => {
     vi.restoreAllMocks();
   });
 
-  it('only the default active view (week) keeps polling after 60s; the other 4 stay flat', async () => {
+  it('only the default active view (summary) keeps polling after 60s; the other 4 stay flat', async () => {
     await act(async () => {
       render(<App />);
       await Promise.resolve();
@@ -58,10 +58,10 @@ describe('App polling (finding 1 proof)', () => {
     });
 
     const counts = countsByUrl(globalThis.fetch.mock.calls);
-    expect(counts['/v1/weeks/2026-W34']).toBe(3);
+    expect(counts['/v1/weeks/2026-W34/summary']).toBe(3);
     expect(counts['/v1/library/recipes']).toBeUndefined();
     expect(counts['/v1/rules']).toBeUndefined();
     expect(counts['/v1/shopping-list']).toBeUndefined();
-    expect(counts['/v1/weeks/2026-W34/summary']).toBeUndefined();
+    expect(counts['/v1/weeks/2026-W34']).toBeUndefined();
   });
 });

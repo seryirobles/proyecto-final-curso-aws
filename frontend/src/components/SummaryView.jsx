@@ -10,7 +10,7 @@ import { DAY_LABELS, SLOT_LABELS } from '../domain/labels.js';
 import { MESSAGES } from '../messages/index.js';
 import { Banner } from './Banner.jsx';
 import { VIEWPORT } from '../hooks/useViewport.js';
-import { targetStyle } from '../tokens/controlStyles.js';
+import { primaryButtonStyle, targetStyle } from '../tokens/controlStyles.js';
 
 // Day-grid columns per viewport tier (frontend_ux_phase2 R22-R24).
 function summaryColumns(viewport) {
@@ -41,6 +41,7 @@ export function SummaryView({
   closeDetail,
   error,
   viewport = VIEWPORT.WIDE,
+  onEditWeek,
 }) {
   if (isLoading) return <LoadingState />;
 
@@ -55,6 +56,13 @@ export function SummaryView({
       >
         {MESSAGES.SUMMARY_VIEW_TITLE}
       </h2>
+      <button
+        type="button"
+        onClick={onEditWeek}
+        style={{ ...primaryButtonStyle(false), ...targetStyle(viewport) }}
+      >
+        {MESSAGES.SUMMARY_EDIT_WEEK}
+      </button>
       <Banner>{error}</Banner>
       {week ? <WeekLabel designation="current" monday={week.monday} sunday={week.sunday} /> : null}
       {summary.isEmpty ? (

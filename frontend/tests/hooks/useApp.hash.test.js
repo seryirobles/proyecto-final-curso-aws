@@ -49,8 +49,14 @@ describe('useApp URL hash', () => {
 
   it('does not push for the view already active (R47)', () => {
     const { result } = renderHook(() => useApp());
-    act(() => result.current.navigateTo('week'));
+    act(() => result.current.navigateTo('summary'));
     expect(push).not.toHaveBeenCalled();
+  });
+
+  it('an explicit #/semana hash still opens the week view (R48)', () => {
+    window.history.replaceState(null, '', '#/semana');
+    const { result } = renderHook(() => useApp());
+    expect(result.current.activeView).toBe('week');
   });
 
   it('starts on the view named by a known hash (R48)', () => {
@@ -66,19 +72,20 @@ describe('useApp URL hash', () => {
     expect(push).not.toHaveBeenCalled();
   });
 
-  it('replaces an empty hash with #/semana without pushing (R50)', () => {
-    renderHook(() => useApp());
-    expect(replace).toHaveBeenCalledWith(null, '', '#/semana');
+  it('replaces an empty hash with #/resumen without pushing (R58)', () => {
+    const { result } = renderHook(() => useApp());
+    expect(result.current.activeView).toBe('summary');
+    expect(replace).toHaveBeenCalledWith(null, '', '#/resumen');
     expect(push).not.toHaveBeenCalled();
   });
 
-  it('popstate with an unknown hash falls back to week and replaces it (R50)', () => {
+  it('popstate with an unknown hash falls back to summary and replaces it (R58)', () => {
     window.history.replaceState(null, '', '#/biblioteca');
     const { result } = renderHook(() => useApp());
     expect(result.current.activeView).toBe('library');
     pop('#/nope');
-    expect(result.current.activeView).toBe('week');
-    expect(replace).toHaveBeenCalledWith(null, '', '#/semana');
+    expect(result.current.activeView).toBe('summary');
+    expect(replace).toHaveBeenCalledWith(null, '', '#/resumen');
     expect(push).not.toHaveBeenCalled();
   });
 
@@ -109,7 +116,14 @@ describe('useApp URL hash', () => {
     expect(push).not.toHaveBeenCalled();
   });
 
-  it('re-login after logout starts on week (R50)', async () => {
+  it('logout resets the view to summary (R59)', async () => {
+    const { result } = renderHook(() => useApp());
+    act(() => result.current.navigateTo('rules'));
+    await act(() => result.current.logout());
+    expect(result.current.activeView).toBe('summary');
+  });
+
+  it('re-login after logout starts on summary (R59)', async () => {
     const { result, rerender } = renderHook(() => useApp());
     act(() => result.current.navigateTo('rules'));
     await act(() => result.current.logout());
@@ -117,7 +131,7 @@ describe('useApp URL hash', () => {
     rerender();
     stubSession(USER);
     rerender();
-    expect(result.current.activeView).toBe('week');
-    expect(window.location.hash).toBe('#/semana');
+    expect(result.current.activeView).toBe('summary');
+    expect(window.location.hash).toBe('#/resumen');
   });
 });

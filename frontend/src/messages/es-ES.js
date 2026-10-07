@@ -154,6 +154,7 @@ export const MESSAGES = {
 
   // Summary view (feature 20 T38-T40)
   SUMMARY_VIEW_TITLE: 'Resumen de la semana',
+  SUMMARY_EDIT_WEEK: 'Editar semana',
   SUMMARY_EMPTY_SLOT: '—',
   SUMMARY_VIEW_EMPTY: 'Todavía no hay platos definitivos para esta semana.',
 
@@ -174,7 +175,6 @@ export const MESSAGES = {
   LOGIN_SUBMIT: 'Entrar',
   LOGIN_SUBMITTING: 'Entrando…',
   // Auth screens - card styling reopen (feature 20 T79-T80, design.md 10.6)
-  LOGIN_NO_REGISTRATION_NOTE: 'Sin registro público. Las cuentas las crea el administrador.',
   SET_PASSWORD_VIEW_TITLE: 'Nueva contraseña',
   SET_PASSWORD_NEW_LABEL: 'Nueva contraseña',
   SET_PASSWORD_CONFIRM_LABEL: 'Confirmar contraseña',

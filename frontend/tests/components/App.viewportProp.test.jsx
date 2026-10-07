@@ -57,11 +57,11 @@ describe('App viewport prop', () => {
   ])('passes %i px (%s) to Week and Summary', (width, tier, shopping) => {
     mockViewport(width);
     render(<App />);
-    expect(screen.getByText(`WEEK:${tier}`)).not.toBeNull();
-
-    fireEvent.click(screen.getByRole('button', { name: MESSAGES.NAV_SUMMARY }));
-
     expect(screen.getByText(`SUMMARY:${tier}`)).not.toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: MESSAGES.NAV_WEEK }));
+
+    expect(screen.getByText(`WEEK:${tier}`)).not.toBeNull();
     expect(screen.getByRole('button', { name: shopping })).not.toBeNull();
   });
 });

@@ -15,10 +15,10 @@ describe('useApp', () => {
   beforeEach(() => stubSession({ status: 'loading' }));
   afterEach(() => vi.clearAllMocks());
 
-  it('starts on the week view', () => {
+  it('starts on the summary view (R58)', () => {
     const { result } = renderHook(() => useApp());
 
-    expect(result.current.activeView).toBe('week');
+    expect(result.current.activeView).toBe('summary');
   });
 
   it('navigateTo switches activeView among all five nav targets (T43)', () => {
@@ -47,6 +47,15 @@ describe('useApp', () => {
 
     expect(result.current.navTargets).not.toContain('admin');
     expect(result.current.navTargets).toEqual(VIEWS);
+  });
+
+  it('orders the nav targets summary, week, library, rules, shoppingList (R66)', () => {
+    stubSession({ status: 'authenticated', role: 'User' });
+    const { result } = renderHook(() => useApp());
+    const order = ['summary', 'week', 'library', 'rules', 'shoppingList'];
+
+    expect(VIEWS).toEqual(order);
+    expect(result.current.navTargets).toEqual(order);
   });
 
   it('anonymous and passwordResetPending also expose no meal-planning nav target', () => {

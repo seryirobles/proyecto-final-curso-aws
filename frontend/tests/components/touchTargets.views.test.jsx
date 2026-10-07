@@ -169,8 +169,8 @@ describe.each([
   ['medium', '24px'],
   ['wide', '24px'],
 ])('buttons when %s', (viewport, px) => {
-  it('SummaryView recipe link', () => {
-    expectTargets(summary(viewport).container, px, 1);
+  it('SummaryView recipe link and week shortcut', () => {
+    expectTargets(summary(viewport).container, px, 2);
   });
 
   it('ShoppingListView (rows, resync, add, form)', () => {

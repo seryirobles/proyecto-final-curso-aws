@@ -84,13 +84,13 @@ const MARKERS = {
   summary: 'SUMMARY_VIEW_MARKER',
 };
 describe('App', () => {
-  it('mounts WeekPlannerView by default (User shell)', () => {
+  it('mounts SummaryView by default (User shell, R58)', () => {
     stubHooks();
     render(<App />);
 
-    expect(screen.getByText(MARKERS.week)).not.toBeNull();
+    expect(screen.getByText(MARKERS.summary)).not.toBeNull();
     Object.values(MARKERS)
-      .filter((marker) => marker !== MARKERS.week)
+      .filter((marker) => marker !== MARKERS.summary)
       .forEach((marker) => expect(screen.queryByText(marker)).toBeNull());
   });
 
@@ -124,7 +124,7 @@ describe('App', () => {
   });
 
   it('renders the connection-lost banner when the ACTIVE view reports connectionLost (FR-RT-03)', () => {
-    stubHooks({ connectionLost: { week: true } });
+    stubHooks({ connectionLost: { summary: true } });
     render(<App />);
 
     expect(screen.getByText(MESSAGES.CONNECTION_LOST)).not.toBeNull();
@@ -146,11 +146,11 @@ describe('App', () => {
     stubHooks();
     render(<App />);
 
-    expect(useWeekPlanner).toHaveBeenLastCalledWith({ active: true });
+    expect(useWeekPlanner).toHaveBeenLastCalledWith({ active: false });
     expect(useLibrary).toHaveBeenLastCalledWith({ active: false });
     expect(useRules).toHaveBeenLastCalledWith({ active: false });
     expect(useShoppingList).toHaveBeenLastCalledWith({ active: false });
-    expect(useSummary).toHaveBeenLastCalledWith({ active: false });
+    expect(useSummary).toHaveBeenLastCalledWith({ active: true });
   });
 
   it('navigating flips active: true/false to match the newly active view', () => {
@@ -218,7 +218,7 @@ describe('App', () => {
     stubHooks({ session: USER_SESSION });
     render(<App />);
 
-    expect(screen.getByText(MARKERS.week)).not.toBeNull();
+    expect(screen.getByText(MARKERS.summary)).not.toBeNull();
     expect(screen.queryByText('ADMIN_ACCOUNTS_VIEW_MARKER')).toBeNull();
     expect(screen.queryByText(MESSAGES.ADMIN_ACCOUNTS_VIEW_TITLE)).toBeNull();
   });

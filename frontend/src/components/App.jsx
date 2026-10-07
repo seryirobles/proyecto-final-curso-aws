@@ -244,7 +244,9 @@ export function App() {
           {activeView === 'shoppingList' ? (
             <ShoppingListView {...shoppingList} viewport={viewport} />
           ) : null}
-          {activeView === 'summary' ? <SummaryView {...summary} viewport={viewport} /> : null}
+          {activeView === 'summary' ? (
+            <SummaryView {...summary} viewport={viewport} onEditWeek={() => navigateTo('week')} />
+          ) : null}
         </main>
       </div>
     );

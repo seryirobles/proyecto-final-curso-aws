@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // Issue stuck-loading-after-login (E1, E2): the app mounts with no session,
-// the user logs in, and the week view must load without a page reload.
+// the user logs in, and the landing (summary) view must load without a page reload.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockViewport } from '../helpers/viewport.js';
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
@@ -61,27 +61,23 @@ afterEach(() => {
 });
 
 describe('App: login from a cold, session-less mount', () => {
-  it('loads the week view instead of staying on the loading state (E1)', async () => {
+  it('loads the summary landing view instead of staying on the loading state (E1)', async () => {
     serveSessionThenData();
     render(<App />);
 
     await logIn();
 
-    await waitFor(() =>
-      expect(screen.getAllByText(MESSAGES.WEEK_PLANNER_ADD_CANDIDATE)).toHaveLength(14),
-    );
+    await waitFor(() => expect(screen.getByText(MESSAGES.SUMMARY_VIEW_TITLE)).not.toBeNull());
     expect(screen.queryByText(MESSAGES.LOADING_STATE_DEFAULT)).toBeNull();
   });
 
-  it('does not show the pre-login session error on the loaded week view (E2)', async () => {
+  it('does not show the pre-login session error on the loaded summary view (E2)', async () => {
     serveSessionThenData();
     render(<App />);
 
     await logIn();
 
-    await waitFor(() =>
-      expect(screen.getAllByText(MESSAGES.WEEK_PLANNER_ADD_CANDIDATE)).toHaveLength(14),
-    );
+    await waitFor(() => expect(screen.getByText(MESSAGES.SUMMARY_VIEW_TITLE)).not.toBeNull());
     expect(screen.queryByText(EXPIRED_DETAIL)).toBeNull();
   });
 });

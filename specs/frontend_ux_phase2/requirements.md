@@ -274,7 +274,7 @@ WHEN an authenticated User navigates to the view already active, the system SHAL
 ## R48
 Implements: FR-UX-02
 
-WHEN the app starts with a known view hash in the URL, the system SHALL make that view the initial active view.
+WHEN the app starts with a known view hash in the URL, the system SHALL make that view the initial active view. (R58 supersedes the empty/unknown-hash default in R50; this R is unchanged: an explicit valid hash, including `#/semana`, still wins.)
 
 ## R49
 Implements: FR-UX-02
@@ -284,7 +284,7 @@ WHEN a `popstate` event fires, the system SHALL set the active view to the one n
 ## R50
 Implements: FR-UX-02
 
-IF the URL hash is empty or names no known view, THEN the system SHALL set the active view to `week` and replace the hash with `#/semana` without adding a history entry.
+IF the URL hash is empty or names no known view, THEN the system SHALL set the active view to `week` and replace the hash with `#/semana` without adding a history entry. **Superseded by R58 (2026-10-05): default is `summary` / `#/resumen`.**
 
 ## R51
 Implements: FR-UX-02
@@ -315,3 +315,63 @@ The system SHALL pass `tests/test_no_extra_accessibility.test.js` unchanged from
 Implements: FR-UX-01, FR-UX-03
 
 The system SHALL source every new user-visible string (short tab labels, three-letter day names, "—", title separator) from the messages catalogue, so that `tests/test_all_strings_from_messages.test.js` stays green.
+
+## Default view and summary shortcut (owner change 2026-10-05)
+
+## R58
+Implements: FR-UX-02
+
+IF the URL hash is empty or names no known view, THEN the system SHALL set the active view to `summary` and replace the hash with `#/resumen` without adding a history entry.
+
+## R59
+Implements: FR-UX-02
+
+WHEN a User logs out, the system SHALL reset the active view to `summary`, so that the next session lands on the summary unless its URL names another view.
+
+## R60
+Implements: FR-SUM-01
+
+The system SHALL render a shortcut `<button type="button">` to the week view directly under the summary heading, with the visible text `SUMMARY_EDIT_WEEK` ("Editar semana") from the messages catalogue.
+
+## R61
+Implements: FR-SUM-01
+
+The system SHALL render the summary shortcut when the summary is loaded, empty and errored alike.
+
+## R62
+Implements: FR-UX-02
+
+WHEN the summary shortcut is activated, the system SHALL navigate to the week view through the same `navigateTo` path the nav uses, so that R46 and R47 add at most one history entry.
+
+## R63
+Implements: FR-UX-07
+
+WHILE the viewport is `compact` or `narrow`, the system SHALL give the summary shortcut a minimum height and width of `layout.targetMobile`, and from `medium` up `layout.targetDesktop`, through `targetStyle`.
+
+## R64
+Implements: FR-UX-02
+
+The system SHALL style the summary shortcut with `primaryButtonStyle(false)` so that it reads as the primary action of the view.
+
+## R65
+Implements: FR-UX-07
+
+The system SHALL NOT add any `aria-*` attribute or `role` to the summary shortcut.
+
+## Nav order (owner ruling 2026-10-05; no earlier R pinned the old order, so nothing is superseded)
+
+## R66
+Implements: FR-UX-02
+
+The system SHALL list `VIEWS`, and therefore `navTargets` for an authenticated User, in the order `summary`, `week`, `library`, `rules`, `shoppingList`.
+
+## R67
+Implements: FR-UX-02
+
+The system SHALL render the bottom tab bar buttons in the DOM order Resumen, Semana, Biblioteca, Reglas, Compra.
+
+## R68
+Implements: FR-UX-02
+
+The system SHALL render the top pill buttons in the DOM order Resumen, Semana, Biblioteca, Reglas, Lista de la compra.
+

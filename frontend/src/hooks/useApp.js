@@ -5,30 +5,34 @@ import { useCallback, useEffect, useState } from 'react';
 import { useSession } from './useSession.js';
 import { hashToView, viewToHash } from './viewHash.js';
 
-export const VIEWS = ['week', 'library', 'rules', 'shoppingList', 'summary'];
+export const VIEWS = ['summary', 'week', 'library', 'rules', 'shoppingList'];
+
+const DEFAULT_VIEW = 'summary'; // landing view (R58, R59)
 
 export function useApp() {
-  const [activeView, setActiveView] = useState(() => hashToView(window.location.hash) ?? 'week');
+  const [activeView, setActiveView] = useState(
+    () => hashToView(window.location.hash) ?? DEFAULT_VIEW,
+  );
   const { session, login, setPassword, logout } = useSession();
 
   const isAuthenticatedUser = session.status === 'authenticated' && session.role === 'User';
   const navTargets = isAuthenticatedUser ? VIEWS : [];
 
-  // Unknown or empty hash: week, hash replaced (R50).
+  // Unknown or empty hash: default view, hash replaced (R58).
   const syncFromHash = useCallback(() => {
     const view = hashToView(window.location.hash);
-    setActiveView(view ?? 'week');
-    if (view === null) window.history.replaceState(null, '', viewToHash('week'));
+    setActiveView(view ?? DEFAULT_VIEW);
+    if (view === null) window.history.replaceState(null, '', viewToHash(DEFAULT_VIEW));
   }, []);
 
   useEffect(() => {
     if (!isAuthenticatedUser) return undefined;
     if (hashToView(window.location.hash) === null) {
-      window.history.replaceState(null, '', viewToHash('week')); // R50
+      window.history.replaceState(null, '', viewToHash(DEFAULT_VIEW)); // R58
     }
     window.addEventListener('popstate', syncFromHash);
     return () => window.removeEventListener('popstate', syncFromHash);
-  }, [isAuthenticatedUser, syncFromHash]); // R49, R50
+  }, [isAuthenticatedUser, syncFromHash]); // R49, R58
 
   const navigateTo = (view) => {
     if (isAuthenticatedUser && view !== activeView) {
@@ -39,7 +43,7 @@ export function useApp() {
 
   const logoutAndClearHash = async () => {
     await logout();
-    setActiveView('week'); // a later login starts on week (R50)
+    setActiveView(DEFAULT_VIEW); // a later login starts on summary (R59)
     if (isAuthenticatedUser) {
       window.history.replaceState(null, '', window.location.pathname + window.location.search); // R52
     }

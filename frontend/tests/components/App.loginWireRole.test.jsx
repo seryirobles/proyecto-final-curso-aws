@@ -28,6 +28,9 @@ vi.mock('../../src/hooks/useAdminAccounts.js', () => ({
 vi.mock('../../src/components/WeekPlannerView.jsx', () => ({
   WeekPlannerView: () => <p>WEEK_VIEW_MARKER</p>,
 }));
+vi.mock('../../src/components/SummaryView.jsx', () => ({
+  SummaryView: () => <p>SUMMARY_VIEW_MARKER</p>,
+}));
 vi.mock('../../src/components/AdminAccountsView.jsx', () => ({
   AdminAccountsView: () => <p>ADMIN_ACCOUNTS_VIEW_MARKER</p>,
 }));
@@ -69,7 +72,7 @@ describe('App after a successful login', () => {
 
     await logIn();
 
-    await waitFor(() => expect(screen.getByText('WEEK_VIEW_MARKER')).not.toBeNull());
+    await waitFor(() => expect(screen.getByText('SUMMARY_VIEW_MARKER')).not.toBeNull());
     expect(screen.getByText(MESSAGES.NAV_WEEK)).not.toBeNull();
     expect(screen.queryByText(MESSAGES.LOGIN_SUBMIT)).toBeNull();
   });

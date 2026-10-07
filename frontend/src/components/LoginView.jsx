@@ -102,18 +102,6 @@ function submitButtonStyle(disabled) {
   };
 }
 
-function footerNoteStyle() {
-  return {
-    textAlign: 'center',
-    marginTop: tokens.space.md,
-    paddingTop: tokens.space.sm,
-    borderTop: `1px dashed ${tokens.color.line}`,
-    fontFamily: tokens.fontFamily.label,
-    fontSize: tokens.fontSize.xs,
-    color: tokens.color.ink3,
-  };
-}
-
 export function LoginView({
   username,
   setUsername,
@@ -164,7 +152,6 @@ export function LoginView({
         >
           {isSubmitting ? MESSAGES.LOGIN_SUBMITTING : MESSAGES.LOGIN_SUBMIT}
         </button>
-        <p style={footerNoteStyle()}>{MESSAGES.LOGIN_NO_REGISTRATION_NOTE}</p>
       </form>
     </div>
   );
