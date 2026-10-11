@@ -6,7 +6,7 @@ only call that leaves the machine — is authenticated by an API key
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import boto3
 import pytest
@@ -15,6 +15,7 @@ from botocore.exceptions import NoCredentialsError
 
 from planner_ai import local_worker
 from planner_ai.adapters.dynamo import _table
+from planner_ai.wiring import Dependencies
 
 _LOCAL_DYNAMODB = "http://localhost:8000"
 _LOCAL_SQS = "http://localhost:9324"
@@ -125,7 +126,7 @@ def test_the_worker_polls_when_only_a_bedrock_api_key_is_configured(
     def fake_create_data_table() -> None:
         created.append(_table.TABLE_NAME)
 
-    def stop_after_the_first_poll(sqs: Any, queue_url: str) -> None:
+    def stop_after_the_first_poll(sqs: Any, queue_url: str, deps: Any) -> None:
         polled.append(sqs)
         raise KeyboardInterrupt
 
@@ -152,7 +153,7 @@ def test_the_worker_polls_when_a_credential_chain_is_configured_without_a_bedroc
 
     polled: list[Any] = []
 
-    def stop_after_the_first_poll(sqs: Any, queue_url: str) -> None:
+    def stop_after_the_first_poll(sqs: Any, queue_url: str, deps: Any) -> None:
         polled.append(sqs)
         raise KeyboardInterrupt
 
@@ -181,3 +182,42 @@ def test_the_worker_fails_fast_when_no_bedrock_credential_is_configured(
         local_worker.main()
 
     assert exit_info.value.code == 1
+
+
+def test_main_builds_the_override_aware_dependencies_once(
+    no_ambient_credentials: None, local_mode: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """E5: the loop must use build_local_dependencies, not the plain wiring."""
+    local_deps, seen = object(), []
+    monkeypatch.setattr(local_worker, "create_data_table", lambda: None)
+    monkeypatch.setattr(local_worker, "build_local_dependencies", lambda: local_deps)
+    monkeypatch.setattr(local_worker, "build_dependencies", lambda: object())
+
+    def stop(sqs: Any, queue_url: str, deps: Any) -> None:
+        seen.append(deps)
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(local_worker, "_poll_once", stop)
+
+    local_worker.main()
+
+    assert seen == [local_deps]
+
+
+def test_poll_once_forwards_deps_to_handle(monkeypatch: pytest.MonkeyPatch) -> None:
+    """E5: the gate override only works if handle() receives the deps."""
+    calls: list[Any] = []
+    deps = cast(Dependencies, object())
+
+    class _Sqs:
+        def receive_message(self, **kwargs: Any) -> Any:
+            return {"Messages": [{"MessageId": "m", "ReceiptHandle": "r", "Body": "{}"}]}
+
+        def delete_message(self, **kwargs: Any) -> None:
+            pass
+
+    monkeypatch.setattr(local_worker, "handle", lambda event, d=None: calls.append(d))
+
+    local_worker._poll_once(_Sqs(), _QUEUE_URL, deps)
+
+    assert calls == [deps]

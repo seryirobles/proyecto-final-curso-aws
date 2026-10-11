@@ -23,5 +23,28 @@
     }
   },
   "issues": [
+    {
+      "id": 13,
+      "name": "ai-generation-422-unavailable",
+      "title": "Generar receta shows 'La generación con IA no está disponible' because POST /v1/generations returns 422",
+      "severity": "high",
+      "report": "AI generation is not working. I push on generar receta and get the message La generación con IA no está disponible en este momento. Inténtalo de nuevo más tarde. In the backend, I see INFO:planner_api.local_server:\"POST /v1/generations HTTP/1.1\" 422 - and nothing else",
+      "reported": "2026-10-07",
+      "status": "done",
+      "covers": ["FR-AI-14", "FR-AI-01", "FR-AI-03", "NFR-AI-01", "NFR-OBS-01"],
+      "classification": "not_a_defect",
+      "reviewed": true
+    },
+    {
+      "id": 14,
+      "name": "silent-failures-not-logged",
+      "title": "invalid_output (and other swallowed failures) leave no log of the cause; sweep the backend for the same pattern",
+      "severity": "medium",
+      "report": "Fix the logging. But not only here. (Context: after issue 13 a single-recipe generation fails with invalid_output while the worker logs only 'Processed single-recipe generation'; validate_and_preview in core/domain/ai_output.py catches every validator exception and returns a generic failure with neither the exception type nor the model text logged. Owner wants the logging fixed there and in every other place with the same pattern.)",
+      "reported": "2026-10-11",
+      "status": "pending",
+      "covers": ["NFR-OBS-01", "NFR-AI-01", "FR-AI-01", "FR-AI-02", "FR-AI-03", "FR-AI-12", "FR-AI-14"],
+      "classification": "not_a_defect"
+    }
   ]
 }

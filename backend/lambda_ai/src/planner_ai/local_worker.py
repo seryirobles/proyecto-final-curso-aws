@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
+from dataclasses import replace
 from typing import Any
 
 import boto3
@@ -16,6 +17,7 @@ from botocore.exceptions import ClientError, ProfileNotFound
 
 from planner_ai.adapters.dynamo._table import create_data_table
 from planner_ai.handler import handle
+from planner_ai.wiring import Dependencies, build_dependencies
 
 logger = logging.getLogger("planner_ai.local_worker")
 
@@ -33,6 +35,23 @@ _CONFIG = (
 )
 # ClientError codes botocore raises for a misconfigured/expired credential.
 _AUTH_ERROR_CODES = {"UnrecognizedClientException", "InvalidClientTokenId", "ExpiredToken"}
+
+
+class _FixedGate:
+    def __init__(self, enabled: bool) -> None:
+        self._enabled = enabled
+
+    def is_generation_enabled(self) -> bool:
+        return self._enabled
+
+
+def build_local_dependencies() -> Dependencies:
+    """Local-only override of the SSM gate; the deployed path never reads it (NFR-AI-01)."""
+    deps = build_dependencies()
+    override = os.environ.get("AI_GENERATION_ENABLED")
+    if override not in ("true", "false"):
+        return deps
+    return replace(deps, gate=_FixedGate(override == "true"))
 
 
 def _require_local_env() -> None:
@@ -93,7 +112,7 @@ def _queue_url() -> str:
     return os.environ["GENERATION_QUEUE_URL"]
 
 
-def _poll_once(sqs: Any, queue_url: str) -> None:
+def _poll_once(sqs: Any, queue_url: str, deps: Dependencies) -> None:
     response = sqs.receive_message(
         QueueUrl=queue_url, MaxNumberOfMessages=10, WaitTimeSeconds=_WAIT_TIME_SECONDS
     )
@@ -110,7 +129,7 @@ def _poll_once(sqs: Any, queue_url: str) -> None:
             for m in messages
         ]
     }
-    handle(event)
+    handle(event, deps)
     # handle()'s per-record exception isolation (handler.py R4) means a batch
     # always completes without raising, so a real SQS trigger would delete the
     # whole batch too — mirror that here.
@@ -140,10 +159,11 @@ def main() -> None:
         raise SystemExit(1) from None
 
     queue_url = _queue_url()
+    deps = build_local_dependencies()
     logger.info("planner_ai local worker polling %s", queue_url)
     try:
         while True:
-            _poll_once(sqs, queue_url)
+            _poll_once(sqs, queue_url, deps)
     except KeyboardInterrupt:
         logger.info("planner_ai local worker stopped")
 

@@ -4,6 +4,7 @@ claim, prompt, gate, provider, validate, record; never touches WeekRepository
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
@@ -20,6 +21,8 @@ from planner_core.domain.recipe import Recipe
 from planner_core.ports.ai_provider import AiPrompt, AiProvider, AiProviderError
 from planner_core.ports.generation_gate import GenerationGate
 from planner_core.ports.generation_queue import GenerationResultSink
+
+logger = logging.getLogger(__name__)
 
 _COMPLETED = "completed"
 _FAILED = "failed"
@@ -78,7 +81,8 @@ def run_single_recipe_generation(
 
     try:
         raw = provider.generate(prompt)
-    except AiProviderError:  # R26
+    except AiProviderError as error:  # R26
+        logger.warning("AI provider failed for %s: %s", idempotency_key, error)
         invalid = build_generation_failure(GenerationFailureReason.INVALID_OUTPUT)
         return _failed(queue, idempotency_key, invalid)
 

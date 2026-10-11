@@ -8,6 +8,7 @@ generation_submission writes them synchronously at submit
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import date
 from uuid import uuid4
@@ -29,6 +30,8 @@ from planner_core.ports.ai_provider import AiProvider, AiProviderError
 from planner_core.ports.generation_gate import GenerationGate
 from planner_core.ports.generation_queue import GenerationResultSink, PerSlotResult
 from planner_core.ports.weeks import WeekRepository
+
+logger = logging.getLogger(__name__)
 
 _TERMINAL_STATUS = "completed"
 
@@ -93,7 +96,8 @@ def run_week_generation(
 
         try:
             raw = provider.generate(prompt)
-        except AiProviderError:  # R4 — per-slot isolation
+        except AiProviderError as error:  # R4 — per-slot isolation
+            logger.warning("AI provider failed for %s: %s", idempotency_key, error)
             invalid = build_generation_failure(GenerationFailureReason.INVALID_OUTPUT)
             results.append(SlotResult(day_n, meal_n, "failed", invalid.message))
             continue

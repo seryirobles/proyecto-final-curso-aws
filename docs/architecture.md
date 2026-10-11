@@ -280,58 +280,36 @@ Lambda. This section records only the load-bearing shape:
 The 13 gate questions and their rulings are recorded in
 `docs/rest_api_contract.md` §7.
 
-### 1.2.6 AI provider — AWS Bedrock + OpenAI GPT-5.6 Terra (was P4)
+### 1.2.6 AI provider — AWS Bedrock + Amazon Nova 2 Lite (was P4)
 
-**Decided by the human 2026-08-30; model changed 2026-09-16.** Formerly P4.
-Originally Anthropic Claude — the owner does not have Bedrock model-access
-permissions for Anthropic models, so the provider stays Bedrock but the
-model changes to **OpenAI GPT-5.6 Terra**, generally available on Bedrock
-(model card: `docs.aws.amazon.com/bedrock/latest/userguide/model-card-openai-gpt-56-terra.html`).
+**Decided by the human 2026-08-30; model changed 2026-09-16 and again
+2026-10-11.** Formerly P4. Originally Anthropic Claude, then OpenAI GPT-5.6
+Terra. The owner's account has no Bedrock model access for either (GPT-5.6
+Terra returned `AccessDeniedException`, agreement `NOT_AVAILABLE`); the only
+models enabled are Amazon Nova and Kimi K3. The provider stays Bedrock and the
+model is now **Amazon Nova 2 Lite**.
 
-- **AWS Bedrock**, OpenAI **GPT-5.6 Terra** — the balanced tier, "superior
-  performance to GPT-5.5 at a lower cost" per the model card; Sol
-  (flagship) and Luna (fast/cheap) are the other two variants in the same
-  family if a different tier is needed later. (Anthropic Claude was the
-  original choice, reverted for the permissions reason above; Google
-  Gemini was the initial ask before that but was never available on
-  Bedrock — only Google's open Gemma models are.)
+- **AWS Bedrock**, **Amazon Nova 2 Lite** (`amazon.nova-2-lite-v1:0`) — an
+  Amazon first-party model: no AWS Marketplace subscription step. Reasoning is
+  optional and off by default; effort, token cap, sampling and service tier are
+  configured through environment variables (table below, feature 33).
 - **Invocation: Bedrock's `Converse` API, plain `boto3`, no new
-  dependency.** Verified against the model's own AWS-published capability
-  table: on the `bedrock-runtime` endpoint this model supports `Converse`
-  but **not** `InvokeModel` — the reverse of the old Anthropic adapter,
-  which used `InvokeModel` with Anthropic's Messages-API body shape.
-  `Converse` is provider-agnostic and already part of `boto3`
+  dependency.** Nova 2 Lite supports `Converse` on the `bedrock-runtime`
+  endpoint. `Converse` is provider-agnostic and already part of `boto3`
   (`bedrock-runtime` client, already this Lambda's dependency), so the
   same boto3-only reasoning `specs/ai_lambda/design.md` §3 already gave
-  for rejecting `anthropic[bedrock]` applies equally here — no `openai`
-  package needed either. (OpenAI's own Bedrock guide recommends its
-  `openai[bedrock]` SDK using the Responses API instead; that path was
-  not taken here specifically to preserve the boto3-only adapter
-  closure. This reopen adds the matching `openai[bedrock]`-rejected entry
-  to design.md §11, which previously only held the `anthropic[bedrock]`
-  pointer, not a full entry.)
-- **Region: `eu-south-2` (Spain). Model id: `global.openai.gpt-5.6-terra`.**
-  The `bedrock-runtime` endpoint requires a cross-Region inference profile
-  id, not the bare `openai.gpt-5.6-terra` id (that bare id is only for the
-  separate `bedrock-mantle` endpoint, not used here) — and per the model
-  card's regional-availability table, `eu-south-2` supports only the
-  **Global** profile on `bedrock-runtime` (neither In-Region nor Geo are
-  available there), so it must be `global.openai.gpt-5.6-terra`, not the
-  `us.`-prefixed id. IAM needs `bedrock:InvokeModel` on both the inference
-  profile **and** the account's default project ARN
-  (`arn:aws:bedrock:{region}:{account-id}:project/default`) per the model
-  card's own setup note.
-- **Accepted tradeoff: no hard EU data-residency guarantee.** The owner's
-  preference is that data stay in Europe. Checked against the model card's
-  full regional table: **every** EU region (Ireland, London, Paris,
-  Frankfurt, Zurich, Stockholm, Milan, Spain) supports only the **Global**
-  cross-Region profile for this model on `bedrock-runtime` — none support
-  the EU-scoped "Geo" tier, and `bedrock-mantle` (the alternative endpoint)
-  currently has no EU presence at all (US regions + GovCloud only). There
-  is therefore no region choice today that keeps inference traffic
-  strictly inside the EU for this model. Owner decision 2026-09-16:
-  proceed anyway, `eu-south-2` chosen as the account's home region even
-  though `global.` routing may leave the EU for the inference call itself.
+  for rejecting `anthropic[bedrock]` applies equally here.
+- **Region: `eu-south-2` (Spain). Model id: `eu.amazon.nova-2-lite-v1:0`.**
+  The `bedrock-runtime` endpoint takes an inference-profile id, not the bare
+  model id. The `eu.` prefix is the EU **Geo** profile, which lists
+  `eu-south-2` as a source region, so the call is made from the account's
+  home region. The `us.`/`in.` prefixes in AWS's examples do not work from
+  here. IAM needs `bedrock:InvokeModel` on the inference profile and on the
+  foundation models it routes to.
+- **EU data residency.** The Geo profile routes inference only between EU
+  regions, so the earlier accepted tradeoff (the Global GPT-5.6 Terra
+  profile could leave the EU) no longer applies. The profile, not the region
+  alone, is what keeps traffic in the EU; do not switch to a `global.` id.
 - The `ai` Lambda's provider client is a Bedrock adapter — the Bedrock
   path is **its** dependency closure, never `api`'s (§1.2 rule).
 - **Cost cap: a real kill-switch**, resolving `G-81` / `NFR-AI-01` — an
@@ -342,6 +320,21 @@ model changes to **OpenAI GPT-5.6 Terra**, generally available on Bedrock
 - The `ai` worker consumes from the `api` → `ai` SQS queue (§1.2.5). It
   writes whole-week results through `WeekRepository` — never a separate
   write path (`G-88`, recorded on feature 17).
+- **AI worker environment** (feature 33, `specs/ai_inference_config/`). The `ai`
+  Lambda reads these on every Bedrock call; unset means the default. An
+  out-of-domain value, or `AI_TEMPERATURE`/`AI_TOP_P` set while reasoning is on
+  with effort `high`, fails the generation (logged, never silently defaulted).
+  Reasoning tokens bill as output and count against `AI_MAX_TOKENS`.
+
+  | Variable | Accepted values | Default | Effect |
+  |---|---|---|---|
+  | `AI_MODEL_ID` | non-empty string | `eu.amazon.nova-2-lite-v1:0` | Bedrock model / inference-profile id |
+  | `AI_REASONING_ENABLED` | `true` / `false` | `false` | Reasoning on or off |
+  | `AI_REASONING_EFFORT` | `low` / `medium` / `high` | `low` | Reasoning effort; used only when reasoning is on |
+  | `AI_MAX_TOKENS` | integer 1-65000 | `4096` | Output token cap |
+  | `AI_TEMPERATURE` | number 0-1 | unset (model default) | Sampling temperature |
+  | `AI_TOP_P` | number 0-1 | unset (model default) | Nucleus sampling |
+  | `AI_SERVICE_TIER` | `standard` / `priority` / `flex` | `standard` | Bedrock service tier |
 
 ### 1.2.7 Deployment topology — decided to the level code needs (was P6)
 

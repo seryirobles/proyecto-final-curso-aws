@@ -370,7 +370,7 @@
       "covers": ["FR-AI-09", "NFR-AI-01"],
       "depends_on": [12, 14],
       "acceptance": [
-        "Provider client targets AWS Bedrock + OpenAI GPT-5.6 Terra (architecture.md section 1.2.6, model changed 2026-09-16 from the original Anthropic Claude choice - owner lacks Bedrock model-access permissions for Anthropic models): global.openai.gpt-5.6-terra via Bedrock's Converse API (this model has no InvokeModel support on bedrock-runtime), plain boto3, no new dependency; the model id is env-overridable (AI_MODEL_ID); the Bedrock SDK path is this package's dependency only, never api's",
+        "Provider client targets AWS Bedrock + Amazon Nova 2 Lite (architecture.md section 1.2.6, model changed 2026-09-16 and 2026-10-11 from the original Anthropic Claude choice - owner lacks Bedrock model access for Anthropic and OpenAI models): eu.amazon.nova-2-lite-v1:0 via Bedrock's Converse API, plain boto3, no new dependency; the model id is env-overridable (AI_MODEL_ID); the Bedrock SDK path is this package's dependency only, never api's",
         "Consumes from the api to ai SQS queue (architecture.md section 1.2); the HTTP surface is submit-then-poll per docs/rest_api_contract.md",
         "Cost cap is a REAL kill-switch (G-81 resolved 2026-08-30, not alert-only). Decide the mechanism in this spec: reserved concurrency 0, event-source-mapping disable, or a flag the worker reads before invoking Bedrock. Global cap, no per-user counter (NFR-AI-01, G-70)",
         "Idempotency: idPeticionIA is a deterministic hash of the request including a server-authoritative attempt ordinal (count of completed generations for the slot, never a client click counter) so a double-submit dedupes; the server also returns 409 for a slot that already has a pending/running generation (FR-AI-09 per-slot concurrency). See docs/rest_api_contract.md section 7 Q3",
@@ -641,6 +641,25 @@
       ],
       "sdd": true,
       "status": "done"
+    },
+    {
+      "id": 33,
+      "name": "ai_inference_config",
+      "tier": 3,
+      "title": "AI worker inference configuration via environment variables",
+      "description": "Owner request 2026-10-07 (Nova 2 Lite via EU geo inference): the ai worker reads its Bedrock Converse settings from environment variables, set in AWS on the deployed Lambda and in .vscode/launch.json locally. Settings: reasoning on/off, reasoning effort (low/medium/high), maxTokens (default 4096), temperature, topP, service tier (standard/priority/flex), and the model id / inference-profile prefix already carried by AI_MODEL_ID. Defaults reproduce today's behaviour (reasoning off, maxTokens 4096, others unset). Invalid combinations are rejected or dropped by rule: with effort high, temperature/topP/topK must not be sent (the API errors). Applies to single-recipe and whole-week generation. Reasoning tokens are billed as output; no change to prompts, validation or the kill-switch.",
+      "covers": [],
+      "depends_on": [
+        17,
+        28
+      ],
+      "acceptance": [
+        "Each setting is read from an environment variable with a documented default; unset variables reproduce current behaviour exactly",
+        "Invalid values and the effort-high plus temperature/topP combination are handled per the spec, with a logged warning and no credential values",
+        "docs/local_development.md and the architecture env table list every new variable; ./init.sh passes"
+      ],
+      "sdd": true,
+      "status": "pending"
     }
   ]
 }

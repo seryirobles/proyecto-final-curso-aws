@@ -160,3 +160,7 @@ Feature 28 `single_recipe_generation` marked `done` by the owner (2026-09-27).
 ## Next step
 
 Owner: mark feature 30 `done` and commit.
+
+## Issue 13 ai-generation-422-unavailable - implemented (T1-T6)
+
+Tests 1068 green; remaining init.sh FAIL: issues/ai-generation-422-unavailable/analysis.md missing.

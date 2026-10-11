@@ -64,6 +64,7 @@ export AWS_ACCESS_KEY_ID=local
 export AWS_SECRET_ACCESS_KEY=local
 export AWS_DEFAULT_REGION=us-east-1
 export SESSION_SECRET_KEY=<any string — signs the session cookie's HMAC>
+export AI_PROMPT_VERSION_ID=v3
 
 uv run python -m planner_api.local_server
 ```
@@ -73,6 +74,9 @@ uv run python -m planner_api.local_server
 **every** request, not just login or AI generation respectively. `AWS_*`
 here can be any placeholder — nothing this process touches leaves your
 machine.
+
+`AI_PROMPT_VERSION_ID` has no default (FR-AI-14): unset, every generation
+submit answers `422 UNKNOWN_PROMPT_VERSION`.
 
 Real-AWS-table mode instead: leave `DYNAMODB_ENDPOINT_URL`/`SQS_ENDPOINT_URL`
 unset, export real AWS credentials, set `PLANNER_DATA_TABLE`/
@@ -96,20 +100,25 @@ export DYNAMODB_ENDPOINT_URL=http://localhost:8000
 export SQS_ENDPOINT_URL=http://localhost:9324
 export GENERATION_QUEUE_URL=http://localhost:9324/000000000000/generation-queue
 export AWS_DEFAULT_REGION=eu-south-2
-export AI_MODEL_ID=global.openai.gpt-5.6-terra
+export AI_MODEL_ID=eu.amazon.nova-2-lite-v1:0
+export AI_GENERATION_ENABLED=true
 
-# Do NOT set AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY here — the local
-# DynamoDB/SQS clients sign with their own built-in placeholder credentials
-# whenever the endpoint overrides above are set, and only the Bedrock call
-# needs real auth. Prefer a scoped Bedrock API key over full IAM access keys
-# (NFR-SEC-01, least privilege): generate one in the Bedrock console, then:
+# Dummy keys, only when using a Bedrock API key (below): boto3 resolves
+# credentials before it looks at the bearer token, and with no keys it falls
+# into the `aws login` profile, which fails with "Missing Dependency ...
+# botocore[crt]". The bearer token still wins for the Bedrock call. Skip these
+# two lines if you use your normal AWS credential chain instead.
+export AWS_ACCESS_KEY_ID=local
+export AWS_SECRET_ACCESS_KEY=local
+# Prefer a scoped Bedrock API key over full IAM access keys (NFR-SEC-01,
+# least privilege): generate one in the Bedrock console, then:
 export AWS_BEARER_TOKEN_BEDROCK=<your Bedrock API key>
 # `boto3` reads this env var natively — no code change, works with
 # `.converse()`. It authorizes Bedrock/Bedrock Runtime actions only,
 # unlike an IAM access key pair which may carry whatever else that
 # identity has. If you'd rather use your normal AWS credential chain
 # instead (`aws configure` / SSO / a named profile), that still works —
-# a Bedrock API key alone is sufficient either way, no generic AWS
+# the Bedrock API key plus the dummy keys above is sufficient; no real AWS
 # credential is required. DynamoDB/SQS still route locally via the
 # endpoint overrides above either way; only the Bedrock call itself
 # reaches real AWS.
@@ -117,20 +126,17 @@ export AWS_BEARER_TOKEN_BEDROCK=<your Bedrock API key>
 uv run python -m planner_ai.local_worker
 ```
 
-**One-time AWS Marketplace activation, before the first real invocation.**
-GPT-5.6 Terra is AWS-Marketplace-listed (it carries a Marketplace product
-id on its model card), not one of Amazon's own auto-enabled serverless
-models — Bedrock's retired "Model access" page's replacement text is
-explicit about the distinction: *"For models served from AWS Marketplace,
-a user with AWS Marketplace permissions must invoke the model once to
-enable it account-wide for all users."* Someone with Marketplace
-permissions on the account needs to invoke it once (the Bedrock console
-playground is the easiest way) before `local_worker.py`'s own `Converse`
-calls will succeed — skip this and the first real invocation fails with a
-subscription/access error, not the credentials error covered above.
+`AI_GENERATION_ENABLED` (exactly `true` or `false`) is a local-only override of
+the SSM kill-switch, which is then not read; unset, SSM decides as deployed.
+
+**No Marketplace activation needed.** Nova 2 Lite is an Amazon first-party
+model, not an AWS Marketplace one, so there is no one-time subscription step.
+If a real invocation still fails with `AccessDeniedException`, check that the
+credentials can invoke the `eu.` inference profile (the `us.`/`in.` prefixes
+in AWS's examples do not work from `eu-south-2`).
 
 See `docs/architecture.md` §1.2.6 for the full provider decision (why
-`Converse`/`eu-south-2`/no EU data-residency guarantee for this model).
+`Converse`/`eu-south-2`/the EU Geo profile).
 
 Fails with one clear log line (not a raw traceback) if **neither**
 `AWS_BEARER_TOKEN_BEDROCK` **nor** a resolvable AWS credential chain is
@@ -140,8 +146,8 @@ built), if your AWS profile/token is invalid, or if
 set — this script only ever supports local-emulator mode, deliberately,
 with no override. Its DynamoDB/SQS clients sign with their own built-in
 placeholder credentials whenever the endpoint overrides are set, same as the
-`api` side's fake `local`/`local` credentials, so a Bedrock API key alone is
-enough to run the whole local stack. A generation request that reaches the
+`api` side's fake `local`/`local` credentials, so a Bedrock API key plus the
+two dummy `AWS_*` keys above is enough to run the whole local stack. A generation request that reaches the
 Bedrock call without real Bedrock access will fail there specifically,
 logged and skipped, same as any other per-record failure — the rest of the
 app keeps working regardless.

@@ -6,6 +6,7 @@ kill-switch fails closed (NFR-AI-01)."""
 
 from __future__ import annotations
 
+import logging
 import os
 import time
 from typing import Any
@@ -13,6 +14,7 @@ from typing import Any
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 
+logger = logging.getLogger(__name__)
 _REGION = os.environ.get("AWS_DEFAULT_REGION", "eu-south-2")
 _TTL_SECONDS = 5.0
 
@@ -40,7 +42,13 @@ class SsmGenerationGate:
         try:
             response = self._ssm().get_parameter(Name=self._parameter)
             enabled = str(response["Parameter"]["Value"]).strip().lower() == "true"
-        except (BotoCoreError, ClientError, KeyError):
+        except (BotoCoreError, ClientError, KeyError) as error:
+            logger.warning(
+                "SSM switch %s unreadable (%s %s); generation fails closed",
+                self._parameter,
+                type(error).__name__,
+                getattr(error, "response", {}).get("Error", {}).get("Code", ""),
+            )
             enabled = False  # fail closed — the switch exists to stop spend (NFR-AI-01)
         self._cached = enabled
         self._fetched_at = now
