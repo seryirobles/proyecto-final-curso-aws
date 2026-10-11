@@ -100,3 +100,22 @@ a single-recipe and a week job through the handler with the fake client and asse
 same kwargs. R21/R22: a doc test in the style of
 `backend/lambda_api/tests/test_local_development_env.py` asserting every name appears
 in both docs.
+
+## Note from issue 15 (owner, 2026-10-11)
+
+Issue 15 (`issues/single-recipe-unknown-ingredient-category/`) moves structured output
+to a forced tool (`toolConfig` + `toolChoice`) in `bedrock.generate`, so "forced JSON
+stays as today" (R14) and the `text`-block extraction (R19) are superseded where they
+collide: the recipe is read from the `toolUse` block's `input`. Whichever of the two
+lands second rebases. Open for this feature: whether Nova 2 Lite accepts a forced tool
+while reasoning is on; test it once reasoning can be enabled (R5), and if Bedrock
+rejects it, decide between `toolChoice: auto` and forbidding the combination.
+
+Probe result (owner ran it, 2026-10-11, Nova 2 Lite, forced tool + enum): reasoning off
+and `low` both returned a `toolUse` with an in-enum category; with reasoning on, the
+content is `[reasoningContent, toolUse]`, so the adapter must take the first `toolUse`
+block, not `content[0]`. Effort `high` was rejected, not because of the forced tool but
+because Bedrock requires `maxTokens` to be **unset** when `maxReasoningEffort` is
+`high`. Now covered by R23 / T2b: omit `maxTokens` at effort high, even when
+`AI_MAX_TOKENS` is set (owner: omit, do not fail; the one deliberate exception to R12's fail-fast). `docs/architecture.md` §1.2.6 now records the
+forced-tool structured output.

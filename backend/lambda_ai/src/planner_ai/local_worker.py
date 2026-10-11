@@ -8,12 +8,13 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from dataclasses import replace
 from typing import Any
 
 import boto3
 from botocore.config import Config
-from botocore.exceptions import ClientError, ProfileNotFound
+from botocore.exceptions import BotoCoreError, ClientError, ProfileNotFound
 
 from planner_ai.adapters.dynamo._table import create_data_table
 from planner_ai.handler import handle
@@ -22,6 +23,7 @@ from planner_ai.wiring import Dependencies, build_dependencies
 logger = logging.getLogger("planner_ai.local_worker")
 
 _WAIT_TIME_SECONDS = 20
+_BACKOFF_SECONDS = 2
 _REGION = os.environ.get("AWS_DEFAULT_REGION", "eu-south-2")
 # Same override pattern as adapters/dynamo/_table.py: unset -> real AWS SQS,
 # set -> the local ElasticMQ emulator (docker-compose.yml). connect_timeout
@@ -163,7 +165,12 @@ def main() -> None:
     logger.info("planner_ai local worker polling %s", queue_url)
     try:
         while True:
-            _poll_once(sqs, queue_url, deps)
+            try:
+                _poll_once(sqs, queue_url, deps)
+            except BotoCoreError as error:
+                # Transient transport error (issue 16): log, back off, keep polling.
+                logger.warning("SQS transport error, retrying: %s", error)
+                time.sleep(_BACKOFF_SECONDS)
     except KeyboardInterrupt:
         logger.info("planner_ai local worker stopped")
 

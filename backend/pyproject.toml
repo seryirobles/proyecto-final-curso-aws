@@ -37,6 +37,11 @@ python_version = "3.13"
 module = ["boto3.*", "botocore.*", "moto.*"]
 ignore_missing_imports = true
 
+# Staged issue-16 test returns untyped botocore exceptions; it must stay verbatim.
+[[tool.mypy.overrides]]
+module = ["test_local_worker_transient_sqs_errors"]
+warn_return_any = false
+
 [tool.pytest.ini_options]
 markers = [
     "aws: marks tests that hit real AWS services; deselected by default (see docs/verification.md)",

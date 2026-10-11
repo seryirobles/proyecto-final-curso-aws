@@ -507,7 +507,7 @@ features (G-63, G-64), three smaller completeness fixes (G-65 to G-67), and
 ### G-63 · Nothing defined how a meal gets an ingredient category
 - **Gap:** The general rules count "meals per week per ingredient category" (US26) — the core lever of the whole rules feature — yet recipes store no category (FR-LIB-03), and no requirement said how a recipe is determined to be "meat" or "legumes". The enforcement mechanism of FR-RULE-04's most important rule type was literally undefined: un-implementable as written, unverifiable after generation.
 - **Decision:** Two-tier enforcement, stated explicitly. Deterministic rules (pinned meals, disabled days) are enforced by the **system** (FR-AI-11, unchanged). Ingredient-category counts are conveyed to the **AI as explicit prompt instructions** and honored **best-effort** based on each recipe's ingredients; the MVP stores no per-recipe category and performs no post-generation verification. The category list itself is a fixed, predefined configuration set — the same pattern as the unit list (G-39).
-- **Reasoning:** The deterministic alternative — a category attribute on every recipe, set at authoring and inferred for AI output — would burden every authoring flow with a classification chore, still be wrong at the edges (is paella "fish" or "carbohydrates"?), and enable a verification step nobody asked for. Since **all** whole-week generation flows through the AI (even library-only mode is the AI selecting from the library, FR-AI-03), the AI reads actual ingredients anyway and is better positioned to categorize than a single stored enum. Best-effort is honest about what an LLM guarantees, consistent with the qualitative treatment of "healthy/balanced" the stakeholder confirmed in G-36. Fixed category list via config follows the established fixed-vocabulary philosophy (units G-39, difficulty G-49).
+- **Reasoning:** The deterministic alternative — a category attribute on every recipe, set at authoring and inferred for AI output — would burden every authoring flow with a classification chore, still be wrong at the edges (is paella "fish" or "carbohydrates"?), and enable a verification step nobody asked for. Since **all** whole-week generation flows through the AI ~~(even library-only mode is the AI selecting from the library, FR-AI-03)~~ *(superseded by G-94: library recipes are chosen deterministically, without the AI)*, the AI reads actual ingredients anyway and is better positioned to categorize than a single stored enum. Best-effort is honest about what an LLM guarantees, consistent with the qualitative treatment of "healthy/balanced" the stakeholder confirmed in G-36. Fixed category list via config follows the established fixed-vocabulary philosophy (units G-39, difficulty G-49).
 - **Requirements:** FR-AI-04, FR-RULE-04 (amended).
 
 ### G-64 · AI recipes had no servings assumption, making quantities arbitrary
@@ -1380,3 +1380,38 @@ deleted.
   `frontend/tests/test_no_extra_accessibility.test.js` (R22) must be narrowed to
   allow only `aria-label` and `role="status"|"alert"`, and
   `specs/frontend_spa/` still states the old exclusion.
+
+## Part AD — Whole-week generation modes: what library_only, ai_only and mix do (2026-10-12)
+
+Directed by the requirements owner, in the same manner as Parts I through AC,
+while specifying feature 36 (`week_generation_backend`). The owner commanded the
+leader to write this Part and the supporting contract and `data_model.md`
+changes directly. `FR-AI-03`'s text is **unchanged**: it names three modes and
+never said what the third one does.
+
+### G-94 · The three whole-week modes are defined; library selection is deterministic (supersedes part of G-63)
+
+- **Gap:** `FR-AI-03` offers (a) only library meals, (b) only newly AI-generated
+  meals, (c) a mix, but nothing said how a library meal is chosen or what "mix"
+  means. The code carried the mode through the queue and never read it, so every
+  mode behaved like (b). `G-63` also assumed library-only generation was "the AI
+  selecting from the library".
+- **Decision:** (a) **library-only** fills open slots with library recipes and
+  never calls the AI; a slot the library cannot fill stays empty and is reported
+  per slot (`insufficient_library_recipes`). (b) **AI-only** is unchanged. (c)
+  **mix** fills from the library first and the AI completes the remaining slots,
+  with the library picks counted toward the category counts passed to the AI. The
+  SPA preselects mix. Library recipes are chosen by a deterministic rule, not by
+  the AI: order seeded by the idempotency key, no meal already in the week (by
+  case-folded name), slots that still need a category first. They are added as
+  candidates, never over an existing candidate or definitive (`G-18`), and
+  pinned slots and disabled days keep their deterministic handling (`FR-AI-11`).
+- **Reasoning:** The owner's rule: use the existing recipes by default, and
+  generate more with the AI only when they do not cover a week. A deterministic
+  pick costs nothing, is testable and honours `FR-AI-04`'s counts; asking the AI
+  to choose from the library would spend the budget `NFR-AI-01` caps on a
+  selection the system can make itself.
+- **Requirements:** `FR-AI-03` (behaviour defined, text unchanged), `FR-AI-04`
+  (library picks count toward category counts). `G-63`'s sentence ~~even
+  library-only mode is the AI selecting from the library~~ is superseded.
+  Contract: `rest_api_contract.md` §3.5. Persistence: `data_model.md` §4.6.

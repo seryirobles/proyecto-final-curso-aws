@@ -3,7 +3,6 @@ override (specs/ai_lambda/design.md section 4, section 10). No live call."""
 
 from __future__ import annotations
 
-import json
 from typing import Any
 
 import pytest
@@ -56,34 +55,39 @@ def test_render_is_version_agnostic_and_renders_v2_english_wording() -> None:
     assert "3x vegetable" in rendered
 
 
-class _Client:
-    """Stands in for the real Converse response shape (verified against
-    boto3's bedrock-runtime.Client.converse docs): output.message.content."""
+def _tool_use(recipe: Any) -> dict[str, Any]:
+    return {"toolUse": {"toolUseId": "t-1", "name": "submit_recipe", "input": recipe}}
 
-    def __init__(self, text: str) -> None:
-        self.text = text
+
+class _Client:
+    """Stands in for the Converse response shape: output.message.content, here a
+    forced tool's toolUse block (issue single-recipe-unknown-ingredient-category)."""
+
+    def __init__(self, recipe: Any) -> None:
+        self.recipe = recipe
         self.model_id: str | None = None
         self.messages: Any = None
         self.inference_config: Any = None
 
-    def converse(self, *, modelId: str, messages: Any, inferenceConfig: Any) -> dict[str, Any]:
-        self.model_id = modelId
-        self.messages = messages
-        self.inference_config = inferenceConfig
-        return {"output": {"message": {"content": [{"text": self.text}]}}}
+    def converse(self, **kwargs: Any) -> dict[str, Any]:
+        self.model_id = kwargs["modelId"]
+        self.messages = kwargs["messages"]
+        self.inference_config = kwargs["inferenceConfig"]
+        return {"output": {"message": {"content": [_tool_use(self.recipe)]}}}
 
 
 class _FailingClient:
-    def converse(self, *, modelId: str, messages: Any, inferenceConfig: Any) -> dict[str, Any]:
+    def converse(self, **kwargs: Any) -> dict[str, Any]:
         raise ClientError(
             {"Error": {"Code": "ThrottlingException", "Message": "too many requests"}}, "Converse"
         )
 
 
+_MINIMAL = {"name": "X", "ingredients": [], "procedure": [], "category": "eggs"}
+
+
 def test_it_uses_the_module_model_id_by_default() -> None:
-    client = _Client(
-        json.dumps({"name": "X", "ingredients": [], "procedure": [], "category": "eggs"})
-    )
+    client = _Client(_MINIMAL)
 
     BedrockAiProvider(client=client).generate(PROMPT)
 
@@ -96,22 +100,24 @@ def test_it_uses_the_module_model_id_by_default() -> None:
 
 def test_the_ai_model_id_env_var_overrides_the_model(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AI_MODEL_ID", "eu.openai.gpt-5.6-terra")
-    client = _Client(
-        json.dumps({"name": "X", "ingredients": [], "procedure": [], "category": "eggs"})
-    )
+    client = _Client(_MINIMAL)
 
     BedrockAiProvider(client=client).generate(PROMPT)
 
     assert client.model_id == "eu.openai.gpt-5.6-terra"
 
 
-def test_a_response_with_no_json_block_raises() -> None:
+def test_a_response_with_no_tool_use_block_raises() -> None:
+    class _TextOnly:
+        def converse(self, **kwargs: Any) -> dict[str, Any]:
+            return {"output": {"message": {"content": [{"text": "no puedo ayudarte con eso"}]}}}
+
     with pytest.raises(AiProviderError):
-        BedrockAiProvider(client=_Client("no puedo ayudarte con eso")).generate(PROMPT)
+        BedrockAiProvider(client=_TextOnly()).generate(PROMPT)
 
 
-def test_a_json_block_missing_a_required_key_raises() -> None:
-    client = _Client(json.dumps({"name": "X", "procedure": []}))  # no ingredients / category
+def test_a_tool_input_missing_a_required_key_raises() -> None:
+    client = _Client({"name": "X", "procedure": []})  # no ingredients / category
     with pytest.raises(AiProviderError):
         BedrockAiProvider(client=client).generate(PROMPT)
 
@@ -124,20 +130,15 @@ def test_a_converse_client_error_raises_ai_provider_error() -> None:
 
 
 class _MultiBlockClient:
-    """A non-text block (e.g. reasoningContent) precedes the text block, per
-    Converse's real multi-block content shape - _extract_text must skip it."""
+    """A reasoningContent block precedes the toolUse block (reasoning on);
+    _tool_input must take the first toolUse, never content[0]."""
 
-    def __init__(self, text: str) -> None:
-        self._text = text
-
-    def converse(self, *, modelId: str, messages: Any, inferenceConfig: Any) -> dict[str, Any]:
-        content = [{"reasoningContent": {"text": "thinking..."}}, {"text": self._text}]
+    def converse(self, **kwargs: Any) -> dict[str, Any]:
+        content = [{"reasoningContent": {"text": "thinking..."}}, _tool_use(_MINIMAL)]
         return {"output": {"message": {"content": content}}}
 
 
-def test_a_leading_non_text_block_is_skipped_and_the_text_block_parses() -> None:
-    recipe_json = json.dumps({"name": "X", "ingredients": [], "procedure": [], "category": "eggs"})
-
-    output = BedrockAiProvider(client=_MultiBlockClient(recipe_json)).generate(PROMPT)
+def test_a_leading_reasoning_block_is_skipped_and_the_tool_use_parses() -> None:
+    output = BedrockAiProvider(client=_MultiBlockClient()).generate(PROMPT)
 
     assert output.name == "X"

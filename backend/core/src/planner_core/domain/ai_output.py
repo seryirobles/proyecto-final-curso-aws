@@ -5,10 +5,16 @@ from __future__ import annotations
 import dataclasses
 from dataclasses import dataclass, field
 from enum import StrEnum
+from typing import Any
 
 from planner_core.domain.calendar import SlotRef
-from planner_core.domain.ingredient_category import UnknownIngredientCategory, parse_category
+from planner_core.domain.ingredient_category import (
+    IngredientCategory,
+    UnknownIngredientCategory,
+    parse_category,
+)
 from planner_core.domain.recipe import (
+    MAX_ESTIMATED_MINUTES,
     Ingredient,
     InvalidEstimatedTime,
     InvalidIngredientQuantity,
@@ -22,7 +28,7 @@ from planner_core.domain.recipe import (
     parse_servings_count,
     require_recipe_sections,
 )
-from planner_core.domain.units import UnknownUnit, parse_unit
+from planner_core.domain.units import Unit, UnknownUnit, parse_unit
 from planner_core.messages import (
     AI_GENERATION_INSUFFICIENT_LIBRARY_RECIPES,
     AI_GENERATION_INVALID_OUTPUT,
@@ -50,6 +56,69 @@ class RawRecipeOutput:
     category: str
     servings: int | None = None
     estimated_time: int | str | None = None
+
+
+def recipe_output_schema() -> dict[str, Any]:
+    """JSON Schema the model's recipe must satisfy (FR-LIB-03, FR-LIB-05, G-89).
+
+    Enums derive from the domain vocabularies; the validators stay the backstop (G-48).
+    """
+
+    def text(description: str) -> dict[str, Any]:
+        return {"type": "string", "description": description}
+
+    def texts(description: str) -> dict[str, Any]:
+        return {
+            "type": "array",
+            "items": {"type": "string"},
+            "minItems": 1,
+            "description": description,
+        }
+
+    ingredient = {
+        "type": "object",
+        "properties": {
+            "name": text("Ingredient name."),
+            "quantity": {"type": "number", "description": "Amount, in the given unit."},
+            "unit": {
+                "type": "string",
+                "enum": [u.value for u in Unit],
+                "description": "Unit of measure for the quantity.",
+            },
+        },
+        "required": ["name", "quantity", "unit"],
+        "additionalProperties": False,
+    }
+    return {
+        "type": "object",
+        "properties": {
+            "name": text("Name of the dish itself, e.g. 'Lentejas estofadas'."),
+            "ingredients": {
+                "type": "array",
+                "items": ingredient,
+                "minItems": 1,
+                "description": "Ingredients of the recipe.",
+            },
+            "tools": texts("Kitchen tools needed."),
+            "category": {
+                "type": "string",
+                "enum": [c.value for c in IngredientCategory],
+                "description": "The single ingredient category that predominates in the dish.",
+            },
+            "servings": {
+                "type": ["integer", "null"],
+                "description": "Number of diners the recipe serves.",
+            },
+            "estimated_time": {
+                "type": ["integer", "null"],
+                "maximum": MAX_ESTIMATED_MINUTES,
+                "description": "Preparation and cooking time, in whole minutes.",
+            },
+            "procedure": texts("Preparation steps, in order."),
+        },
+        "required": ["name", "ingredients", "tools", "procedure", "category"],
+        "additionalProperties": False,
+    }
 
 
 def validate_ai_recipe_output(raw: RawRecipeOutput) -> Recipe:

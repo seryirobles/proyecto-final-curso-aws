@@ -11,6 +11,7 @@
 - [ ] T9 - Test single-recipe and week jobs through the handler send identical kwargs. Covers: R20, R1.
 - [ ] T10 - Edit `docs/local_development.md` section 3 (six variables, accepted values, defaults, reasoning-tokens-bill-as-output note). The `AI_MODEL_ID` example and the Marketplace paragraph were already rewritten for Nova by the leader (owner command 2026-10-11); do not redo them. Covers: R21.
 - [x] T11 - `docs/architecture.md` section 1.2.6 env table: done by the leader on the owner's command 2026-10-11. Covers: R22.
+- [ ] T2b - Under reasoning on + effort high, omit `maxTokens` from `converse_kwargs` even when `AI_MAX_TOKENS` is set (no error); tests for effort high with and without `AI_MAX_TOKENS`, and for reasoning off or low keeping `maxTokens`. Covers: R23.
 - [ ] T11b - Change `BEDROCK_MODEL_ID` to `eu.amazon.nova-2-lite-v1:0` and update `test_bedrock.py:90`. Covers: R3.
 - [ ] T12 - Add the doc test asserting all variable names appear in both docs. Covers: R21, R22.
 - [ ] T13 - Run `./init.sh`; record the R to test table in `progress/impl_ai_inference_config.md`. Covers: R1-R22.

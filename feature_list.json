@@ -660,6 +660,68 @@
       ],
       "sdd": true,
       "status": "pending"
+    },
+    {
+      "id": 34,
+      "name": "ai_fallback_recipe",
+      "tier": 3,
+      "title": "AI fallback recipe when the generation input is unusable",
+      "description": "Owner request 2026-10-11 (verbatim): \"Como fallback, si no hay entrada o es genérica, no relacionada o ininteligible, que cree una receta cualquiera que siga las indicaciones generales\". When a single-recipe or whole-week generation request carries no usable input (empty, generic, unrelated to cooking, or unintelligible), the AI should still return one recipe that follows the general guidelines (healthy, balanced, protein variety, non-medical label, es-ES, one dish) instead of a placeholder. Trigger: typing \"test\" as ingredient and tool produced a placeholder recipe. Whether an empty input is accepted by the API today, and whether this needs a new FR, are for the spec to establish.",
+      "covers": [],
+      "depends_on": [
+        17
+      ],
+      "acceptance": [
+        "A request whose input is empty, generic, unrelated to cooking or unintelligible yields one valid recipe that follows the general guidelines",
+        "A request with usable input behaves exactly as today; the wording change lands in the unreleased prompt version v4 (owner decision 2026-10-11) and v1-v3 render unchanged",
+        "./init.sh passes"
+      ],
+      "sdd": true,
+      "status": "in_progress"
+    },
+    {
+      "id": 35,
+      "name": "frontend_week_generation",
+      "tier": 3,
+      "title": "Frontend: whole-week AI generation UI",
+      "description": "Owner request 2026-10-11: there is no place in the interface to generate the whole week with AI. The backend already accepts POST /v1/generations {type: week, weekId, mode, ruleOverride} (rest_api_contract.md section 3.5; FR-AI-03/-04/-05/-11/-12, US12, G-18) but the SPA only submits type recipe (useAiGeneration.js). frontend_spa design.md section 1 and 8 left this UI owned by no feature. This feature adds it: choose the mode (library_only / ai_only / mix), optional per-run rule override, a confirmation prompt (existing candidates/definitives are never overwritten; pins skipped for an existing definitive are reported), per-slot progress with a per-slot retry and friendly es-ES failure messages. The spec author MUST use the repo skill .claude/skills/web-design-guidelines and the existing frontend UX specs (frontend_ux_phase1, frontend_ux_phase2) to decide the layout so it is consistent with the rest of the app and follows accessibility/UX best practice.",
+      "covers": [],
+      "depends_on": [
+        20,
+        27,
+        32,
+        36
+      ],
+      "acceptance": [
+        "The week view offers a way to generate the whole week with AI, with mode choice, optional rule override and a confirmation prompt, consistent with the existing UI",
+        "Progress is shown per slot, failures are retryable per slot with a friendly es-ES message, and skipped pins are reported, never applied silently",
+        "The UI meets the web-design-guidelines skill (accessibility, focus, touch targets, responsive tiers of feature 32); ./init.sh passes"
+      ],
+      "sdd": true,
+      "status": "pending"
+    },
+    {
+      "id": 36,
+      "name": "week_generation_backend",
+      "tier": 3,
+      "title": "Whole-week AI generation backend: modes, live per-slot progress, per-slot retry",
+      "description": "Owner request 2026-10-11, prerequisite of feature 35 (frontend_week_generation). The whole-week path exists (POST /v1/generations type week, run_week_generation) but does not match rest_api_contract.md section 3.5: (1) the request mode is carried through the queue but never read, so library_only and mix behave like ai_only; owner ruling: library_only = only library recipes (slots it cannot fill stay empty and are reported), ai_only = only AI, mix = library recipes first and AI tops up the slots the library cannot fill (mix is the default the UI preselects); (2) GET /v1/generations/{id} returns only {generationId, status, result} with an opaque result written once at the end, but the contract requires live slots[] so progress can be shown per slot mid-run; (3) the per-slot retry route (contract section 7 Q4, POST /v1/generations/{id}/slots/{day}/{slot}/retry) is in no route table and not in routing.py; (4) slot vocabulary: contract uses done and error{code,message}, code uses completed/failed and message; owner ruling: the contract wins; (5) the final status values of a week run (including partial success) are fixed by this spec. FR-AI-03/04/05/08/09/10/11/12, G-18, G-19. Needs the contract-doc lifts the spec lists; no frozen requirement changes expected (the mix semantics are unspecified in FR-AI-03).",
+      "covers": [],
+      "depends_on": [
+        17,
+        27,
+        28
+      ],
+      "acceptance": [
+        "library_only, ai_only and mix behave as ruled: mix fills from the library first and tops up with AI; library_only never calls the AI and reports unfilled slots",
+        "GET /v1/generations/{id} exposes live per-slot status per the contract and the per-slot retry route exists, with the contract vocabulary (done / error{code,message}) and defined final statuses",
+        "All new behavior is covered by tests; ./init.sh passes"
+      ],
+      "sdd": true,
+      "status": "pending"
     }
   ]
 }
+
+
+

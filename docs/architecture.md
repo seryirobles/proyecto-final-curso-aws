@@ -299,6 +299,12 @@ model is now **Amazon Nova 2 Lite**.
   (`bedrock-runtime` client, already this Lambda's dependency), so the
   same boto3-only reasoning `specs/ai_lambda/design.md` §3 already gave
   for rejecting `anthropic[bedrock]` applies equally here.
+- **Structured output: a forced tool, not `outputConfig`.** Nova 2 Lite has no
+  `outputConfig` structured output; the documented pattern is a `toolConfig`
+  whose single tool's input schema is the recipe, with `toolChoice` forced to
+  it (constrained decoding), reading the result from the `toolUse` block's
+  `input`. The schema is built in `core` from the frozen enums and carries the
+  field descriptions; the domain validators remain the backstop (issue 15).
 - **Region: `eu-south-2` (Spain). Model id: `eu.amazon.nova-2-lite-v1:0`.**
   The `bedrock-runtime` endpoint takes an inference-profile id, not the bare
   model id. The `eu.` prefix is the EU **Geo** profile, which lists

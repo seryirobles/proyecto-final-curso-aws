@@ -41,7 +41,7 @@ class UnknownIngredientCategory(PlannerError):
 def parse_category(value: str) -> IngredientCategory:
     """Resolve a category code to its member, or raise UnknownIngredientCategory."""
     # Exact match only, mirroring parse_unit (design.md section 6): the value
-    # comes from a dropdown or AI output already instructed to use the codes.
+    # comes from a dropdown or AI output whose schema restricts it to the codes (G-48 backstop).
     for category in IngredientCategory:
         if value == category.value:
             return category

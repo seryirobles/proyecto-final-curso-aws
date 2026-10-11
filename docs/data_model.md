@@ -37,7 +37,7 @@ Single table, named **`data`**. All ten item types share it.
 | `COMPRA#<idLista>` | `MARCA` | `MarcaCambio` | `marcaCambio` |
 | `GRUPOREGLAS#<idGrupoReglas>` | `REGLA#<idRegla>` | `DatosRegla` | `tipoRegla, tipoAlimento, cantidad, numeroDia, numeroComida, idPlato` |
 | `GRUPOREGLAS#<idGrupoReglas>` | `MARCA` | `MarcaCambio` | `marcaCambio` |
-| `PETICIONIA#<idPeticionIA>` | `METADATA` | `DatosPeticionIA` | `estado, resultado, ttl` |
+| `PETICIONIA#<idPeticionIA>` | `METADATA` | `DatosPeticionIA` | `estado, resultado, ttl, franjas, solicitud` |
 
 **`MarcaCambio` is one item type, instantiated once per pollable
 partition** (weeks, library, shopping list, rules) — four instances, not a
@@ -185,8 +185,20 @@ A random id makes every retry a cache miss and pays for the model call twice.
 
 The hash must cover exactly the fields defining request identity: two genuinely
 different requests must never collide, and one retried request must always hit.
-The per-run rule override lives in the request payload and is **not persisted**,
-so a retry recomputes the same hash.
+The per-run rule override is part of the request identity, so a resubmitted
+request recomputes the same hash. The **resolved effective rules** of a
+whole-week run are stored on the record (`solicitud`, §4.6) so a per-slot retry
+can reuse them without the client re-sending the override.
+
+### `franjas` map key — per-slot progress of a whole-week run
+
+```
+"<numeroDia>-<numeroComida>"      e.g. "3-1" = Wednesday lunch
+```
+
+The key of one entry in the `franjas` map of a `PETICIONIA#` item (§4.6). Both
+numbers are the one-based values above, joined by a hyphen, so a nested update
+(`SET franjas.#k = :v`) can address a single slot (§5.6).
 
 ### Username reservation key — folded
 
@@ -341,14 +353,25 @@ the name**, since `FR-CAND-06` allows two library recipes to share a name.
 
 | AP | Title | Params | Returns | Frec. | Operation |
 |---|---|---|---|---|---|
-| AP25 | Añadir o editar petición IA | `idPeticionIA, estado, resultado, ttl` | `idPeticionIA` | Media | `PutItem` `PETICIONIA#<hash> / METADATA` |
-| AP26 | Obtener petición IA | `idPeticionIA` | `idPeticionIA, estado, resultado, ttl` | Media | `GetItem` `PETICIONIA#<hash> / METADATA` |
+| AP25 | Añadir o editar petición IA | `idPeticionIA, estado, resultado, ttl, franjas, solicitud` | `idPeticionIA` | Media | `PutItem` `PETICIONIA#<hash> / METADATA` |
+| AP26 | Obtener petición IA | `idPeticionIA` | `idPeticionIA, estado, resultado, ttl, franjas, solicitud` | Media | `GetItem` `PETICIONIA#<hash> / METADATA` |
 | AP27 | Eliminar petición IA | `idPeticionIA` | — | Media | `DeleteItem` `PETICIONIA#<hash> / METADATA` |
 
 The item stores the **result payload**, not just a status flag. `FR-AI-10` makes
 single-recipe output a *preview* saved nowhere else; without the payload a
 dropped response means paying for a recipe that exists nowhere and cannot be
 returned on retry.
+
+**Whole-week runs** (feature 36) carry no `resultado`; they keep per-slot progress in
+two more attributes. `franjas` is a map, one entry per open slot (key format in
+§2), value `{estado, codigo?, mensaje?}` with `estado` in
+`pending|running|done|error`; it is initialised `{}` at submit and absent on
+single-recipe records, which is how `AP26` tells the two apart. `solicitud` is
+`{semana, modo, reglas, versionPrompt}`: the resolved effective rules, stored so
+a per-slot retry reproduces the run (`rest_api_contract.md` §7 Q4). The run
+`estado` is `pending|running|completed|partial|failed`. The item keeps its `ttl`,
+has no `MarcaCambio`, and `AP25` stays create-if-absent, so idempotency and the
+ETag rules are unchanged.
 
 `LockLista` is the only item type with **no** access pattern of its own —
 it is the `FR-SHOP-10` serialization mechanism (§5.3), not a user-facing
@@ -504,6 +527,17 @@ untouched.
   refetches the gap. Reading the marker **first** bounds the failure to at
   most one redundant refetch next interval, which converges — the
   asymmetry is why this ordering is not optional.
+
+### 5.6 Per-slot progress is a nested update, never read-modify-write
+
+A whole-week run's slots finish concurrently (one task per slot, plus retries).
+Each slot is recorded with `SET franjas.#k = :v` on its own key, so two writers
+never overwrite each other's entry; the parent map is created empty at submit
+because a nested `SET` needs it to exist. A retry moves one slot from `error` to
+`pending` with a condition on that slot's `estado`, which gives exactly one
+winner when two clicks arrive together. The run `estado` is derived from the
+slots after each finish and is idempotent, because two simultaneous finishers
+compute the same value.
 
 ---
 

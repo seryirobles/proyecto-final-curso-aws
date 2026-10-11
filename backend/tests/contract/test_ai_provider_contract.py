@@ -4,7 +4,6 @@ a malformed one raises AiProviderError (FR-AI-09; specs/ai_lambda/design.md sect
 
 from __future__ import annotations
 
-import json
 from typing import Any
 
 import pytest
@@ -16,17 +15,15 @@ from support.fakes import FakeAiProvider
 
 PROMPT: AiPrompt = build_category_prompt((), "v1")
 
-_RECIPE_JSON = json.dumps(
-    {
-        "name": "Arroz con verduras",
-        "ingredients": [{"name": "arroz", "quantity": 200, "unit": "g"}],
-        "tools": ["olla"],
-        "procedure": ["Cocer el arroz.", "Añadir las verduras."],
-        "category": "carbohydrate",
-        "servings": 2,
-        "estimated_time": 30,
-    }
-)
+_RECIPE: dict[str, Any] = {
+    "name": "Arroz con verduras",
+    "ingredients": [{"name": "arroz", "quantity": 200, "unit": "g"}],
+    "tools": ["olla"],
+    "procedure": ["Cocer el arroz.", "Añadir las verduras."],
+    "category": "carbohydrate",
+    "servings": 2,
+    "estimated_time": 30,
+}
 
 _EXPECTED = RawRecipeOutput(
     name="Arroz con verduras",
@@ -42,28 +39,31 @@ _EXPECTED = RawRecipeOutput(
 class _StubBedrock:
     """Stubs the Converse response shape (output.message.content)."""
 
-    def __init__(self, text: str) -> None:
-        self._text = text
+    def __init__(self, recipe: dict[str, Any] | None) -> None:
+        self._recipe = recipe
         self.messages: Any = None
         self.inference_config: Any = None
 
-    def converse(self, *, modelId: str, messages: Any, inferenceConfig: Any) -> dict[str, Any]:
-        self.messages = messages
-        self.inference_config = inferenceConfig
-        return {"output": {"message": {"content": [{"text": self._text}]}}}
+    def converse(self, **kwargs: Any) -> dict[str, Any]:
+        self.messages = kwargs["messages"]
+        self.inference_config = kwargs["inferenceConfig"]
+        if self._recipe is None:
+            return {"output": {"message": {"content": [{"text": "lo siento"}]}}}
+        block = {"toolUse": {"toolUseId": "t-1", "name": "submit_recipe", "input": self._recipe}}
+        return {"output": {"message": {"content": [block]}}}
 
 
 def _working() -> list[AiProvider]:
     return [
         FakeAiProvider(default_output=_EXPECTED),
-        BedrockAiProvider(client=_StubBedrock(f"Aquí tienes: {_RECIPE_JSON}")),
+        BedrockAiProvider(client=_StubBedrock(_RECIPE)),
     ]
 
 
 def _failing() -> list[AiProvider]:
     return [
         FakeAiProvider(responses=[AiProviderError("boom")]),
-        BedrockAiProvider(client=_StubBedrock("lo siento, no puedo generar eso")),
+        BedrockAiProvider(client=_StubBedrock(None)),
     ]
 
 
@@ -79,7 +79,7 @@ def test_a_malformed_response_raises_ai_provider_error(provider: AiProvider) -> 
 
 
 def test_the_converse_envelope_role_and_content_shape() -> None:
-    stub = _StubBedrock(f"Aquí tienes: {_RECIPE_JSON}")
+    stub = _StubBedrock(_RECIPE)
 
     BedrockAiProvider(client=stub).generate(PROMPT)
 

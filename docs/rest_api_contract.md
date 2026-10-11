@@ -168,8 +168,9 @@ inside the Lambda.
 
 | Method + path | Pattern / `FR-*` | Poll | Semantics |
 |---|---|---|---|
-| `POST /v1/generations` | Añadir o editar petición IA (`AP25`) · `FR-AI-01`, `-02`, `-03`, `-05`, `-08`, `-09` | — | Submit. `202 Accepted` on a fresh request, `200 OK` with the stored result on an idempotent hit. `type: "week"` (§3.5) or `type: "recipe"` (§3.6). `attempt` is server-authoritative, folded into `idPeticionIA` (§7 Q3), never a client field. There is no per-slot rejection: concurrent submits are allowed (`FR-AI-09`) and only the exact same request dedupes. |
-| `GET /v1/generations/{generationId}` | Obtener petición IA (`AP26`) · `FR-AI-10`, `-12` | — | Status + result. Per-slot status for whole-week runs. Short-interval poll, **not** conditional-GET pollable (no `MarcaCambio` on `PETICIONIA#`). |
+| `POST /v1/generations` | Añadir o editar petición IA (`AP25`) · `FR-AI-01`, `-02`, `-03`, `-05`, `-08`, `-09` | — | Submit. `202 Accepted` on a fresh request, `200 OK` with the stored result on an idempotent hit (a whole-week run returns the §3.5 `GET` body). `type: "week"` (§3.5) or `type: "recipe"` (§3.6). `attempt` is server-authoritative, folded into `idPeticionIA` (§7 Q3), never a client field. There is no per-slot rejection: concurrent submits are allowed (`FR-AI-09`) and only the exact same request dedupes. |
+| `GET /v1/generations/{generationId}` | Obtener petición IA (`AP26`) · `FR-AI-10`, `-12` | — | Status + `result` (single-recipe) or `slots[]` (whole-week, §3.5). Short-interval poll, **not** conditional-GET pollable (no `MarcaCambio` on `PETICIONIA#`). |
+| `POST /v1/generations/{generationId}/slots/{day}/{slot}/retry` | Añadir o editar petición IA (`AP25`) · `FR-AI-09`, `-12` | — | Retries one failed slot of a whole-week run with the run's stored effective rules (§3.5, §7 Q4). `202 Accepted` + `Location`; `404` / `409` / `400` per §3.5. |
 | `DELETE /v1/generations/{generationId}` | Eliminar petición IA (`AP27`) · `FR-AI-10` | — | Discards a preview and its idempotency record |
 
 **All 29 access patterns are accounted for:** `AP1`–`AP2`, `AP4`–`AP8`,
@@ -307,7 +308,7 @@ one (`data_model.md` §4.5).
 // POST /v1/generations
 { "type": "week",
   "weekId": "2026-W34",
-  "mode": "mix",                       // library_only | ai_only | mix
+  "mode": "mix",                       // library_only | ai_only | mix — semantics below
                                        // no `attempt` field — server-authoritative, §7 Q3
   "ruleOverride": {                    // FR-RULE-05, per-run, never persisted
     "categoryCounts": [ { "category": "pescado", "count": 2 } ],
@@ -339,8 +340,8 @@ Single-recipe generation: see §3.6.
 // GET /v1/generations/9f2c…          → 200
 { "generationId": "9f2c…", "status": "running",
   "slots": [ { "day": 1, "slot": 1, "status": "done" },
-             { "day": 1, "slot": 2, "status": "failed",
-               "error": { "code": "AI_SLOT_FAILED", "message": "…" } } ] }
+             { "day": 1, "slot": 2, "status": "error",
+               "error": { "code": "invalid_output", "message": "…" } } ] }
 ```
 
 Per-slot status and per-slot failure satisfy `FR-AI-12`; partial results are
@@ -350,6 +351,37 @@ constraint) — so the week's `MarcaCambio` bumps and every client's ordinary po
 picks the candidates up. Single-recipe results are the opposite: a **preview**
 carried in `result`, persisted nowhere else (`FR-AI-10`, `data_model.md` §4.6),
 and saved only when the user POSTs it as a candidate or library recipe (§3.1).
+
+**Modes** (`FR-AI-03`; defined by `G-94`):
+
+- `library_only` — only library recipes. The AI is never called and the generation kill-switch is not read. A slot the library cannot fill ends `error` with code `insufficient_library_recipes`.
+- `ai_only` — only AI-generated recipes; the library is not read.
+- `mix` — library recipes first, then the AI fills the slots the library could not. Library picks count toward the category counts passed to the AI for the rest. `mix` is the mode the SPA preselects.
+
+Library recipes are chosen deterministically (order seeded by the idempotency key, no meal already in the week by case-folded name, slots that still need a category first) and are added as **candidates**, like AI results; pinned slots, disabled days, past days and slots holding a definitive are never touched (`FR-AI-11`, `G-18`).
+
+**Slot and run status.** A slot is `pending`, `running`, `done` or `error`; an `error` slot carries `{ "code", "message" }`, where `code` is a `GenerationFailureReason` value (`invalid_output`, `insufficient_library_recipes`, `generation_unavailable`, the lowercase wire form of §3.6) and `message` is es-ES. Pinned slots are not listed (the `202` `targets.pinnedSlots` already reports them). The run `status` is:
+
+| Condition | `status` |
+|---|---|
+| nothing claimed yet | `pending` (`slots: []`) |
+| any slot `pending` or `running` | `running` |
+| no slots, or every slot `done` | `completed` |
+| at least one `done` and at least one `error` | `partial` |
+| at least one slot and every slot `error` | `failed` |
+
+`completed`, `partial` and `failed` are terminal; a client stops polling on any of them. A successful retry (below) moves the run back to `running`. A week run's `GET` carries `slots`, never `result` (the candidates are written through `WeekRepository`).
+
+**Per-slot retry** (`FR-AI-12`, §7 Q4):
+
+```jsonc
+// POST /v1/generations/9f2c…/slots/1/2/retry     (no body)
+// 202 Accepted,  Location: /v1/generations/9f2c…   body = the GET body above
+```
+
+- It reuses the run's stored effective rules and mode; the client never re-sends the override.
+- `404 GENERATION_NOT_FOUND` for an unknown or expired run; `404 GENERATION_SLOT_NOT_FOUND` when the slot is not part of the run; `400` for a `day` or `slot` out of range; `409 SLOT_NOT_RETRYABLE` when the slot is not in `error` or is no longer open.
+- The `409` is atomic: of two simultaneous clicks exactly one wins. It is not the per-slot rejection of two *runs* that §7 Q3 dropped.
 
 ### 3.6 Single-recipe generation (`FR-AI-01`, `-02`, `-08`, `-10`; `G-92`)
 
@@ -469,9 +501,12 @@ path parameter). **`422`** = well-formed but rejected by a domain rule.
 | `RecipeNotFound` | 404 | `RECIPE_NOT_FOUND` |
 | `CandidateNotFound` | 404 | `CANDIDATE_NOT_FOUND` |
 | `ShoppingItemNotFound` | 404 | `SHOPPING_ITEM_NOT_FOUND` |
+| `GenerationNotFound` | 404 | `GENERATION_NOT_FOUND` (§3.5, §3.6) |
+| `GenerationSlotNotFound` | 404 | `GENERATION_SLOT_NOT_FOUND` — the retry names a slot that is not part of the run (§3.5) |
 | `UsernameAlreadyTaken` | 409 | `USERNAME_ALREADY_TAKEN` (`FR-AUTH-17`) |
 | `SetPasswordNotPending` | 409 | `SET_PASSWORD_NOT_PENDING` |
 | `ShoppingListLockHeld` | 409 | `SHOPPING_LIST_LOCK_HELD` (`FR-SHOP-10`) |
+| `SlotNotRetryable` | 409 | `SLOT_NOT_RETRYABLE` — the slot is not in `error`, or is no longer open (a definitive, a past or a disabled day), §3.5 |
 | *(no exception — handler check)* | 409 | `PIN_RULES_AFFECTED` (§3.4), `WEEK_ARCHIVED` (§7 Q11) |
 | `UsernameReserved` | 422 | `USERNAME_RESERVED` (`FR-AUTH-17` placeholder) |
 | `PasswordTooShort` | 422 | `PASSWORD_TOO_SHORT` (`FR-AUTH-15`) |
@@ -725,6 +760,7 @@ context; the ruling is the **Decided** line.
    run's effective rules; (b) a fresh single-slot `POST /v1/generations`.
    **Decided: (a).** A dedicated per-slot retry endpoint — (b) would need the
    client to re-send the per-run override to reproduce the effective rules.
+   *Implemented by feature 36 (§3.5); the run's resolved effective rules are stored on the `PETICIONIA#` record.*
 5. **Rules: whole-set `PUT` or per-rule endpoints?** The port is
    `RuleRepository.get()/save(RuleSet)` and `FR-RULE-07`'s satisfiability check
    is naturally whole-set, but `AP23`/`AP24` are per-rule item writes and

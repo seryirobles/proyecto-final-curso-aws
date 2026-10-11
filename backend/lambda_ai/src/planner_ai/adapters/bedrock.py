@@ -1,7 +1,7 @@
 """`AiProvider` backed by AWS Bedrock + OpenAI GPT-5.6 Terra (docs/architecture.md
 section 1.2.6). Renders the prompt value object to a plain text instruction,
 calls `bedrock-runtime:Converse` (this model has no InvokeModel support), and
-parses the JSON recipe block the model returns into a `RawRecipeOutput`. A parse
+reads the recipe from a forced tool call's input into a `RawRecipeOutput`. A parse
 or call failure raises `AiProviderError` (specs/ai_lambda/design.md section 4)."""
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from typing import Any
 
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
-from planner_core.domain.ai_output import RawIngredient, RawRecipeOutput
+from planner_core.domain.ai_output import RawIngredient, RawRecipeOutput, recipe_output_schema
 from planner_core.domain.ai_prompt import CategoryPrompt, ReferencePrompt, SpecificationPrompt
 from planner_core.ports.ai_provider import AiPrompt, AiProviderError
 
@@ -63,26 +63,54 @@ def _render(prompt: AiPrompt) -> str:
 
 
 _SNIPPET_LIMIT = 500
+_TOOL_NAME = "submit_recipe"
+# Forced tool = structured output; Nova 2 Lite has no outputConfig (issue 15).
+_TOOL_CONFIG: dict[str, Any] = {
+    "tools": [
+        {
+            "toolSpec": {
+                "name": _TOOL_NAME,
+                "description": "Submit the generated recipe.",
+                "inputSchema": {"json": recipe_output_schema()},
+            }
+        }
+    ],
+    "toolChoice": {"tool": {"name": _TOOL_NAME}},
+}
 
 
 def _stop(response: dict[str, Any]) -> object:
     return response.get("stopReason")
 
 
-def _extract_text(response: dict[str, Any]) -> str:
-    # Converse's response shape: output.message.content is a list of blocks,
-    # each keyed by content type - not the Anthropic 'type'/'text' discriminator.
-    blocks = response.get("output", {}).get("message", {}).get("content", [])
-    for block in blocks:
+def _text_snippet(response: dict[str, Any]) -> str:
+    for block in _content(response):
         if isinstance(block.get("text"), str):
-            return str(block["text"])
-    raise AiProviderError(f"no text block in the model response (stopReason={_stop(response)})")
+            return str(block["text"])[:_SNIPPET_LIMIT]
+    return ""
 
 
-def _parse_recipe(text: str, stop_reason: object = None) -> RawRecipeOutput:
+def _content(response: dict[str, Any]) -> list[dict[str, Any]]:
+    blocks: list[dict[str, Any]] = response.get("output", {}).get("message", {}).get("content", [])
+    return blocks
+
+
+def _tool_input(response: dict[str, Any]) -> dict[str, Any]:
+    # First toolUse block, never content[0]: with reasoning on a reasoningContent
+    # block comes first. No toolUse is a loud failure, never a text parse.
+    for block in _content(response):
+        tool_use = block.get("toolUse")
+        if isinstance(tool_use, dict) and isinstance(tool_use.get("input"), dict):
+            payload: dict[str, Any] = tool_use["input"]
+            return payload
+    raise AiProviderError(
+        f"no toolUse block in the model response (stopReason={_stop(response)}) "
+        f"{_text_snippet(response)!r}"
+    )
+
+
+def _parse_recipe(payload: dict[str, Any], stop_reason: object = None) -> RawRecipeOutput:
     try:
-        start, end = text.index("{"), text.rindex("}")
-        payload = json.loads(text[start : end + 1])
         return RawRecipeOutput(
             name=str(payload["name"]),
             ingredients=tuple(
@@ -104,7 +132,8 @@ def _parse_recipe(text: str, stop_reason: object = None) -> RawRecipeOutput:
         )
     except (ValueError, KeyError, TypeError) as exc:
         raise AiProviderError(
-            f"unparseable model output: {exc} (stopReason={stop_reason}) {text[:_SNIPPET_LIMIT]!r}"
+            f"unparseable tool input: {exc} (stopReason={stop_reason}) "
+            f"{json.dumps(payload, ensure_ascii=False)[:_SNIPPET_LIMIT]!r}"
         ) from exc
 
 
@@ -126,7 +155,8 @@ class BedrockAiProvider:
                 modelId=_model_id(),
                 messages=messages,
                 inferenceConfig={"maxTokens": _MAX_TOKENS},
+                toolConfig=_TOOL_CONFIG,
             )
         except (BotoCoreError, ClientError) as exc:
             raise AiProviderError(f"Bedrock invocation failed: {exc}") from exc
-        return _parse_recipe(_extract_text(response), _stop(response))
+        return _parse_recipe(_tool_input(response), _stop(response))

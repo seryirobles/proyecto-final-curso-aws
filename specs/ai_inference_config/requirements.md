@@ -141,3 +141,8 @@ The `docs/architecture.md` AI-provider section SHALL contain a table listing eac
 | Each setting read from env with documented default; unset = current behaviour | R1-R11, R18, R21, R22 |
 | Invalid values and effort-high + temperature/topP rejected, error logged, no credentials | R12, R13, R15, R16, R17 |
 | local_development.md and architecture env table list every variable | R21, R22 |
+
+## R23
+Implements: FR-AI-01, FR-AI-03
+
+WHEN `AI_REASONING_ENABLED` is `true` and the effort is `high`, the Bedrock provider SHALL omit `inferenceConfig.maxTokens` from the `converse` call, whether or not `AI_MAX_TOKENS` is set, because Bedrock rejects `maxTokens` with `maxReasoningEffort` `high` (probe 2026-10-11; owner decision 2026-10-11: omit silently rather than fail, unlike R12).
