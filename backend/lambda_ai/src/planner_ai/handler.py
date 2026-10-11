@@ -31,7 +31,8 @@ def _process_recipe(body: dict[str, Any], deps: Dependencies) -> None:
         encode_recipe=encode_recipe,
     )
     logger.info(
-        "Processed single-recipe generation",
+        "Processed single-recipe generation %s",
+        recipe_message.idempotency_key,
         extra={"idPeticionIA": recipe_message.idempotency_key, "claimed": outcome.claimed},
     )
 
@@ -59,7 +60,8 @@ def _process_record(record: dict[str, Any], deps: Dependencies) -> None:
         gate=deps.gate,
     )
     logger.info(
-        "Processed generation request",
+        "Processed generation request %s",
+        message.idempotency_key,
         extra={
             "idPeticionIA": message.idempotency_key,
             "claimed": outcome.claimed,

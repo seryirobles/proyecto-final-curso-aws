@@ -31,6 +31,7 @@ class SsmGenerationGate:
         self._ttl = ttl_seconds
         self._cached: bool | None = None
         self._fetched_at = 0.0
+        self._last_disabled_by_switch = False
 
     def _ssm(self) -> Any:
         return self._client or boto3.client("ssm", region_name=_REGION)
@@ -42,6 +43,9 @@ class SsmGenerationGate:
         try:
             response = self._ssm().get_parameter(Name=self._parameter)
             enabled = str(response["Parameter"]["Value"]).strip().lower() == "true"
+            if not enabled and not self._last_disabled_by_switch:  # issue 14 E7
+                logger.info("SSM switch %s is off; generation disabled", self._parameter)
+            self._last_disabled_by_switch = not enabled
         except (BotoCoreError, ClientError, KeyError) as error:
             logger.warning(
                 "SSM switch %s unreadable (%s %s); generation fails closed",
@@ -49,6 +53,7 @@ class SsmGenerationGate:
                 type(error).__name__,
                 getattr(error, "response", {}).get("Error", {}).get("Code", ""),
             )
+            self._last_disabled_by_switch = False
             enabled = False  # fail closed — the switch exists to stop spend (NFR-AI-01)
         self._cached = enabled
         self._fetched_at = now

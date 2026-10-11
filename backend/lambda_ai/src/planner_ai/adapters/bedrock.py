@@ -62,6 +62,13 @@ def _render(prompt: AiPrompt) -> str:
     return "\n".join(lines)
 
 
+_SNIPPET_LIMIT = 500
+
+
+def _stop(response: dict[str, Any]) -> object:
+    return response.get("stopReason")
+
+
 def _extract_text(response: dict[str, Any]) -> str:
     # Converse's response shape: output.message.content is a list of blocks,
     # each keyed by content type - not the Anthropic 'type'/'text' discriminator.
@@ -69,10 +76,10 @@ def _extract_text(response: dict[str, Any]) -> str:
     for block in blocks:
         if isinstance(block.get("text"), str):
             return str(block["text"])
-    raise AiProviderError("no text block in the model response")
+    raise AiProviderError(f"no text block in the model response (stopReason={_stop(response)})")
 
 
-def _parse_recipe(text: str) -> RawRecipeOutput:
+def _parse_recipe(text: str, stop_reason: object = None) -> RawRecipeOutput:
     try:
         start, end = text.index("{"), text.rindex("}")
         payload = json.loads(text[start : end + 1])
@@ -96,7 +103,9 @@ def _parse_recipe(text: str) -> RawRecipeOutput:
             estimated_time=payload.get("estimated_time"),
         )
     except (ValueError, KeyError, TypeError) as exc:
-        raise AiProviderError(f"unparseable model output: {exc}") from exc
+        raise AiProviderError(
+            f"unparseable model output: {exc} (stopReason={stop_reason}) {text[:_SNIPPET_LIMIT]!r}"
+        ) from exc
 
 
 class BedrockAiProvider:
@@ -120,4 +129,4 @@ class BedrockAiProvider:
             )
         except (BotoCoreError, ClientError) as exc:
             raise AiProviderError(f"Bedrock invocation failed: {exc}") from exc
-        return _parse_recipe(_extract_text(response))
+        return _parse_recipe(_extract_text(response), _stop(response))

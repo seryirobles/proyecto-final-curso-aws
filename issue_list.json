@@ -42,9 +42,10 @@
       "severity": "medium",
       "report": "Fix the logging. But not only here. (Context: after issue 13 a single-recipe generation fails with invalid_output while the worker logs only 'Processed single-recipe generation'; validate_and_preview in core/domain/ai_output.py catches every validator exception and returns a generic failure with neither the exception type nor the model text logged. Owner wants the logging fixed there and in every other place with the same pattern.)",
       "reported": "2026-10-11",
-      "status": "pending",
+      "status": "done",
       "covers": ["NFR-OBS-01", "NFR-AI-01", "FR-AI-01", "FR-AI-02", "FR-AI-03", "FR-AI-12", "FR-AI-14"],
-      "classification": "not_a_defect"
+      "classification": "not_a_defect",
+      "reviewed": true
     }
   ]
 }

@@ -67,6 +67,7 @@ class _ErrorSpec:
     code: str
     message: str
     details: _DetailsBuilder | None = None
+    log_warning: bool = False  # config faults only; ordinary 4xx would flood (issue 14 E5/E6)
 
 
 def _pin_rules_details(exc: PlannerError) -> dict[str, Any]:
@@ -139,7 +140,7 @@ _TABLE: dict[type[Exception], _ErrorSpec] = {
     # Unset/unknown AI_PROMPT_VERSION_ID: a config fault, surfaced as domain-rejected
     # so the submit fails fast instead of enqueuing a doomed run (finding 2).
     UnknownPromptVersion: _ErrorSpec(
-        422, "UNKNOWN_PROMPT_VERSION", messages.UNKNOWN_PROMPT_VERSION
+        422, "UNKNOWN_PROMPT_VERSION", messages.UNKNOWN_PROMPT_VERSION, log_warning=True
     ),
     # InvalidRuleId only ever originates from the {ruleId} path segment in this
     # contract (design.md section 4 — origin known at the parse site).
@@ -165,6 +166,8 @@ def build_problem_response(exc: Exception) -> ProblemResponse:
     if spec is None:
         logger.exception("Unmapped error handling request", exc_info=exc)
         spec = _FALLBACK
+    elif spec.log_warning:
+        logger.warning("%s: %s", spec.code, ", ".join(str(a) for a in exc.args))
     details = (
         spec.details(exc) if spec.details is not None and isinstance(exc, PlannerError) else None
     )

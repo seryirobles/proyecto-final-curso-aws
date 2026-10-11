@@ -233,9 +233,9 @@ def test_generation_failure_reason_has_exactly_the_three_members() -> None:
 
 
 def test_generation_failure_fields_are_exactly_the_fixed_shape() -> None:
-    """R15."""
+    """R15; `cause` is log-only, excluded from equality (issue 14 F1)."""
     field_names = {field.name for field in dataclasses.fields(GenerationFailure)}
-    assert field_names == {"reason", "message"}
+    assert field_names == {"reason", "message", "cause"}
 
 
 def test_generation_failure_is_frozen() -> None:

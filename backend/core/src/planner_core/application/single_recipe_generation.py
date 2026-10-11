@@ -88,6 +88,7 @@ def run_single_recipe_generation(
 
     outcome = validate_and_preview(raw)
     if isinstance(outcome, GenerationFailure):  # R26
+        logger.warning("AI output rejected for %s: %s; %.500r", idempotency_key, outcome.cause, raw)
         return _failed(queue, idempotency_key, outcome)
 
     recipe = accept_preview(outcome.preview)

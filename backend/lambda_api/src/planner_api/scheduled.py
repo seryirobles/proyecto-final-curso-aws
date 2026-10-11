@@ -33,7 +33,9 @@ def handle(event: dict[str, Any], deps: Dependencies | None = None) -> dict[str,
     resolved.archive.save(result.archived)
     resolved.shopping.delete_checked_items()
 
-    logger.info("Rollover completed", extra={"weekId": ending_week.week_id})
+    logger.info(
+        "Rollover completed for week %s", ending_week.week_id, extra={"weekId": ending_week.week_id}
+    )
     return {"status": "ok", "archivedWeekId": ending_week.week_id}
 
 

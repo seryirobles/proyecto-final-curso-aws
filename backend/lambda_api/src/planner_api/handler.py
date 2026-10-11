@@ -102,7 +102,11 @@ def handle(event: dict[str, Any], deps: Dependencies | None = None) -> dict[str,
         return _response(problem.status, problem.body)
     finally:
         logger.info(  # R22 - one structured record per invocation
-            "Handled request", extra={"method": method, "resource": resource, "status": status}
+            "Handled request %s %s -> %s",
+            method,
+            resource,
+            status,
+            extra={"method": method, "resource": resource, "status": status},
         )
 
 

@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import dataclasses
+from dataclasses import dataclass, field
 from enum import StrEnum
 
 from planner_core.domain.calendar import SlotRef
@@ -117,6 +118,8 @@ class GenerationFailure:
 
     reason: GenerationFailureReason
     message: str
+    # Diagnostic only, never on the wire (issue 14 E1); excluded from equality.
+    cause: str | None = field(default=None, compare=False)
 
 
 @dataclass(frozen=True)
@@ -142,6 +145,15 @@ def build_generation_failure(reason: GenerationFailureReason) -> GenerationFailu
     return GenerationFailure(reason=reason, message=_FAILURE_MESSAGES[reason])
 
 
+_CAUSE_VALUE_LIMIT = 100
+
+
+def _describe(exc: Exception) -> str:
+    """Validator class name plus its offending value, capped (issue 14 E3)."""
+    value = f" {str(exc.args[0])[:_CAUSE_VALUE_LIMIT]}" if exc.args else ""
+    return f"{type(exc).__name__}{value}"
+
+
 def validate_and_preview(raw: RawRecipeOutput) -> GenerationOutcome:
     """Validate raw and surface the result as a value, never a propagated raise (G-48)."""
     try:
@@ -155,8 +167,9 @@ def validate_and_preview(raw: RawRecipeOutput) -> GenerationOutcome:
         MissingIngredients,
         MissingTools,
         MissingProcedure,
-    ):
-        return build_generation_failure(GenerationFailureReason.INVALID_OUTPUT)
+    ) as exc:
+        failure = build_generation_failure(GenerationFailureReason.INVALID_OUTPUT)
+        return dataclasses.replace(failure, cause=_describe(exc))
     return GenerationSuccess(preview=new_preview(recipe))
 
 

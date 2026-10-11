@@ -104,6 +104,9 @@ def run_week_generation(
 
         outcome = validate_and_preview(raw)
         if isinstance(outcome, GenerationFailure):
+            logger.warning(
+                "AI output rejected for %s: %s; %.500r", idempotency_key, outcome.cause, raw
+            )
             results.append(SlotResult(day_n, meal_n, "failed", outcome.message))
             continue
 
