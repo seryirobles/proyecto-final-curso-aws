@@ -7,6 +7,7 @@ import { apiFetch, ApiError } from '../api/client.js';
 import { usePolling } from './usePolling.js';
 import { useConfirm } from './useConfirm.js';
 import { usePendingGuard } from './pendingGuard.js';
+import { useWeekGeneration } from './useWeekGeneration.js';
 import { useRecipeDetail, normalizeRecipeDetail } from './useRecipeDetail.js';
 import { parseMarker } from '../realtime/etag.js';
 import { MESSAGES } from '../messages/index.js';
@@ -66,7 +67,7 @@ function toDetail(err) {
   return err instanceof ApiError ? err.detail : MESSAGES.GENERIC_ERROR;
 }
 
-export function useWeekPlanner({ active = true } = {}) {
+export function useWeekPlanner({ active = true, signedIn = true } = {}) {
   const [liveWeeks, setLiveWeeks] = useState(null);
   const [designation, setDesignation] = useState('current');
   const [authoringTarget, setAuthoringTarget] = useState(null);
@@ -106,6 +107,13 @@ export function useWeekPlanner({ active = true } = {}) {
   const weekPoll = usePolling(weekUrl, undefined, { enabled: weekUrl !== null && active });
   const week = useMemo(() => buildWeekViewModel(weekPoll.data), [weekPoll.data]);
   const detail = useRecipeDetail(detailSource);
+  // Lives here (always mounted in App) so a run survives a tab or week switch (R42).
+  const generation = useWeekGeneration({
+    active,
+    signedIn,
+    weekId: selectedWeek?.weekId ?? null,
+    onSettled: weekPoll.refetchNow,
+  });
 
   const switchWeek = useCallback((nextDesignation) => setDesignation(nextDesignation), []);
 
@@ -283,6 +291,7 @@ export function useWeekPlanner({ active = true } = {}) {
     promoteDefinitive,
     clearDefinitive,
     confirm,
+    generation,
     error, // R15 / design.md section 4.1
   };
 }

@@ -146,7 +146,7 @@ describe('App', () => {
     stubHooks();
     render(<App />);
 
-    expect(useWeekPlanner).toHaveBeenLastCalledWith({ active: false });
+    expect(useWeekPlanner).toHaveBeenLastCalledWith({ active: false, signedIn: true });
     expect(useLibrary).toHaveBeenLastCalledWith({ active: false });
     expect(useRules).toHaveBeenLastCalledWith({ active: false });
     expect(useShoppingList).toHaveBeenLastCalledWith({ active: false });
@@ -159,7 +159,7 @@ describe('App', () => {
 
     fireEvent.click(screen.getByText(MESSAGES.NAV_LIBRARY));
 
-    expect(useWeekPlanner).toHaveBeenLastCalledWith({ active: false });
+    expect(useWeekPlanner).toHaveBeenLastCalledWith({ active: false, signedIn: true });
     expect(useLibrary).toHaveBeenLastCalledWith({ active: true });
     expect(useRules).toHaveBeenLastCalledWith({ active: false });
     expect(useShoppingList).toHaveBeenLastCalledWith({ active: false });

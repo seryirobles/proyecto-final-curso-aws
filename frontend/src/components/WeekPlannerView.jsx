@@ -12,7 +12,10 @@ import { ConfirmDialog } from './ConfirmDialog.jsx';
 import { LoadingState } from './LoadingState.jsx';
 import { CandidateAuthoring } from './CandidateAuthoring.jsx';
 import { Banner } from './Banner.jsx';
-import { weekGridColumns } from '../tokens/controlStyles.js';
+import { EmptyState } from './EmptyState.jsx';
+import { WeekGenerationPanel } from './WeekGenerationPanel.jsx';
+import { MESSAGES } from '../messages/index.js';
+import { weekGridColumns, primaryButtonStyle, targetStyle } from '../tokens/controlStyles.js';
 import { VIEWPORT } from '../hooks/useViewport.js';
 import { useDayStrip } from '../hooks/useDayStrip.js';
 import { DayStrip } from './DayStrip.jsx';
@@ -39,6 +42,7 @@ export function WeekPlannerView({
   promoteDefinitive,
   clearDefinitive,
   confirm,
+  generation = null,
   detail,
   detailError,
   closeDetail,
@@ -48,6 +52,7 @@ export function WeekPlannerView({
 }) {
   const { registerDay, scrollToDay, selectedDay } = useDayStrip();
   if (isLoading) return <LoadingState />;
+  const weekIsEmpty = week.days.every((day) => day.slots.every((slot) => slot.isEmpty));
   const showStrip = viewport === VIEWPORT.COMPACT || viewport === VIEWPORT.NARROW;
 
   return (
@@ -59,6 +64,29 @@ export function WeekPlannerView({
         onSwitch={switchWeek}
         viewport={viewport}
       />
+      {generation ? (
+        <button
+          type="button"
+          onClick={generation.open}
+          disabled={generation.isBusy}
+          style={{
+            ...primaryButtonStyle(generation.isBusy),
+            ...targetStyle(viewport),
+            marginTop: tokens.space.sm,
+          }}
+        >
+          {MESSAGES.WEEK_GEN_BUTTON}
+        </button>
+      ) : null}
+      {generation?.isOpen && generation.runWeekId === week.weekId ? (
+        <WeekGenerationPanel
+          {...generation}
+          designation={designation}
+          liveWeek={liveWeeks[designation]}
+          viewport={viewport}
+        />
+      ) : null}
+      {weekIsEmpty ? <EmptyState message={MESSAGES.WEEK_GEN_EMPTY_WEEK} /> : null}
       {showStrip ? <DayStrip selectedDay={selectedDay} onSelect={scrollToDay} /> : null}
       <div
         style={{

@@ -3,6 +3,7 @@
 // receives a label (rest_api_contract.md section 3.0 rule 1).
 
 import { LOCALE } from '../locale.js';
+import { MESSAGES } from '../messages/index.js';
 
 export const UNIT_LABELS = {
   g: 'g',
@@ -66,4 +67,17 @@ export const DAY_SHORT_LABELS = {
   5: 'Vie',
   6: 'Sáb',
   7: 'Dom',
+};
+
+// Generation mode wire code -> es-ES label (rest_api_contract.md section 3.5, G-94).
+export const MODE_LABELS = {
+  library_only: MESSAGES.WEEK_GEN_MODE_LIBRARY,
+  ai_only: MESSAGES.WEEK_GEN_MODE_AI,
+  mix: MESSAGES.WEEK_GEN_MODE_MIX,
+};
+
+export const MODE_HELP = {
+  library_only: MESSAGES.WEEK_GEN_MODE_LIBRARY_HELP,
+  ai_only: MESSAGES.WEEK_GEN_MODE_AI_HELP,
+  mix: MESSAGES.WEEK_GEN_MODE_MIX_HELP,
 };

@@ -156,7 +156,10 @@ export function App() {
 
   // Every hook still runs every render (Rules of Hooks); `active` keeps each
   // one's polling/fetch off until its shell and view are both the live one.
-  const weekPlanner = useWeekPlanner({ active: isUser && activeView === 'week' });
+  const weekPlanner = useWeekPlanner({
+    active: isUser && activeView === 'week',
+    signedIn: isUser,
+  });
   const library = useLibrary({ active: isUser && activeView === 'library' });
   const rules = useRules({ active: isUser && activeView === 'rules' });
   const shoppingList = useShoppingList({ active: isUser && activeView === 'shoppingList' });

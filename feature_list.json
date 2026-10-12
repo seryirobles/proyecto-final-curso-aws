@@ -698,7 +698,7 @@
         "The UI meets the web-design-guidelines skill (accessibility, focus, touch targets, responsive tiers of feature 32); ./init.sh passes"
       ],
       "sdd": true,
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": 36,
@@ -718,7 +718,7 @@
         "All new behavior is covered by tests; ./init.sh passes"
       ],
       "sdd": true,
-      "status": "pending"
+      "status": "done"
     }
   ]
 }

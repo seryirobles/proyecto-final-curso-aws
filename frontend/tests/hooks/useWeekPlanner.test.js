@@ -54,6 +54,11 @@ function pollSnapshot(weekId) {
   };
 }
 
+// The generation hook adds its own /v1/rules poll; these tests are about the week's.
+function lastWeekPollCall() {
+  return usePolling.mock.calls.filter(([url]) => url !== '/v1/rules').at(-1);
+}
+
 describe('useWeekPlanner', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -83,9 +88,7 @@ describe('useWeekPlanner', () => {
     act(() => result.current.switchWeek('next'));
 
     await waitFor(() =>
-      expect(usePolling).toHaveBeenLastCalledWith('/v1/weeks/2026-W35', undefined, {
-        enabled: true,
-      }),
+      expect(lastWeekPollCall()).toEqual(['/v1/weeks/2026-W35', undefined, { enabled: true }]),
     );
     expect(result.current.designation).toBe('next');
   });
@@ -267,11 +270,7 @@ describe('useWeekPlanner', () => {
 
     renderHook(() => useWeekPlanner({ active: false }));
 
-    await waitFor(() =>
-      expect(usePolling).toHaveBeenLastCalledWith(null, undefined, {
-        enabled: false,
-      }),
-    );
+    await waitFor(() => expect(lastWeekPollCall()).toEqual([null, undefined, { enabled: false }]));
   });
 
   it('never polls the literal url "null" before live-weeks resolves (finding 2)', () => {

@@ -152,6 +152,43 @@ export const MESSAGES = {
   SHOPPING_LIST_RESYNC_IN_PROGRESS: 'Resincronizando…',
   CONFIRM_REMOVE_SHOPPING_ITEM: '¿Eliminar este elemento de la lista de la compra?',
 
+  // Whole-week generation (feature 35)
+  WEEK_GEN_BUTTON: 'Generar semana',
+  WEEK_GEN_PANEL_TITLE: 'Generación de la semana',
+  WEEK_GEN_CURRENT_NOTE: 'Al ser la semana actual, solo se generan los días desde hoy en adelante.',
+  WEEK_GEN_KEPT_NOTE:
+    'No se sobrescribe ningún plato existente: las propuestas y los platos definitivos se conservan, y un hueco con plato definitivo se omite.',
+  WEEK_GEN_MODE_LEGEND: 'Modo de generación',
+  WEEK_GEN_MODE_LIBRARY: 'Solo mis recetas',
+  WEEK_GEN_MODE_AI: 'Solo con IA',
+  WEEK_GEN_MODE_MIX: 'Mixto (recomendado)',
+  WEEK_GEN_MODE_LIBRARY_HELP:
+    'Usa únicamente recetas de la biblioteca; los huecos que no pueda cubrir quedan con error.',
+  WEEK_GEN_MODE_AI_HELP: 'Genera recetas nuevas para todos los huecos.',
+  WEEK_GEN_MODE_MIX_HELP:
+    'Usa primero las recetas de la biblioteca y genera con IA solo las que falten.',
+  WEEK_GEN_RULES_TITLE: 'Reglas generales vigentes',
+  WEEK_GEN_RULES_EMPTY: 'No hay reglas generales configuradas.',
+  WEEK_GEN_RULES_LOADING: 'Cargando las reglas…',
+  WEEK_GEN_OVERRIDE_TOGGLE: 'Editar reglas solo para esta generación',
+  WEEK_GEN_OVERRIDE_NOTE:
+    'Estos cambios solo valen para esta generación y no cambian las reglas compartidas.',
+  WEEK_GEN_OVERRIDE_ADD: 'Añadir',
+  WEEK_GEN_OVERRIDE_REMOVE: 'Quitar',
+  WEEK_GEN_CONFIRM: 'Generar semana',
+  WEEK_GEN_CANCEL: 'Cancelar',
+  WEEK_GEN_SUBMITTING: 'Generando la semana…',
+  WEEK_GEN_PROGRESS: (done, total) => `${done} de ${total} huecos listos`,
+  WEEK_GEN_SLOT_PINNED: 'Plato fijado',
+  WEEK_GEN_SLOT_RUNNING: 'Generando…',
+  WEEK_GEN_SLOT_DONE: 'Listo',
+  WEEK_GEN_RETRY: 'Reintentar',
+  WEEK_GEN_SKIPPED_TITLE: 'Platos fijados que no se han aplicado',
+  WEEK_GEN_SKIPPED_ITEM: (day, slot) =>
+    `${day} · ${slot}: la regla fijada no se ha aplicado porque ya hay un plato definitivo.`,
+  WEEK_GEN_CLOSE: 'Cerrar',
+  WEEK_GEN_EMPTY_WEEK: 'Esta semana todavía está vacía: añade un plato o genera la semana.',
+
   // Summary view (feature 20 T38-T40)
   SUMMARY_VIEW_TITLE: 'Resumen de la semana',
   SUMMARY_EDIT_WEEK: 'Editar semana',

@@ -172,3 +172,15 @@ Fallback sentence appended in place to prompt `v4` (owner: edit v4, no v5; singl
 ## Feature 33 ai_inference_config - implemented, reviewer APPROVED (2026-10-12)
 
 `./init.sh` green (1216), all mutants killed (1 equivalent). Report: `progress/impl_ai_inference_config.md`. Leader amended R19/T8 to `toolUse` and the local_development.md comment. Next step: owner marks feature 33 `done` and commits.
+
+## Feature 36 week_generation_backend - in progress (implementer, 2026-10-12)
+
+Feature in progress: 36 — week_generation_backend. Plan: tasks T1..T9 from specs/week_generation_backend/tasks.md.
+
+## Feature 36 week_generation_backend - implemented, reviewer APPROVED (2026-10-12)
+
+Round 1 CHANGES_REQUESTED (5 surviving mutants, `_restore_error` lost error detail); fixed; confirmation run killed all 7 mutants. `./init.sh` green (1331). Spec wording aligned (design §1/§4, R8, T4). Open: design §9 live-run checklist (paid, owner). Next step: owner marks 36 `done` and commits. Feature 35 started.
+
+## Feature 35 frontend_week_generation - implemented, reviewer APPROVED (2026-10-12)
+
+Round 1 CHANGES_REQUESTED (R33/R36 mutants survived, header comment 4 lines); fixed; confirmation killed both. Frontend 838 tests green. Open: T9 manual checks (375/768/1280/1440px, tab order/focus, iOS select zoom, screen-reader status, reload mid-run, real flow vs local backend) — owner-run. Advisory: 429/408 during polling stop the run and clear storage; owner to decide on a follow-up. Next step: owner marks 36 then 35 `done` and commits.
