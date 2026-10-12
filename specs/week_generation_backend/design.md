@@ -27,7 +27,7 @@ remaining recipe; if the pool is empty the slot gets no pick. A pick removes the
 recipe, adds its name to `used_names`, and decrements that category's need. A
 second helper `reduce_needs(needs, picked_categories)` floors at 0 (R12).
 
-`run_week_generation` flow (adds `recipes: RecipeRepository`, read-only):
+`run_week_generation` flow (adds `recipes: RecipeRepository`; the flow only reads it):
 
 1. claim; `occupancy`; `resolve_targets`; `begin_slots(open)` (R17).
 2. `ai_only`: skip the library. Otherwise `list_all()` once, `select_library_fill`, then for
@@ -45,7 +45,7 @@ Pinned slots remain feature 27's synchronous submit-time writes; they are not in
 so `resolve_targets`'s definitive-only counting is unchanged.
 
 The worker needs the library: `planner_ai/adapters/dynamo/recipes.py`, a
-read-only copy of the `planner_api` adapter (same precedent as `weeks.py`,
+complete copy of the `planner_api` adapter (save/delete included: the Protocol and the contract suite need the whole surface; read-only access is IAM, feature 21) (same precedent as `weeks.py`,
 `ai_lambda` design §7), added to the `RecipeRepository` contract suite so drift
 fails a test. IAM read on the library partition is feature 21's (deployment).
 
@@ -67,7 +67,7 @@ concurrent retries cannot lose each other's updates (`FR-AI-09`). `estado` stays
 a run attribute. `resultado` is not written for week runs. The record keeps its
 `ttl`; `AP27` stays one `DeleteItem`. `PETICIONIA#` has no `MarcaCambio`, so no
 ETag rule is touched, and `put_pending` stays create-if-absent so idempotency is
-unchanged. Legacy week records (7-day TTL) read as `slots: []`.
+unchanged. Legacy week records (7-day TTL) are not migrated; see Known limits.
 
 Domain types (`domain/generation.py`): `SlotStatus`, `RunStatus`, `SlotError(code,
 message)`, `SlotProgress(day, slot, status, error)`, and pure
@@ -110,7 +110,7 @@ procedure as §1 for one slot (`library_only` -> library; `mix` -> library then 
 `settle_run`. The shared per-slot code is extracted from `run_week_generation`.
 `local_worker.py` needs no change beyond reaching the new branch through `handle`.
 
-Known limits (not fixed here): a worker crash leaves a slot `running` until the
+Known limits (not fixed here): a week record submitted before this deploy and still unconsumed has no `franjas`, so `begin_slots`' nested `SET` fails after `claim`; the run stays `running` until the 7-day TTL and GET renders it with the single-recipe body (seconds-wide window; optional fix: make `begin_slots` a first-write `SET franjas = :map`); a worker crash leaves a slot `running` until the
 7-day TTL (same as today's stuck run `running`); a retry accepted between a
 finisher's read and write can show a terminal run status for a moment; the slot
 list is self-healing because the retrying worker re-settles.

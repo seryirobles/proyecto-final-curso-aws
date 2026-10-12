@@ -15,6 +15,7 @@ from support.fakes import (
     FakeAiProvider,
     FakeGenerationGate,
     FakeGenerationQueue,
+    FakeRecipeRepository,
     FakeWeekRepository,
 )
 
@@ -91,6 +92,7 @@ def _run_week(raw: RawRecipeOutput) -> None:
         date.fromisocalendar(2026, 34, 7),
         provider=FakeAiProvider(responses=[raw]),
         weeks=FakeWeekRepository(),
+        recipes=FakeRecipeRepository(),
         queue=_pending_queue(),
         gate=FakeGenerationGate(),
     )

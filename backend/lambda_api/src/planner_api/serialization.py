@@ -26,6 +26,7 @@ from planner_core.domain.generation import (
     ReferenceSource,
     RuleOverride,
     SingleRecipeRequest,
+    SlotStatus,
     SpecificationSource,
 )
 from planner_core.domain.ingredient_category import IngredientCategory, parse_category
@@ -51,6 +52,7 @@ from planner_core.domain.rules import (
 from planner_core.domain.shopping import ShoppingItem
 from planner_core.domain.units import parse_unit
 from planner_core.ports.accounts import AccountRecord
+from planner_core.ports.generation_queue import StoredGeneration
 
 
 class MalformedRequest(PlannerError):
@@ -59,15 +61,6 @@ class MalformedRequest(PlannerError):
 
     def __init__(self) -> None:
         super().__init__(messages.MALFORMED_REQUEST)
-
-
-class GenerationNotFound(PlannerError):
-    """AP26 has no domain exception of its own (spec gap: not named by any
-    R<n>, added so a missing `generationId` reads 404, not 500)."""
-
-    def __init__(self, generation_id: str) -> None:
-        super().__init__(messages.GENERATION_NOT_FOUND)
-        self.generation_id = generation_id
 
 
 class RouteNotFound(PlannerError):
@@ -240,6 +233,28 @@ def encode_candidate(candidate: Candidate) -> dict[str, Any]:
 
 def encode_slot_ref(slot: SlotRef) -> dict[str, Any]:
     return {"day": slot.day_number, "slot": int(slot.slot.value)}
+
+
+def encode_generation(stored: StoredGeneration) -> dict[str, Any]:
+    """The GET body (section 3.5): per-slot progress for a whole-week run, the
+    decoded result for a single-recipe one. Whole-week runs carry no `result`."""
+    if stored.slots is None:
+        return {
+            "generationId": stored.idempotency_key,
+            "status": stored.status,
+            "result": decode_generation_result(stored.result),
+        }
+    slots: list[dict[str, Any]] = []
+    for progress in stored.slots:
+        entry: dict[str, Any] = {
+            "day": progress.day,
+            "slot": progress.slot,
+            "status": progress.status.value,
+        }
+        if progress.status is SlotStatus.ERROR and progress.error is not None:
+            entry["error"] = {"code": progress.error.code, "message": progress.error.message}
+        slots.append(entry)
+    return {"generationId": stored.idempotency_key, "status": stored.status, "slots": slots}
 
 
 def encode_account(account: AccountRecord) -> dict[str, Any]:

@@ -4,13 +4,20 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 
 from planner_core.domain.ai_output import RawIngredient, RawRecipeOutput
 from planner_core.domain.calendar import IsoWeek, SlotRef
 from planner_core.domain.candidate import SlotContents
-from planner_core.domain.generation import GenerationRequest, SingleRecipeRequest
+from planner_core.domain.generation import (
+    GenerationRequest,
+    GenerationSnapshot,
+    RunStatus,
+    SingleRecipeRequest,
+    SlotProgress,
+    SlotStatus,
+)
 from planner_core.domain.recipe import Recipe
 from planner_core.domain.rollover import ArchivedWeek
 from planner_core.domain.rules import (
@@ -26,7 +33,7 @@ from planner_core.domain.text import normalize
 from planner_core.domain.username_policy import UsernameAlreadyTaken
 from planner_core.ports.accounts import AccountNotFound, AccountRecord
 from planner_core.ports.ai_provider import AiPrompt
-from planner_core.ports.generation_queue import ResultPayload, StoredGeneration
+from planner_core.ports.generation_queue import ResultPayload, SlotNotRetryable, StoredGeneration
 from planner_core.ports.recipes import LibraryRecipe, RecipeNotFound
 from planner_core.ports.shopping_list import ShoppingListLockHeld
 
@@ -371,6 +378,8 @@ class FakeGenerationQueue:
     claims: list[str] = field(default_factory=list)
     results: dict[str, ResultPayload] = field(default_factory=dict)
     recipe_submitted: list[SubmittedRecipe] = field(default_factory=list)
+    retries: list[tuple[str, int, int, str]] = field(default_factory=list)
+    events: list[str] = field(default_factory=list)
 
     def stored_generation(self, idempotency_key: str) -> StoredGeneration | None:
         return self.stored.get(idempotency_key)
@@ -391,8 +400,14 @@ class FakeGenerationQueue:
                 idempotency_key, request, effective_rules, prompt_version_id, author
             )
         )
+        snapshot = GenerationSnapshot(
+            request.week, request.mode, effective_rules, prompt_version_id or ""
+        )
         self.stored.setdefault(
-            idempotency_key, StoredGeneration(idempotency_key=idempotency_key, status="pending")
+            idempotency_key,
+            StoredGeneration(
+                idempotency_key=idempotency_key, status="pending", slots=(), snapshot=snapshot
+            ),
         )
 
     def submit_recipe(
@@ -421,16 +436,57 @@ class FakeGenerationQueue:
         record = self.stored.get(idempotency_key)
         if record is None or record.status != "pending":
             return False
-        self.stored[idempotency_key] = StoredGeneration(idempotency_key, "running", record.result)
+        self.stored[idempotency_key] = replace(record, status="running")
         self.claims.append(idempotency_key)
         return True
 
     def record_result(self, idempotency_key: str, status: str, payload: ResultPayload) -> None:
         # R38/R39: unconditional; stored_generation then reports estado + resultado.
         self.results[idempotency_key] = payload
-        self.stored[idempotency_key] = StoredGeneration(
-            idempotency_key, status, json.dumps(payload)
+        self.events.append("record_result")
+        self.stored[idempotency_key] = replace(
+            self.stored[idempotency_key], status=status, result=json.dumps(payload)
         )
+
+    def _put_slots(self, key: str, changes: tuple[SlotProgress, ...]) -> None:
+        record = self.stored[key]
+        merged = {(p.day, p.slot): p for p in record.slots or ()}
+        merged.update({(p.day, p.slot): p for p in changes})
+        ordered = tuple(merged[k] for k in sorted(merged))
+        self.stored[key] = replace(record, slots=ordered)
+
+    def begin_slots(self, idempotency_key: str, slots: tuple[SlotProgress, ...]) -> None:
+        self.events.append("begin_slots")
+        self._put_slots(idempotency_key, slots)
+
+    def record_slot(self, idempotency_key: str, progress: SlotProgress) -> None:
+        self.events.append(f"slot:{progress.day}-{progress.slot}:{progress.status.value}")
+        self._put_slots(idempotency_key, (progress,))
+
+    def claim_slot(self, idempotency_key: str, day: int, slot: int) -> bool:
+        record = self.stored.get(idempotency_key)
+        current = (
+            next((p for p in (record.slots or ()) if (p.day, p.slot) == (day, slot)), None)
+            if record
+            else None
+        )
+        if current is None or current.status is not SlotStatus.PENDING:
+            return False
+        self._put_slots(idempotency_key, (SlotProgress(day, slot, SlotStatus.RUNNING),))
+        return True
+
+    def record_status(self, idempotency_key: str, status: RunStatus) -> None:
+        self.events.append(f"status:{status.value}")
+        self.stored[idempotency_key] = replace(self.stored[idempotency_key], status=status.value)
+
+    def retry_slot(self, idempotency_key: str, day: int, slot: int, *, author: str) -> None:
+        record = self.stored[idempotency_key]
+        current = next((p for p in record.slots or () if (p.day, p.slot) == (day, slot)), None)
+        if current is None or current.status is not SlotStatus.ERROR:
+            raise SlotNotRetryable(f"{day}-{slot}")
+        self._put_slots(idempotency_key, (SlotProgress(day, slot, SlotStatus.PENDING),))
+        self.stored[idempotency_key] = replace(self.stored[idempotency_key], status="running")
+        self.retries.append((idempotency_key, day, slot, author))
 
 
 def _default_ai_output() -> RawRecipeOutput:

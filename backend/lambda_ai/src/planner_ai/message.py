@@ -33,6 +33,15 @@ class GenerationMessage:
 
 
 @dataclass(frozen=True)
+class SlotRetryMessage:
+    """A `type: "slot_retry"` hand-off: one slot of a stored run (week_generation_backend R45)."""
+
+    generation: GenerationMessage
+    day: int
+    slot: int
+
+
+@dataclass(frozen=True)
 class RecipeMessage:
     """The parsed single-recipe hand-off (specs/single_recipe_generation R14, R19, R20)."""
 
@@ -95,6 +104,17 @@ def parse_message(body: dict[str, Any]) -> GenerationMessage:
         prompt_version_id=str(_require(body, "promptVersionId")),
         author=str(_require(body, "authorUserId")),
     )
+
+
+def parse_slot_retry_message(body: dict[str, Any]) -> SlotRetryMessage:
+    """The run's own fields (the parent's mode and rules) plus the slot to redo."""
+    try:
+        day, slot = int(_require(body, "day")), int(_require(body, "slot"))
+    except (ValueError, TypeError) as exc:
+        raise MalformedMessage(f"day/slot: {exc}") from exc
+    if day not in range(1, 8) or slot not in (1, 2):
+        raise MalformedMessage(f"day/slot: {day}/{slot}")
+    return SlotRetryMessage(generation=parse_message(body), day=day, slot=slot)
 
 
 def message_type(body: dict[str, Any]) -> str:

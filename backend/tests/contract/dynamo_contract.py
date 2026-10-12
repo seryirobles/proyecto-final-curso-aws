@@ -66,6 +66,14 @@ def dynamo_recipe_repository() -> RecipeRepository:
     return DynamoRecipeRepository()
 
 
+def ai_dynamo_recipe_repository() -> RecipeRepository:
+    """The planner_ai copy of the library adapter (week_generation_backend T4);
+    parametrized next to the planner_api one so drift fails the suite."""
+    from planner_ai.adapters.dynamo.recipes import DynamoRecipeRepository
+
+    return DynamoRecipeRepository()
+
+
 def dynamo_rule_repository() -> RuleRepository:
     from planner_api.adapters.dynamo.rules import DynamoRuleRepository
 

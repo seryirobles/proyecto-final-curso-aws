@@ -4,15 +4,20 @@ from __future__ import annotations
 
 import hashlib
 import json
+import random
 from collections import Counter
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
 from enum import StrEnum
+from typing import Protocol
 
 from planner_core.domain.calendar import IsoWeek, SlotRef, slots_from
 from planner_core.domain.candidate import SlotContents, definitive
+from planner_core.domain.ingredient_category import IngredientCategory
+from planner_core.domain.recipe import Recipe
 from planner_core.domain.rules import CategoryCountRule, PinRule, RuleSet, apply_override
+from planner_core.domain.text import normalize
 
 
 class GenerationMode(StrEnum):
@@ -243,3 +248,123 @@ def single_recipe_key(request: SingleRecipeRequest, attempt: int) -> str:
     payload = {"type": "recipe", "scope": scope, "source": payload_source, "attempt": attempt}
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+class SlotStatus(StrEnum):
+    """One open slot's progress in a whole-week run (FR-AI-12)."""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    DONE = "done"
+    ERROR = "error"
+
+
+class RunStatus(StrEnum):
+    """A whole-week run's status; `pending` until a worker claims it (FR-AI-12)."""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    PARTIAL = "partial"
+    FAILED = "failed"
+
+
+@dataclass(frozen=True)
+class SlotError:
+    """Why a slot failed: a `GenerationFailureReason` value and its es-ES message."""
+
+    code: str
+    message: str
+
+
+@dataclass(frozen=True)
+class SlotProgress:
+    """One slot's entry in a run; `error` is set only when `status` is ERROR."""
+
+    day: int
+    slot: int
+    status: SlotStatus
+    error: SlotError | None = None
+
+
+@dataclass(frozen=True)
+class GenerationSnapshot:
+    """What a run was submitted with, stored so a retry reproduces it (FR-AI-05)."""
+
+    week: IsoWeek
+    mode: GenerationMode
+    rules: RuleSet
+    prompt_version_id: str
+
+
+def run_status(slots: Sequence[SlotProgress]) -> RunStatus:
+    """The run's status from its slot entries (FR-AI-12); no slots means completed."""
+    statuses = {progress.status for progress in slots}
+    if statuses & {SlotStatus.PENDING, SlotStatus.RUNNING}:
+        return RunStatus.RUNNING
+    if SlotStatus.ERROR not in statuses:
+        return RunStatus.COMPLETED
+    return RunStatus.PARTIAL if SlotStatus.DONE in statuses else RunStatus.FAILED
+
+
+class _LibraryEntry(Protocol):
+    """The shape `select_library_fill` needs of a library recipe (ports.recipes.LibraryRecipe)."""
+
+    @property
+    def id(self) -> str: ...
+
+    @property
+    def recipe(self) -> Recipe: ...
+
+
+def reduce_needs(
+    needs: tuple[CategoryCountRule, ...], picked: Iterable[IngredientCategory]
+) -> tuple[CategoryCountRule, ...]:
+    """Subtract the picked categories from the remaining counts, flooring at 0 (FR-AI-04)."""
+    taken = Counter(picked)
+    return tuple(
+        CategoryCountRule(category=rule.category, count=max(0, rule.count - taken[rule.category]))
+        for rule in needs
+    )
+
+
+def select_library_fill[Entry: _LibraryEntry](
+    open_slots: Sequence[SlotRef],
+    library: Sequence[Entry],
+    needs: tuple[CategoryCountRule, ...],
+    used_names: frozenset[str],
+    seed: str,
+) -> dict[SlotRef, Entry]:
+    """Pick a library recipe per open slot, chronologically (FR-AI-03, FR-AI-04, FR-AI-08).
+
+    The pool is the library minus recipes whose case-folded name is used,
+    sorted by id then shuffled with `seed`, so equal inputs give equal picks.
+    """
+    pool = [
+        e for e in sorted(library, key=lambda e: e.id) if normalize(e.recipe.name) not in used_names
+    ]
+    random.Random(seed).shuffle(pool)
+    remaining = {rule.category: rule.count for rule in needs}
+    taken = set(used_names)
+    picks: dict[SlotRef, Entry] = {}
+    for slot in open_slots:
+        candidates = [e for e in pool if normalize(e.recipe.name) not in taken]
+        chosen = next(
+            (
+                e
+                for rule in needs
+                if remaining[rule.category] > 0
+                for e in candidates
+                if e.recipe.category == rule.category
+            ),
+            None,
+        )
+        if chosen is None and candidates:
+            chosen = candidates[0]
+        if chosen is None:
+            continue
+        picks[slot] = chosen
+        taken.add(normalize(chosen.recipe.name))
+        if chosen.recipe.category in remaining:
+            remaining[chosen.recipe.category] = max(0, remaining[chosen.recipe.category] - 1)
+    return picks

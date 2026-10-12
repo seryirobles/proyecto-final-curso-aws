@@ -68,3 +68,38 @@ def test_a_message_with_no_effective_rules_key_is_rejected() -> None:
 def test_a_malformed_field_raises(overrides: dict[str, object]) -> None:
     with pytest.raises(MalformedMessage):
         parse_message(_body(**overrides))
+
+
+def _retry_body(**overrides: object) -> dict[str, object]:
+    body: dict[str, object] = {
+        "type": "slot_retry",
+        "idPeticionIA": "k",
+        "day": 3,
+        "slot": 2,
+        "weekId": "2026-W34",
+        "mode": "library_only",
+        "promptVersionId": "v1",
+        "authorUserId": "u-2",
+        "effectiveRules": {},
+    }
+    return {**body, **overrides}
+
+
+def test_a_slot_retry_message_carries_the_slot_and_the_parent_run() -> None:
+    from planner_ai.message import message_type, parse_slot_retry_message
+
+    body = _retry_body()
+    parsed = parse_slot_retry_message(body)
+
+    assert message_type(body) == "slot_retry"
+    assert (parsed.day, parsed.slot) == (3, 2)
+    assert parsed.generation.request.mode.value == "library_only"
+    assert parsed.generation.author == "u-2"
+
+
+@pytest.mark.parametrize("overrides", [{"day": 0}, {"day": 8}, {"slot": 3}, {"day": "x"}])
+def test_a_slot_retry_message_with_a_bad_slot_is_malformed(overrides: dict[str, object]) -> None:
+    from planner_ai.message import parse_slot_retry_message
+
+    with pytest.raises(MalformedMessage):
+        parse_slot_retry_message(_retry_body(**overrides))

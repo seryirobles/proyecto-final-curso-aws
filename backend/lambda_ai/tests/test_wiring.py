@@ -11,6 +11,7 @@ from support.fakes import (
     FakeClock,
     FakeGenerationGate,
     FakeGenerationQueue,
+    FakeRecipeRepository,
     FakeWeekRepository,
 )
 
@@ -21,6 +22,7 @@ def _deps() -> Dependencies:
     return Dependencies(
         provider=FakeAiProvider(),
         weeks=FakeWeekRepository(),
+        recipes=FakeRecipeRepository(),
         records=FakeGenerationQueue(),
         gate=FakeGenerationGate(),
         clock=FakeClock.at("2026-08-17T10:00:00+00:00"),

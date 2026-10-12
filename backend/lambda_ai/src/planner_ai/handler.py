@@ -9,10 +9,16 @@ import logging
 from typing import Any
 
 from planner_core.application.single_recipe_generation import run_single_recipe_generation
-from planner_core.application.week_generation import run_week_generation
+from planner_core.application.week_generation import run_slot_retry, run_week_generation
 from planner_core.domain.calendar import civil_date
 
-from planner_ai.message import MalformedMessage, message_type, parse_message, parse_recipe_message
+from planner_ai.message import (
+    MalformedMessage,
+    message_type,
+    parse_message,
+    parse_recipe_message,
+    parse_slot_retry_message,
+)
 from planner_ai.serialization import encode_recipe
 from planner_ai.wiring import Dependencies, build_dependencies
 
@@ -37,11 +43,44 @@ def _process_recipe(body: dict[str, Any], deps: Dependencies) -> None:
     )
 
 
+def _process_slot_retry(body: dict[str, Any], deps: Dependencies) -> None:
+    retry = parse_slot_retry_message(body)
+    message = retry.generation
+    outcome = run_slot_retry(
+        message.idempotency_key,
+        retry.day,
+        retry.slot,
+        message.request,
+        message.effective_rules,
+        message.prompt_version_id,
+        message.author,
+        civil_date(deps.clock.now()),
+        provider=deps.provider,
+        weeks=deps.weeks,
+        recipes=deps.recipes,
+        queue=deps.records,
+        gate=deps.gate,
+    )
+    logger.info(
+        "Processed slot retry %s",
+        message.idempotency_key,
+        extra={
+            "idPeticionIA": message.idempotency_key,
+            "claimed": outcome.claimed,
+            "day": retry.day,
+            "slot": retry.slot,
+        },
+    )
+
+
 def _process_record(record: dict[str, Any], deps: Dependencies) -> None:
     body = json.loads(record["body"])
     kind = message_type(body)
     if kind == "recipe":
         _process_recipe(body, deps)
+        return
+    if kind == "slot_retry":
+        _process_slot_retry(body, deps)
         return
     if kind != "week":
         raise MalformedMessage(f"type: {kind!r}")
@@ -56,6 +95,7 @@ def _process_record(record: dict[str, Any], deps: Dependencies) -> None:
         first_day,
         provider=deps.provider,
         weeks=deps.weeks,
+        recipes=deps.recipes,
         queue=deps.records,
         gate=deps.gate,
     )

@@ -11,11 +11,12 @@ from planner_core.domain.recipe import Recipe
 from planner_core.ports.recipes import LibraryRecipe, RecipeNotFound, RecipeRepository
 from support.fakes import FakeRecipeRepository
 
-from tests.contract.dynamo_contract import dynamo_recipe_repository
+from tests.contract.dynamo_contract import ai_dynamo_recipe_repository, dynamo_recipe_repository
 
 IMPLEMENTATIONS: list[Callable[[], RecipeRepository]] = [
     FakeRecipeRepository,
     dynamo_recipe_repository,
+    ai_dynamo_recipe_repository,  # the planner_ai copy (week_generation_backend R16)
 ]
 
 

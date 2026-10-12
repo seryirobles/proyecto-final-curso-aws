@@ -46,11 +46,15 @@ from planner_core.domain.shopping import ShoppingItemNotFound
 from planner_core.domain.units import UnknownUnit
 from planner_core.domain.username_policy import UsernameAlreadyTaken, UsernameReserved
 from planner_core.ports.accounts import AccountNotFound
+from planner_core.ports.generation_queue import (
+    GenerationNotFound,
+    GenerationSlotNotFound,
+    SlotNotRetryable,
+)
 from planner_core.ports.recipes import RecipeNotFound
 from planner_core.ports.shopping_list import ShoppingListLockHeld
 
 from planner_api.serialization import (
-    GenerationNotFound,
     MalformedRequest,
     RouteNotFound,
     encode_rule,
@@ -147,6 +151,10 @@ _TABLE: dict[type[Exception], _ErrorSpec] = {
     InvalidRuleId: _ErrorSpec(400, "INVALID_RULE_ID", messages.INVALID_RULE_ID),
     MalformedRequest: _ErrorSpec(400, "MALFORMED_REQUEST", messages.MALFORMED_REQUEST),
     GenerationNotFound: _ErrorSpec(404, "GENERATION_NOT_FOUND", messages.GENERATION_NOT_FOUND),
+    GenerationSlotNotFound: _ErrorSpec(
+        404, "GENERATION_SLOT_NOT_FOUND", messages.GENERATION_SLOT_NOT_FOUND
+    ),
+    SlotNotRetryable: _ErrorSpec(409, "SLOT_NOT_RETRYABLE", messages.SLOT_NOT_RETRYABLE),
     RouteNotFound: _ErrorSpec(404, "NOT_FOUND", messages.ROUTE_NOT_FOUND),
 }
 

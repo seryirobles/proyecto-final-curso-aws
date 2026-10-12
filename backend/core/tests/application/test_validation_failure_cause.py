@@ -12,6 +12,7 @@ from support.fakes import (
     FakeAiProvider,
     FakeGenerationGate,
     FakeGenerationQueue,
+    FakeRecipeRepository,
     FakeWeekRepository,
 )
 
@@ -64,6 +65,7 @@ def test_week_path_snippet_is_capped_at_500(caplog: pytest.LogCaptureFixture) ->
             date.fromisocalendar(2026, 34, 7),
             provider=FakeAiProvider(responses=[raw]),
             weeks=FakeWeekRepository(),
+            recipes=FakeRecipeRepository(),
             queue=queue,
             gate=FakeGenerationGate(),
         )

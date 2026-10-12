@@ -11,7 +11,14 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
-from planner_core.domain.generation import GenerationRequest, SingleRecipeRequest
+from planner_core.domain.errors import PlannerError
+from planner_core.domain.generation import (
+    GenerationRequest,
+    GenerationSnapshot,
+    RunStatus,
+    SingleRecipeRequest,
+    SlotProgress,
+)
 from planner_core.domain.recipe import Recipe
 from planner_core.domain.rules import RuleSet
 
@@ -34,6 +41,26 @@ class StoredGeneration:
     idempotency_key: str
     status: str
     result: str | None = None
+    slots: tuple[SlotProgress, ...] | None = None
+    """Per-slot progress of a whole-week run, ordered by day then slot; None on
+    a single-recipe record (week_generation_backend design section 2)."""
+    snapshot: GenerationSnapshot | None = None
+
+
+class GenerationNotFound(PlannerError):
+    """No generation record exists for this id (AP26)."""
+
+    def __init__(self, generation_id: str) -> None:
+        super().__init__(generation_id)
+        self.generation_id = generation_id
+
+
+class GenerationSlotNotFound(PlannerError):
+    """The run has no entry for the addressed slot."""
+
+
+class SlotNotRetryable(PlannerError):
+    """The slot is not in `error`, or is no longer an open slot (FR-AI-09, FR-AI-11)."""
 
 
 @runtime_checkable
@@ -51,8 +78,30 @@ class GenerationResultSink(Protocol):
 
     def record_result(self, idempotency_key: str, status: str, payload: ResultPayload) -> None:
         """Write the terminal estado and resultado (R38), unconditionally (R39).
-        payload: whole-week per-slot list or single-recipe dict
+        Single-recipe runs only; whole-week runs use the per-slot methods below
         (docs/data_model.md section 4.6)."""
+        ...
+
+    def stored_generation(self, idempotency_key: str) -> StoredGeneration | None:
+        """The record already stored for this id, or None (AP26). Strongly
+        consistent, no side effects."""
+        ...
+
+    def begin_slots(self, idempotency_key: str, slots: tuple[SlotProgress, ...]) -> None:
+        """Record every given slot entry in one write (R17); a no-op when empty."""
+        ...
+
+    def record_slot(self, idempotency_key: str, progress: SlotProgress) -> None:
+        """Replace one slot's entry, touching no other (R21): unconditional."""
+        ...
+
+    def claim_slot(self, idempotency_key: str, day: int, slot: int) -> bool:
+        """Atomically move one slot pending -> running; False if it was not
+        pending (R47, R48)."""
+        ...
+
+    def record_status(self, idempotency_key: str, status: RunStatus) -> None:
+        """Write the run's `estado` only (R27)."""
         ...
 
 
@@ -61,10 +110,6 @@ class GenerationQueue(GenerationResultSink, Protocol):
     """Hands a generation request off for asynchronous processing, keyed by a
     caller-derived idempotency id (docs/data_model.md section 2 — the id is not
     re-derived here)."""
-
-    def stored_generation(self, idempotency_key: str) -> StoredGeneration | None:
-        """The record already stored for this id, or None (AP26). No side effects."""
-        ...
 
     def submit(
         self,
@@ -94,6 +139,13 @@ class GenerationQueue(GenerationResultSink, Protocol):
         """Hand a single-recipe request off (AP25 + enqueue), like `submit`. The
         reference recipe snapshot travels on the message so the worker holds no
         RecipeRepository (specs/single_recipe_generation/design.md section 3)."""
+        ...
+
+    def retry_slot(self, idempotency_key: str, day: int, slot: int, *, author: str) -> None:
+        """Set an `error` slot pending and the run running in one conditional
+        write, then enqueue one `slot_retry` message; raises SlotNotRetryable if
+        the slot was not in `error` (R36, R38, R40, R45). A failed enqueue
+        restores the slot to `error` (R46)."""
         ...
 
     def discard(self, idempotency_key: str) -> None:

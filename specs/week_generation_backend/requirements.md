@@ -52,7 +52,7 @@ The system SHALL consider only the open slots returned by target resolution (no 
 ## R8
 Implements: FR-AI-03
 
-The system SHALL exclude from library fill every recipe whose case-folded name equals that of a meal already in the week or already picked in the same run.
+The system SHALL exclude from library fill every recipe whose normalised name (`domain.text.normalize`: case, accents, whitespace) equals that of a meal already in the week or already picked in the same run.
 
 ## R9
 Implements: FR-AI-04

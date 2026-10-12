@@ -68,4 +68,6 @@ RECIPE_WITHOUT_PROCEDURE = "La receta debe incluir al menos un paso de elaboraci
 
 INTERNAL_ERROR = "Se ha producido un error inesperado. Inténtalo de nuevo más tarde."
 GENERATION_NOT_FOUND = "No se ha encontrado la petición de generación solicitada."
+GENERATION_SLOT_NOT_FOUND = "La petición de generación no incluye esa comida."
+SLOT_NOT_RETRYABLE = "Esta comida no se puede volver a generar en este momento."
 ROUTE_NOT_FOUND = "El recurso solicitado no existe."

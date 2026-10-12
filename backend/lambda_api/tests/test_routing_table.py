@@ -63,6 +63,10 @@ EXPECTED_ROUTES = {
     ("POST", "/v1/generations"),
     ("GET", "/v1/generations/{generationId}"),
     ("DELETE", "/v1/generations/{generationId}"),  # AP27 discard (R42)
+    (
+        "POST",
+        "/v1/generations/{generationId}/slots/{day}/{slot}/retry",
+    ),  # week_generation_backend R35
 }
 
 
@@ -95,6 +99,11 @@ _MUTATORS = frozenset(
         "delete_rule",
         "submit",
         "discard",
+        "retry_slot",
+        "begin_slots",
+        "record_slot",
+        "claim_slot",
+        "record_status",
     }
 )
 

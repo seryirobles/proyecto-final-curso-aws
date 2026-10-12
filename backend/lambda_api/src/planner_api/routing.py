@@ -15,6 +15,7 @@ from typing import Any  # untyped JSON in/out is the wire boundary itself (conve
 from planner_core.application import (
     account_admin,
     authentication,
+    generation_retry,
     generation_submission,
     library_editing,
     live_weeks,
@@ -38,10 +39,11 @@ from planner_core.domain.role import Role
 from planner_core.domain.rules import DisabledDay, rule_id
 from planner_core.domain.text import normalize
 from planner_core.ports.accounts import AccountNotFound
+from planner_core.ports.generation_queue import GenerationNotFound
 from planner_core.ports.recipes import LibraryRecipe, RecipeNotFound
 
 from planner_api import serialization as ser
-from planner_api.serialization import GenerationNotFound, MalformedRequest
+from planner_api.serialization import MalformedRequest
 from planner_api.wiring import Dependencies
 
 _COOKIE_ATTRS = "HttpOnly; Secure; SameSite=Lax; Path=/"
@@ -756,14 +758,7 @@ def _submit_generation(
         config=deps.config,  # feature 24's guard resolves the prompt version (finding 2)
     )
     if outcome.stored is not None:
-        return RouteResult(
-            200,
-            {
-                "generationId": outcome.idempotency_key,
-                "status": outcome.stored.status,
-                "result": outcome.stored.result,
-            },
-        )
+        return RouteResult(200, ser.encode_generation(outcome.stored))  # same shape as the GET
     return RouteResult(
         202,
         {
@@ -813,13 +808,31 @@ def _get_generation(
     stored = deps.queue.stored_generation(generation_id)
     if stored is None:
         raise GenerationNotFound(generation_id)
+    return RouteResult(200, ser.encode_generation(stored))
+
+
+def _retry_generation_slot(
+    path: dict[str, str],
+    query: dict[str, str],
+    body: dict[str, Any],
+    auth: AuthContext | None,
+    deps: Dependencies,
+) -> RouteResult:
+    assert auth is not None
+    day = ser.parse_day(path["day"])
+    slot = ser.parse_slot(path["slot"])
+    generation_id = path["generationId"]
+    stored = generation_retry.retry_slot(
+        generation_id,
+        day,
+        int(slot.value),
+        civil_date(deps.clock.now()),
+        queue=deps.queue,
+        weeks=deps.weeks,
+        author=auth.user_id,
+    )
     return RouteResult(
-        200,
-        {
-            "generationId": stored.idempotency_key,
-            "status": stored.status,
-            "result": ser.decode_generation_result(stored.result),
-        },
+        202, ser.encode_generation(stored), location=f"/v1/generations/{generation_id}"
     )
 
 
@@ -929,6 +942,9 @@ ROUTES: dict[tuple[str, str], RouteSpec] = {
     ("POST", "/v1/shopping-list/resync"): RouteSpec(_resync, requires_role=Role.USER),
     ("POST", "/v1/generations"): RouteSpec(_submit_generation, requires_role=Role.USER),
     ("GET", "/v1/generations/{generationId}"): RouteSpec(_get_generation, requires_role=Role.USER),
+    ("POST", "/v1/generations/{generationId}/slots/{day}/{slot}/retry"): RouteSpec(
+        _retry_generation_slot, requires_role=Role.USER
+    ),
     ("DELETE", "/v1/generations/{generationId}"): RouteSpec(
         _delete_generation, requires_role=Role.USER
     ),

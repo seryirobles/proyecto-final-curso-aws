@@ -15,6 +15,7 @@ from support.fakes import (
     FakeClock,
     FakeGenerationGate,
     FakeGenerationQueue,
+    FakeRecipeRepository,
     FakeWeekRepository,
 )
 
@@ -254,6 +255,7 @@ def _deps(queue: FakeGenerationQueue, client: _Client) -> Dependencies:
     return Dependencies(
         provider=BedrockAiProvider(client=client),
         weeks=FakeWeekRepository(),
+        recipes=FakeRecipeRepository(),
         records=queue,
         gate=FakeGenerationGate(),
         clock=FakeClock.at("2026-08-17T10:00:00+00:00"),

@@ -12,6 +12,7 @@ from support.fakes import (
     FakeAiProvider,
     FakeGenerationGate,
     FakeGenerationQueue,
+    FakeRecipeRepository,
     FakeWeekRepository,
 )
 
@@ -74,6 +75,7 @@ def test_week_slot_provider_error_is_logged(caplog: pytest.LogCaptureFixture) ->
             date.fromisocalendar(2026, 34, 7),
             provider=FakeAiProvider(responses=[AiProviderError(CAUSE)]),
             weeks=FakeWeekRepository(),
+            recipes=FakeRecipeRepository(),
             queue=_pending_queue(),
             gate=FakeGenerationGate(),
         )
