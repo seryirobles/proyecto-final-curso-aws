@@ -1,4 +1,4 @@
-"""`AiProvider` backed by AWS Bedrock + OpenAI GPT-5.6 Terra (docs/architecture.md
+"""`AiProvider` backed by AWS Bedrock + Amazon Nova 2 Lite (docs/architecture.md
 section 1.2.6). Renders the prompt value object to a plain text instruction,
 calls `bedrock-runtime:Converse` (this model has no InvokeModel support), and
 reads the recipe from a forced tool call's input into a `RawRecipeOutput`. A parse
@@ -17,12 +17,12 @@ from planner_core.domain.ai_output import RawIngredient, RawRecipeOutput, recipe
 from planner_core.domain.ai_prompt import CategoryPrompt, ReferencePrompt, SpecificationPrompt
 from planner_core.ports.ai_provider import AiPrompt, AiProviderError
 
-BEDROCK_MODEL_ID = "global.openai.gpt-5.6-terra"
-"""The Global cross-Region inference profile id (architecture.md section
-1.2.6) - eu-south-2 supports no In-Region/Geo profile for this model.
+from planner_ai.adapters.inference_config import converse_kwargs, load_inference_settings
+
+BEDROCK_MODEL_ID = "eu.amazon.nova-2-lite-v1:0"
+"""The EU Geo inference profile id (architecture.md section 1.2.6).
 Overridable by AI_MODEL_ID (design.md section 10)."""
 
-_MAX_TOKENS = 4096
 _REGION = os.environ.get("AWS_DEFAULT_REGION", "eu-south-2")
 
 
@@ -150,12 +150,14 @@ class BedrockAiProvider:
 
     def generate(self, prompt: AiPrompt) -> RawRecipeOutput:
         messages = [{"role": "user", "content": [{"text": _render(prompt)}]}]
+        # Outside the boto try: a config error is not "Bedrock invocation failed" (R1).
+        kwargs = converse_kwargs(load_inference_settings(os.environ))
         try:
             response = self._bedrock().converse(
                 modelId=_model_id(),
                 messages=messages,
-                inferenceConfig={"maxTokens": _MAX_TOKENS},
                 toolConfig=_TOOL_CONFIG,
+                **kwargs,
             )
         except (BotoCoreError, ClientError) as exc:
             raise AiProviderError(f"Bedrock invocation failed: {exc}") from exc

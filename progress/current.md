@@ -168,3 +168,7 @@ Tests 1068 green; remaining init.sh FAIL: issues/ai-generation-422-unavailable/a
 ## Feature 34 ai_fallback_recipe - implemented, reviewer APPROVED (2026-10-11)
 
 Fallback sentence appended in place to prompt `v4` (owner: edit v4, no v5; single-recipe only; 422 kept). `./init.sh` green (1158), all reviewer mutants killed. Report: `progress/impl_ai_fallback_recipe.md`. Open: T8, the owner-run live probe (paid); the lettered Part (after AC) awaits the owner's direct command to the leader. Next step: owner marks feature 34 `done` and commits (issues 15-17 closed in the same tree).
+
+## Feature 33 ai_inference_config - implemented, reviewer APPROVED (2026-10-12)
+
+`./init.sh` green (1216), all mutants killed (1 equivalent). Report: `progress/impl_ai_inference_config.md`. Leader amended R19/T8 to `toolUse` and the local_development.md comment. Next step: owner marks feature 33 `done` and commits.

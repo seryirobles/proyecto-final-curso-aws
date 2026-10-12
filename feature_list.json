@@ -659,7 +659,7 @@
         "docs/local_development.md and the architecture env table list every new variable; ./init.sh passes"
       ],
       "sdd": true,
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": 34,
@@ -677,7 +677,7 @@
         "./init.sh passes"
       ],
       "sdd": true,
-      "status": "in_progress"
+      "status": "done"
     },
     {
       "id": 35,

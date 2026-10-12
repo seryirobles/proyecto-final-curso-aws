@@ -12,7 +12,8 @@ from planner_core.domain.ingredient_category import IngredientCategory
 from planner_core.domain.rules import CategoryCountRule
 from planner_core.ports.ai_provider import AiProviderError
 
-from planner_ai.adapters.bedrock import _MAX_TOKENS, BEDROCK_MODEL_ID, BedrockAiProvider, _render
+from planner_ai.adapters.bedrock import BEDROCK_MODEL_ID, BedrockAiProvider, _render
+from planner_ai.adapters.inference_config import DEFAULT_MAX_TOKENS
 
 PROMPT = build_category_prompt((), "v1")
 
@@ -91,11 +92,11 @@ def test_it_uses_the_module_model_id_by_default() -> None:
 
     BedrockAiProvider(client=client).generate(PROMPT)
 
-    assert client.model_id == BEDROCK_MODEL_ID == "global.openai.gpt-5.6-terra"
+    assert client.model_id == BEDROCK_MODEL_ID == "eu.amazon.nova-2-lite-v1:0"
     assert client.messages[0]["role"] == "user"
     assert isinstance(client.messages[0]["content"], list)
     assert client.messages[0]["content"][0]["text"] == _render(PROMPT)
-    assert client.inference_config == {"maxTokens": _MAX_TOKENS}
+    assert client.inference_config == {"maxTokens": DEFAULT_MAX_TOKENS}
 
 
 def test_the_ai_model_id_env_var_overrides_the_model(monkeypatch: pytest.MonkeyPatch) -> None:

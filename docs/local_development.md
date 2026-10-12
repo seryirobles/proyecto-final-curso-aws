@@ -102,6 +102,13 @@ export GENERATION_QUEUE_URL=http://localhost:9324/000000000000/generation-queue
 export AWS_DEFAULT_REGION=eu-south-2
 export AI_MODEL_ID=eu.amazon.nova-2-lite-v1:0
 export AI_GENERATION_ENABLED=true
+# Optional inference settings (example values; see the table below):
+# export AI_REASONING_ENABLED=false
+# export AI_REASONING_EFFORT=low
+# export AI_MAX_TOKENS=4096
+# export AI_TEMPERATURE=0.7
+# export AI_TOP_P=0.9
+# export AI_SERVICE_TIER=standard
 
 # Dummy keys, only when using a Bedrock API key (below): boto3 resolves
 # credentials before it looks at the bearer token, and with no keys it falls
@@ -128,6 +135,20 @@ uv run python -m planner_ai.local_worker
 
 `AI_GENERATION_ENABLED` (exactly `true` or `false`) is a local-only override of
 the SSM kill-switch, which is then not read; unset, SSM decides as deployed.
+
+| Variable | Accepted values | Default |
+|---|---|---|
+| `AI_REASONING_ENABLED` | `true` / `false` | `false` |
+| `AI_REASONING_EFFORT` | `low` / `medium` / `high` | `low` |
+| `AI_MAX_TOKENS` | integer 1-65000 | `4096` |
+| `AI_TEMPERATURE` | number 0-1 | unset (model default) |
+| `AI_TOP_P` | number 0-1 | unset (model default) |
+| `AI_SERVICE_TIER` | `standard` / `priority` / `flex` | `standard` |
+
+A blank value counts as unset; an out-of-range value fails the generation with a
+logged error. Reasoning tokens bill as output and count against `AI_MAX_TOKENS`,
+so raise it when enabling reasoning. With effort `high`, `AI_MAX_TOKENS` is not
+sent (Bedrock rejects it) and `AI_TEMPERATURE`/`AI_TOP_P` must stay unset.
 
 **No Marketplace activation needed.** Nova 2 Lite is an Amazon first-party
 model, not an AWS Marketplace one, so there is no one-time subscription step.

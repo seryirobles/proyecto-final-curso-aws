@@ -117,7 +117,7 @@ WHEN an inference variable is set to an empty or whitespace-only string, the Bed
 ## R19
 Implements: FR-AI-01, FR-AI-03
 
-WHEN a response contains a `reasoningContent` block, the Bedrock provider SHALL return the recipe parsed from the first `text` block.
+WHEN a response contains a `reasoningContent` block, the Bedrock provider SHALL return the recipe parsed from the `toolUse` block (a leading `reasoningContent` block is skipped).
 
 ## R20
 Implements: FR-AI-01, FR-AI-03

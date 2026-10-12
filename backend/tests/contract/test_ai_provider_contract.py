@@ -7,7 +7,8 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from planner_ai.adapters.bedrock import _MAX_TOKENS, BedrockAiProvider, _render
+from planner_ai.adapters.bedrock import BedrockAiProvider, _render
+from planner_ai.adapters.inference_config import DEFAULT_MAX_TOKENS
 from planner_core.domain.ai_output import RawIngredient, RawRecipeOutput
 from planner_core.domain.ai_prompt import build_category_prompt
 from planner_core.ports.ai_provider import AiPrompt, AiProvider, AiProviderError
@@ -86,4 +87,4 @@ def test_the_converse_envelope_role_and_content_shape() -> None:
     assert stub.messages[0]["role"] == "user"
     assert isinstance(stub.messages[0]["content"], list)
     assert stub.messages[0]["content"][0]["text"] == _render(PROMPT)
-    assert stub.inference_config == {"maxTokens": _MAX_TOKENS}
+    assert stub.inference_config == {"maxTokens": DEFAULT_MAX_TOKENS}
