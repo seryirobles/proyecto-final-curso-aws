@@ -38,7 +38,7 @@ from planner_core.domain.generation import (
     run_status,
     select_library_fill,
 )
-from planner_core.domain.recipe import snapshot
+from planner_core.domain.recipe import MealSnapshot, snapshot
 from planner_core.domain.rules import CategoryCountRule, RuleSet
 from planner_core.domain.text import normalize
 from planner_core.ports.ai_provider import AiProvider, AiProviderError
@@ -108,30 +108,41 @@ def _write_library_candidate(run: _Run, slot: SlotRef, entry: LibraryRecipe) -> 
     return _progress(slot, SlotStatus.DONE)
 
 
-def _generate_with_ai(run: _Run, slot: SlotRef, prompt: CategoryPrompt) -> SlotProgress:
+def _generate_with_ai(
+    run: _Run, slot: SlotRef, prompt: CategoryPrompt
+) -> tuple[SlotProgress, MealSnapshot | None]:
+    """The slot's progress and the meal written, None when nothing was written."""
     if not run.gate.is_generation_enabled():  # R50, NFR-AI-01
         unavailable = build_generation_failure(GenerationFailureReason.GENERATION_UNAVAILABLE)
-        return _error(slot, unavailable)
+        return _error(slot, unavailable), None
 
     run.queue.record_slot(run.key, _progress(slot, SlotStatus.RUNNING))  # R18
     try:
         raw = run.provider.generate(prompt)
     except AiProviderError as error:  # per-slot isolation
         logger.warning("AI provider failed for %s: %s", run.key, error)
-        return _error(slot, build_generation_failure(GenerationFailureReason.INVALID_OUTPUT))
+        return _error(slot, build_generation_failure(GenerationFailureReason.INVALID_OUTPUT)), None
 
     outcome = validate_and_preview(raw)
     if isinstance(outcome, GenerationFailure):
         logger.warning("AI output rejected for %s: %s; %.500r", run.key, outcome.cause, raw)
-        return _error(slot, outcome)
+        return _error(slot, outcome), None
 
     current = run.weeks.get_week(run.week).get(slot, SlotContents())
+    meal: MealSnapshot | None = None
     if definitive(current) is None:  # a definitive outranks the candidate
         meal = snapshot(accept_preview(outcome.preview))
         add_slot_candidate(
             run.week, slot, new_candidate(uuid4().hex, meal, run.author), weeks=run.weeks
         )
-    return _progress(slot, SlotStatus.DONE)
+    return _progress(slot, SlotStatus.DONE), meal
+
+
+def _distinct(names: Sequence[str]) -> tuple[str, ...]:
+    seen: dict[str, str] = {}
+    for name in names:
+        seen.setdefault(normalize(name), name)
+    return tuple(seen.values())
 
 
 def _fill_slots(
@@ -155,10 +166,10 @@ def _fill_slots(
             run.queue.record_slot(run.key, progress)  # R19
             results.append(progress)
 
-    prompt = build_category_prompt(
-        reduce_needs(needs, (entry.recipe.category for entry in picks.values())),  # R12
-        run.prompt_version_id,
-    )
+    # G-95: names already in the week, then every dish this run adds.
+    avoid = [c.meal.name for contents in occupancy.values() for c in contents.candidates]
+    avoid += [entry.recipe.name for entry in picks.values()]
+    needs = reduce_needs(needs, (entry.recipe.category for entry in picks.values()))  # R12
     for slot in slots:
         if slot in picks:
             continue
@@ -166,7 +177,11 @@ def _fill_slots(
             insufficient = GenerationFailureReason.INSUFFICIENT_LIBRARY_RECIPES
             progress = _error(slot, build_generation_failure(insufficient))
         else:
-            progress = _generate_with_ai(run, slot, prompt)
+            prompt = build_category_prompt(needs, run.prompt_version_id, _distinct(avoid))
+            progress, written = _generate_with_ai(run, slot, prompt)
+            if written is not None:  # G-95: later slots see this dish and its category
+                avoid.append(written.name)
+                needs = reduce_needs(needs, (written.category,))
         run.queue.record_slot(run.key, progress)  # R19, R20
         results.append(progress)
     return results

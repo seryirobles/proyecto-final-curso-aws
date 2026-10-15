@@ -184,3 +184,11 @@ Round 1 CHANGES_REQUESTED (5 surviving mutants, `_restore_error` lost error deta
 ## Feature 35 frontend_week_generation - implemented, reviewer APPROVED (2026-10-12)
 
 Round 1 CHANGES_REQUESTED (R33/R36 mutants survived, header comment 4 lines); fixed; confirmation killed both. Frontend 838 tests green. Open: T9 manual checks (375/768/1280/1440px, tab order/focus, iOS select zoom, screen-reader status, reload mid-run, real flow vs local backend) — owner-run. Advisory: 429/408 during polling stop the run and clear storage; owner to decide on a follow-up. Next step: owner marks 36 then 35 `done` and commits.
+
+## Issue 18 ai-week-dishes-repeat - implemented, reviewer APPROVED (2026-10-12)
+
+Part AE / G-95 added (owner lift). `CategoryPrompt.avoid_names` + prompt v5 (separate `AVOID_NAMES_TEMPLATES`, v1-v4 untouched); needs reduced after each AI slot (E6). Round 1 CHANGES_REQUESTED (normalize de-dup untested); fixed; confirmation killed both mutants. `./init.sh` green (1338). Report: `progress/impl_ai_week_dishes_repeat.md`. Owner: set `AI_PROMPT_VERSION_ID=v5` in local env and every deployed config (E1-E5 inert until then), mark issue 18 `done`, commit.
+
+## Issue 19 ai-week-dishes-still-similar - implemented, reviewer APPROVED (2026-10-12)
+
+Owner chose option (w): prompt v6 only (avoid main ingredient + style, positive cuisine steer, no dangling needs line); v1-v5 byte-identical; new `PromptInstructions.needs_template`. 0 findings, 6 mutants killed, `./init.sh` green (1350). Report: `progress/impl_ai_week_dishes_still_similar.md`. Nits: v6 avoid line repeats "main ingredient"; test docstring lists only v1-v4. Owner: set `AI_PROMPT_VERSION_ID=v6` (local worker + every deployed config), re-run an AI-only week, mark 18 then 19 `done`, commit.

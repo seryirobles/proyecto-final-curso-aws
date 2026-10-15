@@ -1415,3 +1415,36 @@ never said what the third one does.
   (library picks count toward category counts). `G-63`'s sentence ~~even
   library-only mode is the AI selecting from the library~~ is superseded.
   Contract: `rest_api_contract.md` §3.5. Persistence: `data_model.md` §4.6.
+
+## Part AE — AI-generated dishes of a week must differ from one another (2026-10-12)
+
+Directed by the requirements owner, in the same manner as Parts I through AD,
+while triaging issue 18 (`ai-week-dishes-repeat`): an AI-only week came back as
+the same quinoa-and-avocado salad in all 14 slots. The owner answered the
+leader's questions directly (lift yes; general fix; "a alone"). `FR-AI-06`'s and
+`FR-AI-11`'s text is **unchanged**; this Part adds a behaviour neither stated.
+
+### G-95 · AI slots avoid the dishes already in the week and those written earlier in the run
+
+- **Gap:** `FR-AI-06` asks the prompt to vary protein sources, but every AI slot of
+  a run received the same prompt, with no knowledge of the other meals, so the model
+  returned its most likely dish and only the protein changed. `G-94` (no repeated
+  name) covered library picks only and left AI-only "unchanged". Likewise the
+  category counts handed to each AI slot were the run's whole remaining needs: an
+  earlier AI slot never reduced them, so a later one could overfill a category
+  (`FR-AI-04`, `FR-AI-11`, `G-71`).
+- **Decision:** (1) Each AI slot of a whole-week run, and each retried slot, SHALL
+  be told the names of every meal already in the week (candidates and definitives),
+  of the library picks of the run (mix), and of the dishes written earlier in the
+  same run, and SHALL be asked not to repeat them; a new prompt version carries the
+  instruction. (2) After each AI slot, the category needs given to the next slot
+  SHALL be reduced by the category of the recipe just written, as library picks
+  already are. Slots stay sequential, per-slot progress and retry (`FR-AI-12`) are
+  unchanged, and single-recipe generation is untouched.
+- **Reasoning:** The system already runs the slots one after another, so passing
+  what exists costs no extra call and keeps per-slot progress and retry. A one-call
+  week or a planning stage were considered and set aside for now; a per-slot steer
+  (cuisine, main ingredient) may be added later if a live run shows repeats persist.
+  The exact name list is a prompt matter; matching of names stays `domain.text`.
+- **Requirements:** `FR-AI-06` (behaviour added, text unchanged), `FR-AI-04` and
+  `FR-AI-11` (needs decremented per AI slot, text unchanged). Builds on `G-94`.

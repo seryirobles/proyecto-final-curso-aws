@@ -45,6 +45,11 @@ def _render(prompt: AiPrompt) -> str:
     if isinstance(prompt, CategoryPrompt):
         needs = ", ".join(f"{r.count}x {r.category.value}" for r in prompt.category_counts)
         lines.append(Template(ins.category_framing_template).substitute(needs=needs))
+        if needs and ins.needs_template:  # issue 19: no dangling empty-needs line
+            lines.append(Template(ins.needs_template).substitute(needs=needs))
+        if prompt.avoid_names and ins.avoid_names_template:  # G-95
+            names = "; ".join(prompt.avoid_names)
+            lines.append(Template(ins.avoid_names_template).substitute(names=names))
     elif isinstance(prompt, SpecificationPrompt):
         lines.append(
             Template(ins.specification_framing_template).substitute(

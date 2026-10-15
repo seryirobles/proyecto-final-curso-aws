@@ -23,5 +23,29 @@
     }
   },
   "issues": [
+    {
+      "id": 18,
+      "name": "ai-week-dishes-repeat",
+      "title": "AI-only week generation returns the same dish in all 14 slots",
+      "severity": "medium",
+      "report": "I tried a generation with AI only and I think I'm going to be eating quinoa with avocado all week (screenshot: all 14 slots are 'Ensalada de Quinoa con Aguacate y <protein>').",
+      "reported": "2026-10-12",
+      "status": "in_progress",
+      "covers": [],
+      "classification": "spec_gap",
+      "reviewed": true
+    },
+    {
+      "id": 19,
+      "name": "ai-week-dishes-still-similar",
+      "title": "AI-only week still repeats near-identical and exact-name dishes after prompt v5",
+      "severity": "medium",
+      "report": "Still too similar (screenshot after v5 fix, AI_PROMPT_VERSION_ID=v5 confirmed on): Mon/Tue varied, but from Wed 'Budin de Calabaza con Quinoa y Yogur de Chia' appears on Wed dinner, Fri lunch, Sat lunch+dinner, Sun lunch; Thu/Fri are Calabacin/Espinacas variants of the same budin.",
+      "reported": "2026-10-12",
+      "status": "in_progress",
+      "covers": ["FR-AI-06", "FR-AI-14"],
+      "classification": "defect",
+      "reviewed": true
+    }
   ]
 }

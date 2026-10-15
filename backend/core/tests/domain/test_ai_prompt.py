@@ -104,6 +104,8 @@ def test_prompt_instructions_fields_are_exactly_the_fixed_shape() -> None:
         "category_framing_template",
         "specification_framing_template",
         "reference_framing_template",
+        "avoid_names_template",  # G-95
+        "needs_template",  # issue 19
     }
 
 
@@ -193,7 +195,7 @@ def test_resolve_prompt_version_registry_carries_every_expected_version() -> Non
     wording; v3 (issue tiempo-estimado-numeric-minutes, G-90) adds the
     integer-minutes prep/cook-time wording; v4 (issue
     generated-recipe-title-is-the-instruction) reframes the line as one dish."""
-    assert set(PROMPT_INSTRUCTION_VERSIONS) == {"v1", "v2", "v3", "v4"}
+    assert set(PROMPT_INSTRUCTION_VERSIONS) == {"v1", "v2", "v3", "v4", "v5", "v6"}
 
     version = resolve_prompt_version("v1")
 
@@ -292,7 +294,7 @@ def test_reference_prompt_is_frozen() -> None:
 def test_category_prompt_fields_are_exactly_the_fixed_shape() -> None:
     """R12."""
     field_names = {field.name for field in dataclasses.fields(CategoryPrompt)}
-    assert field_names == {"instructions", "category_counts"}
+    assert field_names == {"instructions", "category_counts", "avoid_names"}  # G-95
 
 
 def test_category_prompt_is_frozen() -> None:

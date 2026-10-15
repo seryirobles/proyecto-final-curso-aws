@@ -114,6 +114,25 @@ HEALTHY_BALANCED_INSTRUCTION_V4: Final[str] = (
 itself, instead of "generate a menu"; every other v3 field is reused. Ends with
 the unusable-input fallback (feature ai_fallback_recipe, edited in place)."""
 
+AVOID_NAMES_TEMPLATE_V5: Final[str] = (
+    "Dishes already planned for this household: ${names}. Do not repeat or "
+    "closely imitate any of them; produce a clearly different dish."
+)
+"""v5 (issue ai-week-dishes-repeat, G-95): the names-to-avoid line. Kept in its
+own registry so v1-v4 stay byte-identical (FR-AI-14)."""
+
+CATEGORY_FRAMING_TEMPLATE_V6: Final[str] = "Generate a recipe for an open slot."
+NEEDS_TEMPLATE_V6: Final[str] = "This week's remaining needs: ${needs}."
+AVOID_NAMES_TEMPLATE_V6: Final[str] = (
+    "Dishes already planned for this household: ${names}. Do not repeat or "
+    "closely imitate any of them: do not reuse their names, their main "
+    "ingredient or their style of preparation. Choose a dish from a different "
+    "cuisine than those dishes, with a different main ingredient."
+)
+"""v6 (issue ai-week-dishes-still-similar, G-95): needs-free framing, the needs
+sentence on its own (emitted only when needs exist), and a wider avoid line with a
+positive cuisine steer. v1-v5 stay byte-identical (FR-AI-14)."""
+
 
 @dataclass(frozen=True)
 class PromptInstructionsVersion:
@@ -184,13 +203,48 @@ PROMPT_INSTRUCTION_VERSIONS: Final[dict[str, PromptInstructionsVersion]] = {
         specification_framing_template=SPECIFICATION_FRAMING_TEMPLATE_V2,
         reference_framing_template=REFERENCE_FRAMING_TEMPLATE_V2,
     ),
+    "v5": PromptInstructionsVersion(
+        version_id="v5",
+        output_language=OUTPUT_LANGUAGE,
+        healthy_balanced_instruction=HEALTHY_BALANCED_INSTRUCTION_V4,
+        recipe_metadata_instruction=RECIPE_METADATA_INSTRUCTION_V3,
+        json_output_instruction=JSON_OUTPUT_INSTRUCTION_V3,
+        output_language_template=OUTPUT_LANGUAGE_TEMPLATE_V2,
+        allowed_units_template=ALLOWED_UNITS_TEMPLATE_V2,
+        category_framing_template=CATEGORY_FRAMING_TEMPLATE_V2,
+        specification_framing_template=SPECIFICATION_FRAMING_TEMPLATE_V2,
+        reference_framing_template=REFERENCE_FRAMING_TEMPLATE_V2,
+    ),
+    "v6": PromptInstructionsVersion(
+        version_id="v6",
+        output_language=OUTPUT_LANGUAGE,
+        healthy_balanced_instruction=HEALTHY_BALANCED_INSTRUCTION_V4,
+        recipe_metadata_instruction=RECIPE_METADATA_INSTRUCTION_V3,
+        json_output_instruction=JSON_OUTPUT_INSTRUCTION_V3,
+        output_language_template=OUTPUT_LANGUAGE_TEMPLATE_V2,
+        allowed_units_template=ALLOWED_UNITS_TEMPLATE_V2,
+        category_framing_template=CATEGORY_FRAMING_TEMPLATE_V6,
+        specification_framing_template=SPECIFICATION_FRAMING_TEMPLATE_V2,
+        reference_framing_template=REFERENCE_FRAMING_TEMPLATE_V2,
+    ),
 }
 """Append-only (R2, G-84): a version is added here when wording changes; an
 existing key is never removed or overwritten (specs/ai_prompt_versioning/design.md
 section 4). v2 (2026-09-11): English instruction wording, same es-ES
 output_language. v3 (issue tiempo-estimado-numeric-minutes, G-90): reuses
 every v2 field except the two prep/cook-time-bearing instructions. v4 (issue
-generated-recipe-title-is-the-instruction): v3 with only the healthy-balanced line."""
+generated-recipe-title-is-the-instruction): v3 with only the healthy-balanced line.
+v5 (issue ai-week-dishes-repeat, G-95): v4 plus the names-to-avoid line.
+v6 (issue ai-week-dishes-still-similar): v5 with the v6 framing and avoid wording."""
+
+AVOID_NAMES_TEMPLATES: Final[dict[str, str]] = {
+    "v5": AVOID_NAMES_TEMPLATE_V5,
+    "v6": AVOID_NAMES_TEMPLATE_V6,
+}
+"""Versions that carry a names-to-avoid line; an absent key renders none."""
+
+NEEDS_TEMPLATES: Final[dict[str, str]] = {"v6": NEEDS_TEMPLATE_V6}
+"""Versions whose needs sentence is separate from the framing; absent = in the framing."""
 
 PROMPT_VERSION_CONFIG_KEY: Final[str] = "AI_PROMPT_VERSION_ID"
 """The ConfigPort key naming which PROMPT_INSTRUCTION_VERSIONS entry is active (R3)."""
@@ -225,6 +279,8 @@ class PromptInstructions:
     category_framing_template: str
     specification_framing_template: str
     reference_framing_template: str
+    avoid_names_template: str = ""
+    needs_template: str = ""
 
 
 @dataclass(frozen=True)
@@ -251,6 +307,7 @@ class CategoryPrompt:
 
     instructions: PromptInstructions
     category_counts: tuple[CategoryCountRule, ...]
+    avoid_names: tuple[str, ...] = ()  # G-95: dishes the model must not repeat
 
 
 def build_instructions(version_id: str) -> PromptInstructions:
@@ -273,6 +330,8 @@ def build_instructions(version_id: str) -> PromptInstructions:
         category_framing_template=version.category_framing_template,
         specification_framing_template=version.specification_framing_template,
         reference_framing_template=version.reference_framing_template,
+        avoid_names_template=AVOID_NAMES_TEMPLATES.get(version.version_id, ""),
+        needs_template=NEEDS_TEMPLATES.get(version.version_id, ""),
     )
 
 
@@ -297,11 +356,15 @@ def build_reference_prompt(
 
 
 def build_category_prompt(
-    category_counts: tuple[CategoryCountRule, ...], version_id: str
+    category_counts: tuple[CategoryCountRule, ...],
+    version_id: str,
+    avoid_names: tuple[str, ...] = (),
 ) -> CategoryPrompt:
     """FR-AI-04 (R19-R20). category_counts is the caller's snapshot (design.md section 1) —
     typically generation_request's GenerationTargets.remaining_category_counts, passed
     unchanged for one open slot; this function neither reads nor recomputes it."""
     return CategoryPrompt(
-        instructions=build_instructions(version_id), category_counts=category_counts
+        instructions=build_instructions(version_id),
+        category_counts=category_counts,
+        avoid_names=avoid_names,
     )

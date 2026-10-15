@@ -64,7 +64,7 @@ export AWS_ACCESS_KEY_ID=local
 export AWS_SECRET_ACCESS_KEY=local
 export AWS_DEFAULT_REGION=us-east-1
 export SESSION_SECRET_KEY=<any string — signs the session cookie's HMAC>
-export AI_PROMPT_VERSION_ID=v4
+export AI_PROMPT_VERSION_ID=v6
 
 uv run python -m planner_api.local_server
 ```
