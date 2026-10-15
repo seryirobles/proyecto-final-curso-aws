@@ -117,7 +117,7 @@ rejected there, with reasons.
 - **Never skip the human approval gate.** The leader stops at `spec_ready` and waits.
 - **Never write Terraform or CI/CD code.** Infrastructure and pipelines are
   human-owned (see `docs/architecture.md` §5). `init.sh` fails if generated
-  IaC/CI files appear.
+  CI files appear (Terraform files are no longer checked, owner 2026-10-15).
 - **Never make an architecture decision.** If a task needs an undecided one
   (`docs/architecture.md` §2), mark the feature `blocked` and stop.
 - **Never invent requirements.** Every `R<n>` in a spec must trace to an

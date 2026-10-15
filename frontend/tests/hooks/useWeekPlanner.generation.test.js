@@ -53,8 +53,11 @@ describe('useWeekPlanner generation', () => {
       body: { type: 'week', weekId: '2026-W35', mode: 'mix' },
     });
     await waitFor(() => expect(refetchNow).toHaveBeenCalled(), { timeout: 4000 });
+    // refetchNow fires in the same tick as the phase patch, before the re-render.
+    await waitFor(() => expect(result.current.generation.phase).toBe('finished'), {
+      timeout: 4000,
+    });
     expect(result.current.generation.runWeekId).toBe('2026-W35');
-    expect(result.current.generation.phase).toBe('finished');
   });
 
   it('keeps the run when the week or tab changes (R42)', async () => {

@@ -160,23 +160,12 @@ for f in features:
                 f"{dep} ({by_id[dep]['name']}) is not done"
             )
 
-# Guardrail: agents never generate IaC or CI. See docs/architecture.md section 5.
+# Guardrail: agents never generate CI. See docs/architecture.md section 5.
 def _status_of(name):
     for f in features:
         if f["name"] == name:
             return f["status"]
     return "blocked"
-
-tf_files = [
-    p for pattern in ("**/*.tf", "**/*.tfvars")
-    for p in glob.glob(pattern, recursive=True)
-    if ".terraform" not in p
-]
-if tf_files and _status_of("infrastructure_terraform") == "blocked":
-    FAILURES.append(
-        "Terraform files exist while 'infrastructure_terraform' is blocked "
-        f"(human-owned): {', '.join(sorted(tf_files)[:5])}"
-    )
 
 ci_files = glob.glob(".github/workflows/*.yml") + glob.glob(".github/workflows/*.yaml")
 if ci_files and _status_of("cicd_pipeline") == "blocked":
@@ -265,7 +254,7 @@ for f in features:
 summary = ", ".join(f"{k}: {v}" for k, v in sorted(counts.items()))
 print(f"[OK]    feature_list.json valid ({len(features)} features - {summary})")
 print("[OK]    Specs present for every non-pending sdd feature")
-print("[OK]    No agent-generated IaC or CI files")
+print("[OK]    No agent-generated CI files")
 print(f"[OK]    Requirement coverage: all {len(req_ids)} FR/NFR ids covered by features")
 
 nxt = next(
@@ -297,13 +286,42 @@ if [ $? -ne 0 ]; then EXIT_CODE=1; fi
 # Stop-hook fast path (opt-in): skip the slow gates when backend/ + frontend/
 # are unchanged since the last green run. A manual ./init.sh always runs them.
 STAMP="$(git rev-parse --git-dir 2>/dev/null)/harness-init.stamp"
-TREE_HASH=$( { git rev-parse HEAD; git diff HEAD --binary -- backend frontend init.sh; \
-  git ls-files -o --exclude-standard -- backend frontend | git hash-object --stdin-paths; } 2>/dev/null | sha1sum | cut -c1-40 )
+TREE_HASH=$( { git rev-parse HEAD; git diff HEAD --binary -- backend frontend terraform init.sh; \
+  git ls-files -o --exclude-standard -- backend frontend terraform | git hash-object --stdin-paths; } 2>/dev/null | sha1sum | cut -c1-40 )
 if [ "${INIT_SKIP_IF_UNCHANGED:-0}" = 1 ] && [ $EXIT_CODE -eq 0 ] \
    && [ "$(cat "$STAMP" 2>/dev/null)" = "$TREE_HASH" ]; then
   ok "Quality gates skipped — backend/ and frontend/ unchanged since the last green run"
   exit 0
 fi
+
+# Gates run in parallel: queue_gate starts one in the background, collect_gates
+# waits for all of them and reports in queue order. Output goes to a log that is
+# shown only when a gate fails (and its last line for pytest/vitest).
+GATE_TMP=$(mktemp -d)
+G_LABEL=(); G_DIR=(); G_CMD=(); G_PID=()
+queue_gate() {
+  local label="$1" dir="$2"; shift 2
+  local n=${#G_LABEL[@]}
+  G_LABEL[n]="$label"; G_DIR[n]="$dir"; G_CMD[n]="$*"
+  ( cd "$dir" && "$@" ) >"$GATE_TMP/$n.log" 2>&1 &
+  G_PID[n]=$!
+}
+collect_gates() {
+  local i tail1
+  for i in "${!G_LABEL[@]}"; do
+    if wait "${G_PID[i]}"; then
+      tail1=""
+      case "${G_LABEL[i]}" in pytest*) tail1=" — $(grep -v '^\s*$' "$GATE_TMP/$i.log" | tail -1)";;
+      vitest*) tail1=" — $(grep -E '^\s*Tests ' "$GATE_TMP/$i.log" | tail -1 | sed 's/^ *//')";; esac
+      ok "${G_LABEL[i]}$tail1"
+    else
+      fail "${G_LABEL[i]} — rerun from ${G_DIR[i]}/ to see the output: ${G_CMD[i]}"
+      tail -n 30 "$GATE_TMP/$i.log" | sed 's/^/        /'
+      EXIT_CODE=1
+    fi
+  done
+  G_LABEL=(); G_DIR=(); G_CMD=(); G_PID=()
+}
 
 echo ""
 echo "── 5. Quality gates ────────────────────────────────────"
@@ -315,28 +333,13 @@ elif [ "$HAS_UV" -eq 0 ]; then
   EXIT_CODE=1
 else
   # Gates run from the workspace root so every member is covered.
-  run_gate() {
-    local label="$1"; shift
-    if (cd backend && "$@") >/dev/null 2>&1; then
-      ok "$label"
-    else
-      fail "$label — rerun from backend/ to see the output: $*"
-      EXIT_CODE=1
-    fi
-  }
-
-  run_gate "ruff format"  uv run ruff format --check .
-  run_gate "ruff check"   uv run ruff check .
-  run_gate "mypy"         uv run mypy .
-
-  # Default tiers only (unit + contract-vs-fake). Live-AWS and Docker-local
-  # tiers are opt-in; an explicit -m here would override pyproject's addopts.
-  if (cd backend && uv run pytest -q -m "not aws and not docker"); then
-    ok "pytest (unit + contract, no AWS, no Docker)"
-  else
-    fail "pytest — there are failing tests"
-    EXIT_CODE=1
-  fi
+  # Default pytest tiers only (unit + contract-vs-fake). Live-AWS and
+  # Docker-local tiers are opt-in; an explicit -m here would override
+  # pyproject's addopts.
+  queue_gate "ruff format" backend uv run ruff format --check .
+  queue_gate "ruff check"  backend uv run ruff check .
+  queue_gate "mypy"        backend uv run mypy .
+  queue_gate "pytest (unit + contract, no AWS, no Docker)" backend uv run pytest -q -m "not aws and not docker"
 fi
 
 if [ "$FRONTEND_READY" -eq 0 ]; then
@@ -349,20 +352,34 @@ elif [ ! -d "frontend/node_modules" ]; then
 else
   # Gates run from the toolchain root so the resolved config/plugins match
   # what a developer would get running the same command by hand.
-  run_gate() {
-    local label="$1"; shift
-    if (cd frontend && "$@") >/dev/null 2>&1; then
-      ok "$label"
-    else
-      fail "$label — rerun from frontend/ to see the output: $*"
-      EXIT_CODE=1
-    fi
-  }
-
-  run_gate "prettier --check" npx prettier --check .
-  run_gate "eslint"           npx eslint .
-  run_gate "vitest"           npx vitest run --pool=threads
+  queue_gate "prettier --check" frontend npx prettier --check .
+  queue_gate "eslint"           frontend npx eslint .
+  queue_gate "vitest"           frontend npx vitest run --pool=threads
 fi
+
+# Terraform: static checks only. Nothing here needs AWS credentials, and
+# init.sh never runs `terraform init` for you (same stance as npm install).
+if ! ls terraform/*.tf >/dev/null 2>&1; then
+  warn "No terraform/*.tf yet — skipping Terraform gates"
+elif ! command -v terraform >/dev/null 2>&1; then
+  fail "terraform/ has .tf files but terraform is not installed — cannot run the Terraform gates"
+  EXIT_CODE=1
+else
+  queue_gate "terraform fmt" terraform terraform fmt -check -recursive
+  if [ -d terraform/.terraform ]; then
+    queue_gate "terraform validate" terraform terraform validate
+  else
+    warn "terraform/.terraform is absent — run 'terraform init -backend=false' inside terraform/ to enable validate"
+  fi
+  if command -v tflint >/dev/null 2>&1; then
+    queue_gate "tflint" terraform tflint
+  else
+    warn "tflint is not installed — skipping (optional; see https://github.com/terraform-linters/tflint)"
+  fi
+fi
+
+collect_gates
+rm -rf "$GATE_TMP"
 
 echo ""
 echo "── 6. Summary ──────────────────────────────────────────"

@@ -65,7 +65,7 @@ substitutions:
 
 - ❌ If the feature is not `in_progress` with an approved spec, stop.
 - ❌ One feature per session.
-- ❌ **Never write Terraform, IaC or CI/CD files.** `init.sh` will fail on them.
+- ❌ **Never write Terraform, IaC or CI/CD files.** `init.sh` fails on CI files; it no longer checks Terraform, but the rule stands.
 - ❌ **Never make an architecture decision** from `docs/architecture.md` §2.
   If a task cannot proceed without one, stop and set `blocked`.
 - ❌ **Never edit the frozen requirement docs.**
