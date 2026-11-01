@@ -7,7 +7,7 @@ dependencies = [
     "planner-core",
     # The ai adapter closure: Bedrock-runtime + DynamoDB + SSM are all boto3
     # clients, no separate package (specs/ai_lambda/design.md section 1, section 11).
-    "boto3>=1.35",
+    "boto3>=1.39.12",
 ]
 
 [dependency-groups]

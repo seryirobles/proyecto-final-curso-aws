@@ -444,7 +444,7 @@
         "Written by the human. NFR-SEC-04 (login brute-force protection) moved here from feature 15 by G-87 - an API Gateway usage plan or WAF rate-based rule, not application code"
       ],
       "sdd": false,
-      "status": "in_progress",
+      "status": "done",
       "blocked_reason": "HUMAN-OWNED. Agents never generate Terraform. init.sh fails if *.tf files appear while this feature is blocked."
     },
     {

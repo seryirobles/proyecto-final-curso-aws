@@ -11,9 +11,7 @@ Generalmente se optará por recursos serverless, ya que se espera que el MVP sea
 
 - Para la base de datos, como opción serverless, se utilizará DynamoDB, que ofrece rapidez y escalabilidad con el modelo de pago por uso. Se adaptará el modelo de datos para este tipo de base de datos.
 
-- Para mantener el histórico de semanas, se usará el tier glaciar de S3, por su bajo coste. Al ser datos históricos, no se necesita que se puedan recuperar rápido.
-
-- Para gestión de usuarios, se explorará tanto hacerlo en el backend con la base de datos DynamoDB como respaldo como utilizar el recurso Amazon Cognito
+- Para gestión de usuarios, se hará en el backend con la base de datos DynamoDB como respaldo.
 
 - En cuanto al backend, siguiendo con la filosofía serverless del proyecto, se utilizarán funciones Lambda. Esto facilita el escalado y permite enfocar el funcionamiento de la app para que sea orientado a eventos. Se utilizarán dos funciones Lambda: una que expondrá los endpoints necesarios para que el frontend realice operaciones, y otra que se ocupará de las operaciones de IA en forma de workers, activadas por una cola.
 

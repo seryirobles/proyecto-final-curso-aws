@@ -7,7 +7,7 @@ dependencies = [
     "planner-core",
     # The api adapter closure: DynamoDB + SQS (docs/architecture.md section 1.3,
     # specs/rest_api_persistence_and_services/design.md section 2). Never an AI SDK.
-    "boto3>=1.35",
+    "boto3>=1.39.12",
 ]
 
 [build-system]

@@ -1,0 +1,110 @@
+{
+  "POST /v1/session": {
+    "public": true
+  },
+  "DELETE /v1/session": {
+    "public": false
+  },
+  "PUT /v1/session/password": {
+    "public": false
+  },
+  "GET /v1/users": {
+    "public": false
+  },
+  "POST /v1/users": {
+    "public": false
+  },
+  "GET /v1/users/{userId}": {
+    "public": false
+  },
+  "PATCH /v1/users/{userId}": {
+    "public": false
+  },
+  "DELETE /v1/users/{userId}": {
+    "public": false
+  },
+  "GET /v1/live-weeks": {
+    "public": false
+  },
+  "GET /v1/weeks/{weekId}": {
+    "public": false
+  },
+  "GET /v1/weeks/{weekId}/summary": {
+    "public": false
+  },
+  "POST /v1/weeks/{weekId}/days/{day}/slots/{slot}/candidates": {
+    "public": false
+  },
+  "GET /v1/weeks/{weekId}/days/{day}/slots/{slot}/candidates/{candidateId}": {
+    "public": false
+  },
+  "PUT /v1/weeks/{weekId}/days/{day}/slots/{slot}/candidates/{candidateId}": {
+    "public": false
+  },
+  "DELETE /v1/weeks/{weekId}/days/{day}/slots/{slot}/candidates/{candidateId}": {
+    "public": false
+  },
+  "PUT /v1/weeks/{weekId}/days/{day}/slots/{slot}/definitive": {
+    "public": false
+  },
+  "DELETE /v1/weeks/{weekId}/days/{day}/slots/{slot}/definitive": {
+    "public": false
+  },
+  "GET /v1/library/recipes": {
+    "public": false
+  },
+  "POST /v1/library/recipes": {
+    "public": false
+  },
+  "GET /v1/library/recipes/{recipeId}": {
+    "public": false
+  },
+  "PUT /v1/library/recipes/{recipeId}": {
+    "public": false
+  },
+  "DELETE /v1/library/recipes/{recipeId}": {
+    "public": false
+  },
+  "GET /v1/rules": {
+    "public": false
+  },
+  "PUT /v1/rules/{ruleId}": {
+    "public": false
+  },
+  "DELETE /v1/rules/{ruleId}": {
+    "public": false
+  },
+  "GET /v1/shopping-list": {
+    "public": false
+  },
+  "POST /v1/shopping-list/items": {
+    "public": false
+  },
+  "PUT /v1/shopping-list/items/{itemId}": {
+    "public": false
+  },
+  "PATCH /v1/shopping-list/items/{itemId}": {
+    "public": false
+  },
+  "DELETE /v1/shopping-list/items/{itemId}": {
+    "public": false
+  },
+  "DELETE /v1/shopping-list/checked-items": {
+    "public": false
+  },
+  "POST /v1/shopping-list/resync": {
+    "public": false
+  },
+  "POST /v1/generations": {
+    "public": false
+  },
+  "GET /v1/generations/{generationId}": {
+    "public": false
+  },
+  "DELETE /v1/generations/{generationId}": {
+    "public": false
+  },
+  "POST /v1/generations/{generationId}/slots/{day}/{slot}/retry": {
+    "public": false
+  }
+}

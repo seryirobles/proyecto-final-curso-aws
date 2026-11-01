@@ -28,6 +28,7 @@ from planner_api.adapters.dynamo.recipes import DynamoRecipeRepository
 from planner_api.adapters.dynamo.rules import DynamoRuleRepository
 from planner_api.adapters.dynamo.shopping_list import DynamoShoppingListRepository
 from planner_api.adapters.dynamo.weeks import DynamoWeekRepository
+from planner_api.adapters.secrets import fetch_session_secret
 from planner_api.adapters.sqs import SqsGenerationQueue
 
 logger = logging.getLogger("planner_api")
@@ -67,9 +68,11 @@ class Dependencies:
 def build_dependencies(config: ConfigPort | None = None) -> Dependencies:
     """The real, AWS-backed stack (R10, R32, R35). `config` is injected so a
     deployed function and a local run can source `SESSION_SECRET_KEY`
-    differently without a second composition root."""
+    differently without a second composition root. `SESSION_SECRET_ARN` wins
+    over `SESSION_SECRET_KEY` when both are set."""
     cfg = config or EnvConfig()
-    secret = cfg.get("SESSION_SECRET_KEY")
+    secret_arn = cfg.get("SESSION_SECRET_ARN")
+    secret = fetch_session_secret(secret_arn) if secret_arn else cfg.get("SESSION_SECRET_KEY")
     if secret is None:
         raise RuntimeError("SESSION_SECRET_KEY is not configured")
     return Dependencies(

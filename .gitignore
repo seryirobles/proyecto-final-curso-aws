@@ -28,10 +28,22 @@ htmlcov/
 # Terraform (human-owned; kept out of the repo by default)
 .terraform/
 *.tfstate
+*.tfstate.backup
 *.tfstate.*
 *.tfvars
+*.auto.tfvars
 !*.tfvars.example
+tfplan
+*.tfplan
+*.tfvars.json
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
 crash.log
+crash.*.log
 
 # Editors / OS
 .idea/
