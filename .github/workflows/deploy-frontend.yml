@@ -51,6 +51,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }} # only for temporary (ASIA...) credentials; empty otherwise
           aws-region: ${{ vars.AWS_REGION || secrets.AWS_REGION }} # not secret; a variable keeps ARNs unmasked
       # Hashed assets first and cached forever, so the new index.html never points at a missing file.
       - name: Upload to S3
