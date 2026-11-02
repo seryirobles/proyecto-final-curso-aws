@@ -1,0 +1,67 @@
+name: Deploy backend
+
+# Pushes the built zips to the environment's four Lambdas; Terraform owns their configuration.
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: GitHub environment (dev, staging or production).
+        required: true
+        type: string
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: false
+      AWS_SECRET_ACCESS_KEY:
+        required: false
+      AWS_REGION:
+        required: false
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  lambdas:
+    name: Lambdas (${{ inputs.environment }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: ${{ inputs.environment }}
+    concurrency:
+      group: deploy-backend-${{ inputs.environment }}
+      cancel-in-progress: false
+    permissions: {} # same-run artifact download needs no token scope
+    env:
+      FUNCTION_PREFIX: ${{ vars.LAMBDA_NAME_PREFIX }} # e.g. planner-dev
+    steps:
+      - name: Check environment variables
+        run: ': "${FUNCTION_PREFIX:?set LAMBDA_NAME_PREFIX on this environment}"'
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: lambda-packages
+      # Access keys because this account cannot create IAM roles. Upgrade path: OIDC —
+      # `role-to-assume` here plus `id-token: write` above, then delete the key secrets.
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION || secrets.AWS_REGION }} # not secret; a variable keeps ARNs unmasked
+      # No --publish: API Gateway, SQS and EventBridge all invoke $LATEST.
+      - name: Update function code
+        run: |
+          deploy() { # <function suffix> <zip>
+            local fn="$FUNCTION_PREFIX-$1" want got
+            want=$(openssl dgst -sha256 -binary "$2" | base64)
+            aws lambda wait function-updated-v2 --function-name "$fn"
+            got=$(aws lambda update-function-code --function-name "$fn" \
+              --zip-file "fileb://$2" --query CodeSha256 --output text)
+            aws lambda wait function-updated-v2 --function-name "$fn"
+            [ "$got" = "$want" ] || { echo "::error::$fn CodeSha256 $got != $want"; return 1; }
+            echo "$fn updated ($got)"
+          }
+          deploy authorizer api.zip
+          deploy api api.zip
+          deploy rollover api.zip
+          deploy ai ai.zip

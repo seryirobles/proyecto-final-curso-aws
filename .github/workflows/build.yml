@@ -1,0 +1,90 @@
+name: Build
+
+# Builds each artifact once; every environment deploys these same files.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  # Official python3.13 Lambda base image, pinned by digest; used only for the import smoke test.
+  LAMBDA_IMAGE: public.ecr.aws/lambda/python:3.13@sha256:cf3e082b6c28721944dfef2c252c2e6df2f65aab3c2e2a64ce1f86f80c7aa13d
+
+jobs:
+  backend:
+    name: Lambda packages
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-backend
+        with:
+          sync: "false"
+      # One closure per package: core is vendored as source, deps are Linux arm64 wheels.
+      - name: Build zips (python3.13, arm64)
+        run: |
+          uv python install # 3.13, from .python-version
+          out="$GITHUB_WORKSPACE/lambda-packages"
+          mkdir -p "$out"
+          build() { # <uv package> <source package dir> <zip name>
+            local stage="$RUNNER_TEMP/$3"
+            uv export --package "$1" --no-dev --locked --no-hashes --no-emit-workspace \
+              --no-header --no-annotate > "$RUNNER_TEMP/$3.txt"
+            uv pip install --target "$stage" --python-version 3.13 \
+              --python-platform aarch64-manylinux2014 --only-binary :all: --no-deps \
+              --requirements "$RUNNER_TEMP/$3.txt"
+            cp -r core/src/planner_core "$2" "$stage/"
+            (cd "$stage" && zip -qrX "$out/$3.zip" . -x '*__pycache__*')
+          }
+          build planner-api lambda_api/src/planner_api api
+          build planner-ai lambda_ai/src/planner_ai ai
+          ls -l "$out"
+      # Isolated (-I -S, no network): only the zip and the runtime's stdlib are importable.
+      - name: Smoke-import every handler in the Lambda runtime image
+        working-directory: lambda-packages
+        run: |
+          smoke() {
+            docker run --rm --network none -v "$PWD:/pkg:ro" --entrypoint python3 "$LAMBDA_IMAGE" \
+              -I -S -c 'import importlib, sys
+          sys.path.insert(0, sys.argv[1])
+          for name in sys.argv[2:]:
+              assert callable(importlib.import_module(name).lambda_handler), name
+              print("ok", name)' "$@"
+          }
+          smoke /pkg/api.zip planner_api.handler planner_api.authorizer planner_api.scheduled
+          smoke /pkg/ai.zip planner_ai.handler
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: lambda-packages
+          path: lambda-packages/*.zip
+          if-no-files-found: error
+          retention-days: 30
+
+  frontend:
+    name: SPA bundle
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-frontend
+      - name: vite build
+        working-directory: frontend
+        run: npm run build
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+          if-no-files-found: error
+          retention-days: 30

@@ -1,0 +1,55 @@
+name: Deploy
+
+# One environment per run: dev <- dev, staging <- staging, production <- main.
+# Test -> build once -> backend -> frontend. Terraform stays manual.
+on:
+  push:
+    branches: [dev, staging, main]
+    paths-ignore:
+      - "docs/**"
+      - "progress/**"
+      - "specs/**"
+      - "issues/**"
+      - "prototypes/**"
+      - "terraform/**"
+      - "**/*.md"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to deploy the selected ref to (its branch rule still applies)
+        type: choice
+        options: [dev, staging, production]
+        default: dev
+
+permissions:
+  contents: read
+
+run-name: Deploy ${{ inputs.environment || (github.ref_name == 'main' && 'production') || github.ref_name }} @ ${{ github.ref_name }}
+
+jobs:
+  test:
+    name: Test
+    uses: ./.github/workflows/test.yml
+
+  build:
+    name: Build
+    needs: test
+    uses: ./.github/workflows/build.yml
+
+  # Branch -> environment; a manual run uses its input instead.
+  backend:
+    name: Backend
+    needs: build
+    uses: ./.github/workflows/deploy-backend.yml
+    with:
+      environment: ${{ inputs.environment || (github.ref_name == 'main' && 'production') || github.ref_name }}
+    secrets: inherit
+
+  # Backend first: the new SPA may call routes only the new API serves.
+  frontend:
+    name: Frontend
+    needs: backend
+    uses: ./.github/workflows/deploy-frontend.yml
+    with:
+      environment: ${{ inputs.environment || (github.ref_name == 'main' && 'production') || github.ref_name }}
+    secrets: inherit

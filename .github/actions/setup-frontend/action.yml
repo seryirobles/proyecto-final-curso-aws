@@ -1,0 +1,14 @@
+name: Set up frontend
+description: Node 24 with the npm cache, then a clean install from frontend/package-lock.json.
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version: 24
+        cache: npm
+        cache-dependency-path: frontend/package-lock.json
+    # frontend/.npmrc already sets ignore-scripts and min-release-age.
+    - shell: bash
+      working-directory: frontend
+      run: npm ci --no-audit --no-fund
