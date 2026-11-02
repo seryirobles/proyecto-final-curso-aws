@@ -177,6 +177,9 @@ class FakePasswordHasher:
     def verify(self, password: str, password_hash: str) -> bool:
         return password_hash == self.prefix + password
 
+    def dummy_hash(self) -> str:
+        return "dummy-hash-without-the-fake-prefix"
+
 
 @dataclass
 class FakeRecipeRepository:

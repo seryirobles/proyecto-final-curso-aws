@@ -23,6 +23,29 @@
     }
   },
   "issues": [
-   
+    {
+      "id": 20,
+      "name": "login-timing-username-enumeration",
+      "title": "Login skips the password hash when the account does not exist, so response time reveals which usernames exist",
+      "severity": "medium",
+      "report": "From the 2026-11-02 auth architecture review: login() returns early without running PBKDF2 when the account is missing (OWASP Authentication Cheat Sheet: run the hash regardless of whether the user exists). Fix: verify against a dummy hash for an unknown username so both paths cost one PBKDF2. Touches planner_core (application/authentication.py).",
+      "reported": "2026-11-02",
+      "status": "in_progress",
+      "covers": ["NFR-SEC-04"],
+      "classification": "defect",
+      "reviewed": true
+    },
+    {
+      "id": 21,
+      "name": "authorizer-builds-full-dependency-graph",
+      "title": "The authorizer Lambda builds the whole dependency graph (SQS, every repository) when it only needs accounts, signer and clock",
+      "severity": "low",
+      "report": "From the 2026-11-02 auth architecture review: planner_api authorizer calls build_dependencies(), which wires everything and needs GENERATION_QUEUE_URL, lengthening the serial cold start (authorizer then api). Fix: build only accounts, signer and clock for the authorizer, and drop GENERATION_QUEUE_URL from the authorizer's environment in terraform/locals.tf (terraform edit is done separately by the Terraform agent after approval).",
+      "reported": "2026-11-02",
+      "status": "in_progress",
+      "covers": [],
+      "classification": "spec_gap",
+      "reviewed": true
+    }
   ]
 }

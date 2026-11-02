@@ -25,7 +25,7 @@ locals {
   # Bare foundation-model id behind the "eu." Geo inference profile.
   ai_foundation_model_id = replace(var.ai_model_id, "/^[a-z]+\\./", "")
 
-  # All three api-package functions build the whole dependency graph eagerly, so all need the secret and queue URL.
+  # Each api-package entry point builds only its own dependencies, so each gets only the vars it reads.
   api_package_env = {
     PLANNER_DATA_TABLE   = aws_dynamodb_table.data.name
     GENERATION_QUEUE_URL = aws_sqs_queue.generation.url
@@ -33,6 +33,17 @@ locals {
     # needs role permission: secretsmanager:GetSecretValue
     # To strip: replace with SESSION_SECRET_KEY = random_password.session.result (backend fallback; see secrets.tf).
     SESSION_SECRET_ARN = aws_secretsmanager_secret.session.arn
+  }
+
+  authorizer_env = {
+    PLANNER_DATA_TABLE = aws_dynamodb_table.data.name
+    # needs role permission: secretsmanager:GetSecretValue
+    # To strip: replace with SESSION_SECRET_KEY = random_password.session.result (backend fallback; see secrets.tf).
+    SESSION_SECRET_ARN = aws_secretsmanager_secret.session.arn
+  }
+
+  rollover_env = {
+    PLANNER_DATA_TABLE = aws_dynamodb_table.data.name
   }
 
   ai_env = merge(var.ai_inference_settings, {
@@ -46,8 +57,8 @@ locals {
   # Separate from local.lambdas: a for_each map must not carry sensitive values.
   lambda_env = {
     api        = local.api_package_env
-    authorizer = local.api_package_env
-    rollover   = local.api_package_env
+    authorizer = local.authorizer_env
+    rollover   = local.rollover_env
     ai         = local.ai_env
   }
 

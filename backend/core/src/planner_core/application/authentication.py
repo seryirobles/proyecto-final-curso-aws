@@ -39,7 +39,10 @@ def login(
 ) -> LoginResult:
     """R5, R12."""
     account = accounts.get_by_username(username)
-    if account is None or not hasher.verify(password, account.password_hash):
+    # Unknown usernames verify against a dummy so both paths cost one PBKDF2 (NFR-SEC-04).
+    stored = account.password_hash if account is not None else hasher.dummy_hash()
+    matches = hasher.verify(password, stored)
+    if account is None or not matches:
         raise InvalidCredentials
     token = signer.issue(account.user_id, clock.now())
     return LoginResult(

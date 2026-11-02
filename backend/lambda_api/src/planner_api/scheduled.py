@@ -12,16 +12,18 @@ from typing import Any  # untyped JSON in/out is the wire boundary itself (conve
 from planner_core.domain.calendar import civil_date, current_week, next_week
 from planner_core.domain.rollover import roll_over
 
-from planner_api.wiring import Dependencies, build_dependencies
+from planner_api.wiring import Dependencies, RolloverDependencies, build_rollover_dependencies
 
 logger = logging.getLogger("planner_api")
 
 
-def handle(event: dict[str, Any], deps: Dependencies | None = None) -> dict[str, Any]:
+def handle(
+    event: dict[str, Any], deps: RolloverDependencies | Dependencies | None = None
+) -> dict[str, Any]:
     """R34 - re-running for the same boundary repeats the same read-only
     archive snapshot and calls the already-idempotent `delete_checked_items`
     (feature 8), so a second invocation changes nothing further."""
-    resolved = deps or build_dependencies()
+    resolved = deps or build_rollover_dependencies()
     today = civil_date(resolved.clock.now())
     ending_week = current_week(today)
 

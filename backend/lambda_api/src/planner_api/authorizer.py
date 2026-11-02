@@ -11,7 +11,11 @@ from typing import Any  # untyped JSON in/out is the wire boundary itself (conve
 from planner_core.application.authentication import authenticate
 from planner_core.domain.session_policy import SessionExpired
 
-from planner_api.wiring import Dependencies, build_dependencies
+from planner_api.wiring import (
+    AuthorizerDependencies,
+    Dependencies,
+    build_authorizer_dependencies,
+)
 
 logger = logging.getLogger("planner_api")
 
@@ -41,7 +45,9 @@ def _policy(principal_id: str, effect: str, method_arn: str) -> dict[str, Any]:
     }
 
 
-def handle(event: dict[str, Any], deps: Dependencies | None = None) -> dict[str, Any]:
+def handle(
+    event: dict[str, Any], deps: AuthorizerDependencies | Dependencies | None = None
+) -> dict[str, Any]:
     """R7, R10 - `authenticate` runs on every call; nothing here caches a
     decision (the API Gateway authorizer cache TTL is feature 21 IaC)."""
     method_arn = str(event["methodArn"])
@@ -50,7 +56,7 @@ def handle(event: dict[str, Any], deps: Dependencies | None = None) -> dict[str,
         logger.info("Denying authorizer request with no session cookie")
         return _policy("deny", "Deny", method_arn)
 
-    resolved = deps or build_dependencies()
+    resolved = deps or build_authorizer_dependencies()
     try:
         account = authenticate(
             token, accounts=resolved.accounts, signer=resolved.signer, clock=resolved.clock

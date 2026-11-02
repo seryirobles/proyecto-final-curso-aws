@@ -12,7 +12,7 @@ locals {
   }
 
   gateway_problems = {
-    UNAUTHORIZED  = local.session_expired # no Cookie header: authorizer never runs
+    UNAUTHORIZED  = local.session_expired # only with caching on, where a missing Cookie gets 401 without invoking the authorizer
     ACCESS_DENIED = local.session_expired # authorizer returned Deny
     MISSING_AUTHENTICATION_TOKEN = {      # unknown resource/method
       status = 404
@@ -62,7 +62,7 @@ locals {
             type           = "request"
             identitySource = "method.request.header.Cookie"
             authorizerUri  = aws_lambda_function.this["authorizer"].invoke_arn
-            # TTL 0 so removing a user or resetting a password takes effect immediately.
+            # TTL 0: revocation is immediate; a missing Cookie still invokes the authorizer (one extra call), whose Deny maps to the same 401.
             authorizerResultTtlInSeconds = 0
           }
         }

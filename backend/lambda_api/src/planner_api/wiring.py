@@ -23,14 +23,6 @@ from planner_core.ports.shopping_list import ShoppingListRepository
 from planner_core.ports.tokens import HmacTokenSigner, TokenSigner
 from planner_core.ports.weeks import WeekRepository
 
-from planner_api.adapters.dynamo.accounts import DynamoAccountRepository
-from planner_api.adapters.dynamo.recipes import DynamoRecipeRepository
-from planner_api.adapters.dynamo.rules import DynamoRuleRepository
-from planner_api.adapters.dynamo.shopping_list import DynamoShoppingListRepository
-from planner_api.adapters.dynamo.weeks import DynamoWeekRepository
-from planner_api.adapters.secrets import fetch_session_secret
-from planner_api.adapters.sqs import SqsGenerationQueue
-
 logger = logging.getLogger("planner_api")
 
 
@@ -65,16 +57,78 @@ class Dependencies:
     config: ConfigPort
 
 
+@dataclass(frozen=True)
+class AuthorizerDependencies:
+    """What the authorizer uses; `Dependencies` satisfies it structurally."""
+
+    accounts: AccountRepository
+    signer: TokenSigner
+    clock: Clock
+
+
+@dataclass(frozen=True)
+class RolloverDependencies:
+    """What the scheduled rollover uses; `Dependencies` satisfies it structurally."""
+
+    weeks: WeekRepository
+    shopping: ShoppingListRepository
+    archive: ArchiveRepository
+    clock: Clock
+
+
+def _session_signer(cfg: ConfigPort) -> TokenSigner:
+    # Adapter imports are lazy so narrow entry points load only what they build.
+    from planner_api.adapters.secrets import fetch_session_secret  # noqa: PLC0415
+
+    secret_arn = cfg.get("SESSION_SECRET_ARN")
+    secret = fetch_session_secret(secret_arn) if secret_arn else cfg.get("SESSION_SECRET_KEY")
+    if secret is None:
+        raise RuntimeError("SESSION_SECRET_KEY is not configured")
+    return HmacTokenSigner(secret.encode("utf-8"))
+
+
+def build_authorizer_dependencies(config: ConfigPort | None = None) -> AuthorizerDependencies:
+    """Accounts, signer and clock only: no queue, no other repositories."""
+    from planner_api.adapters.dynamo.accounts import DynamoAccountRepository  # noqa: PLC0415
+
+    return AuthorizerDependencies(
+        accounts=DynamoAccountRepository(),
+        signer=_session_signer(config or EnvConfig()),
+        clock=SystemClock(),
+    )
+
+
+def build_rollover_dependencies() -> RolloverDependencies:
+    """Weeks, shopping, archive and clock only: no signer, secret or queue."""
+    from planner_api.adapters.dynamo.shopping_list import (  # noqa: PLC0415
+        DynamoShoppingListRepository,
+    )
+    from planner_api.adapters.dynamo.weeks import DynamoWeekRepository  # noqa: PLC0415
+
+    return RolloverDependencies(
+        weeks=DynamoWeekRepository(),
+        shopping=DynamoShoppingListRepository(),
+        archive=NoOpArchiveRepository(),
+        clock=SystemClock(),
+    )
+
+
 def build_dependencies(config: ConfigPort | None = None) -> Dependencies:
     """The real, AWS-backed stack (R10, R32, R35). `config` is injected so a
     deployed function and a local run can source `SESSION_SECRET_KEY`
     differently without a second composition root. `SESSION_SECRET_ARN` wins
     over `SESSION_SECRET_KEY` when both are set."""
+    from planner_api.adapters.dynamo.accounts import DynamoAccountRepository  # noqa: PLC0415
+    from planner_api.adapters.dynamo.recipes import DynamoRecipeRepository  # noqa: PLC0415
+    from planner_api.adapters.dynamo.rules import DynamoRuleRepository  # noqa: PLC0415
+    from planner_api.adapters.dynamo.shopping_list import (  # noqa: PLC0415
+        DynamoShoppingListRepository,
+    )
+    from planner_api.adapters.dynamo.weeks import DynamoWeekRepository  # noqa: PLC0415
+    from planner_api.adapters.sqs import SqsGenerationQueue  # noqa: PLC0415
+
     cfg = config or EnvConfig()
-    secret_arn = cfg.get("SESSION_SECRET_ARN")
-    secret = fetch_session_secret(secret_arn) if secret_arn else cfg.get("SESSION_SECRET_KEY")
-    if secret is None:
-        raise RuntimeError("SESSION_SECRET_KEY is not configured")
+    signer = _session_signer(cfg)
     return Dependencies(
         accounts=DynamoAccountRepository(),
         recipes=DynamoRecipeRepository(),
@@ -84,7 +138,7 @@ def build_dependencies(config: ConfigPort | None = None) -> Dependencies:
         archive=NoOpArchiveRepository(),
         queue=SqsGenerationQueue(),
         hasher=Pbkdf2PasswordHasher(),
-        signer=HmacTokenSigner(secret.encode("utf-8")),
+        signer=signer,
         clock=SystemClock(),
         config=cfg,
     )

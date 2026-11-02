@@ -19,11 +19,11 @@ variable "project_name" {
 variable "environment" {
   description = "Environment: in every resource name, the Environment tag, the API stage name and PLANNER_ENV (SSM path /planner/<env>/...)."
   type        = string
-  default     = "develop"
+  default     = "dev"
 
   validation {
-    condition     = contains(["develop", "staging", "production"], var.environment)
-    error_message = "environment must be one of develop, staging, production."
+    condition     = contains(["dev", "stg", "prod"], var.environment)
+    error_message = "environment must be one of dev, stg, prod."
   }
 }
 

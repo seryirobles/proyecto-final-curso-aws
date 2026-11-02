@@ -5,7 +5,7 @@ resource "random_password" "session" {
 }
 
 # needs role permission: secretsmanager:GetSecretValue
-# To strip: delete only the two resources below; in locals.tf use SESSION_SECRET_KEY = random_password.session.result.
+# To strip: delete only the two resources below; in locals.tf (api and authorizer env) use SESSION_SECRET_KEY = random_password.session.result.
 # Default aws/secretsmanager key: the reader needs no extra KMS permission.
 resource "aws_secretsmanager_secret" "session" {
   name        = "${local.name}-session-secret-key"

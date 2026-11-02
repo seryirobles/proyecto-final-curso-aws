@@ -23,6 +23,11 @@ class PasswordHasher(Protocol):
         """Return whether password matches the stored password_hash."""
         ...
 
+    def dummy_hash(self) -> str:
+        """A well-formed hash matching no password, built without hashing
+        (login verifies against it for unknown usernames; NFR-SEC-04)."""
+        ...
+
 
 class Pbkdf2PasswordHasher:
     """Default implementation: PBKDF2-HMAC-SHA256, stdlib-only (hashlib, hmac,
@@ -35,6 +40,17 @@ class Pbkdf2PasswordHasher:
         digest = hashlib.pbkdf2_hmac(_ALGORITHM, password.encode("utf-8"), salt, _ITERATIONS)
         return _FIELD_SEP.join(
             (_ALGORITHM, str(_ITERATIONS), salt.hex(), digest.hex()),
+        )
+
+    def dummy_hash(self) -> str:
+        # Random digest, no PBKDF2 run: verify() against it still costs one full pass.
+        return _FIELD_SEP.join(
+            (
+                _ALGORITHM,
+                str(_ITERATIONS),
+                secrets.token_bytes(_SALT_BYTES).hex(),
+                secrets.token_bytes(hashlib.new(_ALGORITHM).digest_size).hex(),
+            ),
         )
 
     def verify(self, password: str, password_hash: str) -> bool:
