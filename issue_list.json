@@ -46,6 +46,18 @@
       "covers": [],
       "classification": "spec_gap",
       "reviewed": true
+    },
+    {
+      "id": 22,
+      "name": "lambda-handler-receives-context-as-deps",
+      "title": "Every deployed Lambda entry point treats the Lambda context as its injected dependencies, so no deployed route works",
+      "severity": "critical",
+      "report": "Login on the deployed dev app returns the generic 'Se ha producido un error inesperado'. CloudWatch (api Lambda, 2026-11-04T22:09:32Z): handler.py line 90 handle -> routing.py line 122 _login accounts=deps.accounts -> AttributeError: 'LambdaContext' object has no attribute 'accounts'. Cause seen by the leader: lambda_handler = handle, AWS calls handle(event, context), so the context lands in the deps parameter and `deps or build_dependencies()` keeps it. The same shape exists in authorizer.py, scheduled.py and planner_ai/handler.py. Owner asked for a deeper triage and a better-thought solution than a one-line wrapper.",
+      "reported": "2026-11-04",
+      "status": "in_progress",
+      "covers": ["FR-AUTH-02", "FR-AUTH-09", "FR-MENU-08", "FR-SHOP-09", "FR-AI-01", "FR-AI-03", "NFR-ARCH-01"],
+      "classification": "defect",
+      "reviewed": true
     }
   ]
 }

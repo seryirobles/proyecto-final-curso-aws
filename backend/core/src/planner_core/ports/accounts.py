@@ -35,6 +35,26 @@ class AccountNotFound(PlannerError):
         self.user_id = user_id
 
 
+class AccountAlreadyExists(PlannerError):
+    """Raised by create() when an account with the same user_id exists (G-96)."""
+
+    user_id: str
+
+    def __init__(self, user_id: str) -> None:
+        super().__init__(user_id)
+        self.user_id = user_id
+
+
+class NotAnAdmin(PlannerError):
+    """Raised when an Admin-only operation targets a non-Admin account (G-96)."""
+
+    username: str
+
+    def __init__(self, username: str) -> None:
+        super().__init__(username)
+        self.username = username
+
+
 @runtime_checkable
 class AccountRepository(Protocol):
     """Persistence for user accounts and the username reservation (FR-AUTH-17,
@@ -52,7 +72,8 @@ class AccountRepository(Protocol):
     def list_all(self) -> tuple[AccountRecord, ...]: ...
 
     def create(self, account: AccountRecord) -> None:
-        """Raises UsernameAlreadyTaken if the folded username is already reserved."""
+        """Create-only. Raises UsernameAlreadyTaken if the folded username is
+        reserved, AccountAlreadyExists if the user_id is taken; never overwrites."""
         ...
 
     def rename(self, user_id: str, new_username: str) -> None:
@@ -71,6 +92,13 @@ class AccountRepository(Protocol):
         """Raises AccountNotFound. credentials_valid_since rides the same
         UpdateItem a password reset already makes (G-87, design.md section 9);
         set_password passes the account's existing value through unchanged."""
+        ...
+
+    def reset_admin_credentials(
+        self, user_id: str, password_hash: str, credentials_valid_since: datetime
+    ) -> None:
+        """Raises AccountNotFound if the id is absent or not an Admin. Sets the
+        hash, the pending flag and the revocation marker together (G-96)."""
         ...
 
     def delete(self, user_id: str) -> None:

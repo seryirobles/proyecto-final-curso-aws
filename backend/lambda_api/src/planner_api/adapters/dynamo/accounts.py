@@ -12,7 +12,7 @@ from botocore.exceptions import ClientError
 from planner_core.domain.role import Role
 from planner_core.domain.text import normalize
 from planner_core.domain.username_policy import UsernameAlreadyTaken
-from planner_core.ports.accounts import AccountNotFound, AccountRecord
+from planner_core.ports.accounts import AccountAlreadyExists, AccountNotFound, AccountRecord
 
 from planner_api.adapters.dynamo import _table
 
@@ -64,10 +64,12 @@ class DynamoAccountRepository:
 
     def create(self, account: AccountRecord) -> None:
         reservation_sk = f"{_NAME_PREFIX}{normalize(account.username)}"
+        id_put = _table.put_action(_account_item(account))
+        id_put["Put"]["ConditionExpression"] = "attribute_not_exists(SK)"
         try:
             _table.transact_write(
                 [
-                    _table.put_action(_account_item(account)),
+                    id_put,
                     {
                         "Put": {
                             "TableName": _table.TABLE_NAME,
@@ -82,7 +84,7 @@ class DynamoAccountRepository:
                 ]
             )
         except ClientError as exc:
-            _reraise_as_username_taken(exc, account.username)
+            _reraise_create_failure(exc, account)
 
     def rename(self, user_id: str, new_username: str) -> None:
         current = _table.get_item(_PK, _id_sk(user_id))
@@ -158,6 +160,27 @@ class DynamoAccountRepository:
             },
         )
 
+    def reset_admin_credentials(
+        self, user_id: str, password_hash: str, credentials_valid_since: datetime
+    ) -> None:
+        self._update(
+            user_id,
+            "SET #passHash = :h, #isPassReseteada = :r, #validoDesde = :v",
+            {
+                "#passHash": "passHash",
+                "#isPassReseteada": "isPassReseteada",
+                "#validoDesde": "validoDesde",
+                "#tipo": "tipo",
+            },
+            {
+                ":h": {"S": password_hash},
+                ":r": {"BOOL": True},
+                ":v": {"S": credentials_valid_since.isoformat()},
+                ":admin": {"S": Role.ADMIN.value},
+            },
+            condition="attribute_exists(SK) AND #tipo = :admin",
+        )
+
     def revoke_credentials(self, user_id: str, revoked_at: datetime) -> None:
         self._update(
             user_id,
@@ -192,7 +215,12 @@ class DynamoAccountRepository:
         return f"{_NAME_PREFIX}\x00{user_id}"
 
     def _update(
-        self, user_id: str, expression: str, names: dict[str, str], values: dict[str, Any]
+        self,
+        user_id: str,
+        expression: str,
+        names: dict[str, str],
+        values: dict[str, Any],
+        condition: str = "attribute_exists(SK)",
     ) -> None:
         try:
             _table.client().update_item(
@@ -201,7 +229,7 @@ class DynamoAccountRepository:
                 UpdateExpression=expression,
                 ExpressionAttributeNames=names,
                 ExpressionAttributeValues=values,
-                ConditionExpression="attribute_exists(SK)",
+                ConditionExpression=condition,
             )
         except ClientError as exc:
             if exc.response["Error"]["Code"] == "ConditionalCheckFailedException":
@@ -216,4 +244,17 @@ def _reraise_as_username_taken(exc: ClientError, username: str) -> None:
     """A failed reservation condition means the folded name is already reserved."""
     if exc.response["Error"]["Code"] in _TAKEN_CODES:
         raise UsernameAlreadyTaken(username) from exc
+    raise exc
+
+
+def _reraise_create_failure(exc: ClientError, account: AccountRecord) -> None:
+    """Leg 1 (NOMBRE#) failing wins over leg 0 (ID#): name taken, else id taken (G-96)."""
+    if exc.response["Error"]["Code"] != "TransactionCanceledException":
+        raise exc
+    reasons = exc.response.get("CancellationReasons") or []
+    failed = [r.get("Code") == "ConditionalCheckFailed" for r in reasons]
+    if len(failed) > 1 and failed[1]:
+        raise UsernameAlreadyTaken(account.username) from exc
+    if failed and failed[0]:
+        raise AccountAlreadyExists(account.user_id) from exc
     raise exc

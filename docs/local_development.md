@@ -208,13 +208,27 @@ real table), but the two *Admin* accounts are **always skipped** in that
 mode, no override exists. Nobody should be able to one-flag their way into
 creating a real Admin account with a password printed in this file.
 
-The two admin accounts are written directly via the repository, not through
-the app's own account-creation code — the real app has no code path to
-create an Admin account at all, by design (`backend/core/src/planner_core/
-application/account_admin.py`'s `create_user` is hardcoded to the `User`
-role; admin accounts are meant to be provisioned outside the app, same as a
-real deployment would via IaC re-seed). This script fills that role for
+The two admin accounts go through `bootstrap_admin`, the operator-only use
+case behind the CLI below (`create_user` stays hardcoded to the `User` role;
+the app has no HTTP path to create an Admin). The script fills that role for
 local dev only.
+
+### Real environments: `provision_admin`
+
+First Admin of a real environment (G-96), under your own AWS credentials
+(`AWS_PROFILE`), from `backend/lambda_api/`:
+
+```
+uv run python -m planner_api.provision_admin create --env dev --username NAME
+uv run python -m planner_api.provision_admin reset  --env dev --username NAME
+```
+
+`create` is create-only and a no-op on rerun; `reset` rotates an existing
+Admin's password and ends its sessions. The temporary password is generated
+and printed once; `--password-stdin` reads it from stdin instead (never an
+argument). `--env prod` asks you to type `prod` on the controlling terminal
+(not stdin) and refuses when there is none. `--table` overrides the derived
+`lab-final-srobles-<env>-data`.
 
 ## 5. The SPA
 

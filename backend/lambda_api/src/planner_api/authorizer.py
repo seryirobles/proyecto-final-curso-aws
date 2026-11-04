@@ -56,7 +56,7 @@ def handle(
         logger.info("Denying authorizer request with no session cookie")
         return _policy("deny", "Deny", method_arn)
 
-    resolved = deps or build_authorizer_dependencies()
+    resolved = deps if deps is not None else build_authorizer_dependencies()
     try:
         account = authenticate(
             token, accounts=resolved.accounts, signer=resolved.signer, clock=resolved.clock
@@ -74,4 +74,6 @@ def handle(
     return policy
 
 
-lambda_handler = handle
+def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
+    """Lambda entry point; `context` is not the deps bundle (issue 22)."""
+    return handle(event)

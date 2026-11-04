@@ -10,7 +10,7 @@ import logging
 import os
 from dataclasses import dataclass
 
-from planner_core.application.account_admin import create_user
+from planner_core.application.account_admin import BootstrapOutcome, bootstrap_admin, create_user
 from planner_core.application.authentication import set_password
 from planner_core.domain.authentication_guards import SetPasswordNotPending
 from planner_core.domain.candidate import UNKNOWN_USER_ID
@@ -18,8 +18,7 @@ from planner_core.domain.ingredient_category import IngredientCategory
 from planner_core.domain.recipe import Ingredient, Recipe
 from planner_core.domain.role import Role
 from planner_core.domain.units import Unit
-from planner_core.domain.username_policy import UsernameAlreadyTaken, validate_username
-from planner_core.ports.accounts import AccountRecord
+from planner_core.domain.username_policy import UsernameAlreadyTaken
 from planner_core.ports.clock import SystemClock
 from planner_core.ports.password_hasher import Pbkdf2PasswordHasher
 from planner_core.ports.recipes import LibraryRecipe
@@ -51,35 +50,6 @@ _ACCOUNTS = (
     _SeedAccount("admin1", "admin1", Role.ADMIN, False, "AdminActive1234"),
     _SeedAccount("admin2", "admin2", Role.ADMIN, True, _TEMP_PASSWORD),
 )
-
-
-def _create_admin(
-    account: _SeedAccount,
-    *,
-    accounts: DynamoAccountRepository,
-    hasher: Pbkdf2PasswordHasher,
-    clock: SystemClock,
-) -> None:
-    # account_admin.create_user hardcodes role=Role.USER: an Admin-role account
-    # can never be created through the application (R9, R31 — by construction,
-    # design.md section 5). This mirrors what create_user does internally and
-    # stands in for the "IaC re-seed" provisioning path it defers to
-    # (architecture.md invariant 8), for local dev only.
-    validate_username(account.username, (a.username for a in accounts.list_all()))
-    # Unlike create_user (R11), nothing forces this record pending — so it is
-    # built already in its target state, real password included, and needs no
-    # follow-up set_password translation step.
-    password = _TEMP_PASSWORD if account.password_reset_required else account.password
-    accounts.create(
-        AccountRecord(
-            user_id=account.user_id,
-            username=account.username,
-            role=Role.ADMIN,
-            password_hash=hasher.hash(password),
-            password_reset_required=account.password_reset_required,
-            credentials_valid_since=clock.now(),
-        )
-    )
 
 
 def _reseed_active(
@@ -117,12 +87,19 @@ def _seed_account(
                 accounts=accounts,
                 clock=clock,
             )
-            # create_user hardcodes pending=True (R11) — translate to the
-            # seed's target state here; _create_admin needs no such step.
-            if not account.password_reset_required:
-                set_password(account.user_id, account.password, accounts=accounts, hasher=hasher)
         else:
-            _create_admin(account, accounts=accounts, hasher=hasher, clock=clock)
+            outcome = bootstrap_admin(
+                account.user_id,
+                account.username,
+                hasher.hash(_TEMP_PASSWORD),
+                accounts=accounts,
+                clock=clock,
+            )
+            if outcome is BootstrapOutcome.UNCHANGED:
+                return _reseed_active(account, accounts=accounts, hasher=hasher)
+        # Both paths create pending (R11, G-96) — translate to the seed's target state.
+        if not account.password_reset_required:
+            set_password(account.user_id, account.password, accounts=accounts, hasher=hasher)
     except UsernameAlreadyTaken:
         return _reseed_active(account, accounts=accounts, hasher=hasher)
 

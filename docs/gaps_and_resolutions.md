@@ -1448,3 +1448,43 @@ leader's questions directly (lift yes; general fix; "a alone"). `FR-AI-06`'s and
   The exact name list is a prompt matter; matching of names stays `domain.text`.
 - **Requirements:** `FR-AI-06` (behaviour added, text unchanged), `FR-AI-04` and
   `FR-AI-11` (needs decremented per AI slot, text unchanged). Builds on `G-94`.
+
+## Part AF — Bootstrap and recovery of the first Admin: operator CLI replaces the IaC-managed secret (2026-11-02)
+
+Directed by the requirements owner, in the same manner as Parts I through AE,
+after the first deployment: the table is empty, the application has no code path
+that creates an Admin (`create_user` is User-only), and so nobody can log in.
+Two research passes compared the options; the owner authorised this lift in
+person. The rule that an Admin is never created *through the application* is
+**unchanged**; what changes is the provisioning mechanism.
+
+### G-96 · The first Admin is seeded and recovered by an operator CLI, not from an IaC-managed secret
+
+- **Gap:** `FR-AUTH-07`, `FR-AUTH-08` and `FR-AUTH-18` (`G-08`, `G-40`, `G-43`,
+  `G-65`) say the Admin is provisioned only via IaC and recovered by re-seeding from
+  its IaC-managed secret. Feature 21 (Terraform) never implemented this, and doing
+  it in Terraform would put a standing Admin credential in state or Secrets Manager
+  (Terraform has no PBKDF2; a table-item resource would write plaintext or a hash
+  into state and reset the Admin's own password on drift).
+- **Decision:** (1) The bootstrap Admin SHALL be created by an operator-run CLI
+  under the operator's own AWS credentials, once per environment. It writes the
+  account in one create-only transaction (never overwriting an existing account) and
+  is a no-op when the Admin already exists. (2) The temporary password SHALL be
+  generated in memory (or read from stdin), shown once, never logged, never passed
+  on the command line and never stored; only its hash is written, with the
+  set-password step pending (`FR-AUTH-10`, `FR-AUTH-11`). (3) Recovery SHALL be a
+  `reset` command that only rotates the credential of an existing Admin, forces the
+  set-password step and ends all live sessions; it refuses non-Admin targets.
+  (4) Terraform creates and holds no Admin credential. (5) The application still has
+  no route that creates an Admin, and admins still cannot be removed through it
+  (`FR-AUTH-13`, `G-43` unchanged).
+- **Reasoning:** The operator's AWS access is the strongest channel already in
+  place, and it needs no new internet-reachable surface. The forced first-login
+  change makes the bootstrap password single-use, so storing it anywhere only adds a
+  standing credential. It is the same pattern as Django `createsuperuser`, Keycloak's
+  bootstrap-admin and Cognito's `admin-create-user`. A bootstrap Lambda, a
+  Terraform-managed item, a CI step, a first-run setup endpoint and a cold-start
+  "ensure admin" were considered and set aside.
+- **Requirements:** `FR-AUTH-07` (unchanged), `FR-AUTH-08` and `FR-AUTH-18`
+  (mechanism amended; text struck through, not deleted). Builds on `G-08`, `G-40`,
+  `G-43`, `G-65`.

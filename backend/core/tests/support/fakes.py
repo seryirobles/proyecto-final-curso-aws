@@ -19,6 +19,7 @@ from planner_core.domain.generation import (
     SlotStatus,
 )
 from planner_core.domain.recipe import Recipe
+from planner_core.domain.role import Role
 from planner_core.domain.rollover import ArchivedWeek
 from planner_core.domain.rules import (
     CategoryCountRule,
@@ -31,7 +32,7 @@ from planner_core.domain.rules import (
 from planner_core.domain.shopping import ShoppingItem, ShoppingItemNotFound
 from planner_core.domain.text import normalize
 from planner_core.domain.username_policy import UsernameAlreadyTaken
-from planner_core.ports.accounts import AccountNotFound, AccountRecord
+from planner_core.ports.accounts import AccountAlreadyExists, AccountNotFound, AccountRecord
 from planner_core.ports.ai_provider import AiPrompt
 from planner_core.ports.generation_queue import ResultPayload, SlotNotRetryable, StoredGeneration
 from planner_core.ports.recipes import LibraryRecipe, RecipeNotFound
@@ -102,6 +103,8 @@ class FakeAccountRepository:
         folded = normalize(account.username)
         if folded in self.reservations:
             raise UsernameAlreadyTaken(account.username)
+        if account.user_id in self.accounts:
+            raise AccountAlreadyExists(account.user_id)
         self.accounts[account.user_id] = account
         self.reservations[folded] = account.user_id
 
@@ -142,6 +145,14 @@ class FakeAccountRepository:
             password_reset_required=password_reset_required,
             credentials_valid_since=credentials_valid_since,
         )
+
+    def reset_admin_credentials(
+        self, user_id: str, password_hash: str, credentials_valid_since: datetime
+    ) -> None:
+        existing = self.accounts.get(user_id)
+        if existing is None or existing.role is not Role.ADMIN:
+            raise AccountNotFound(user_id)
+        self.update_credentials(user_id, password_hash, True, credentials_valid_since)
 
     def delete(self, user_id: str) -> None:
         existing = self.accounts.get(user_id)

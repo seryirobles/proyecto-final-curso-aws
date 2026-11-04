@@ -2,14 +2,22 @@
 (FR-AUTH-03, -05, -07, -12, -13, -18). Every operation requires the Admin
 role; none accepts a role parameter for the account it targets, so an
 Admin-role account can never be created or removed through the application
-(R9, R31 — by construction, design.md section 5)."""
+(R9, R31 — by construction, design.md section 5). The operator-only
+`bootstrap_admin` / `reset_admin_password` take no role: IAM is the authority (G-96)."""
 
 from __future__ import annotations
 
+from enum import Enum
+
 from planner_core.domain.authorization import Forbidden, require_admin
 from planner_core.domain.role import Role
-from planner_core.domain.username_policy import validate_username
-from planner_core.ports.accounts import AccountRecord, AccountRepository
+from planner_core.domain.username_policy import UsernameAlreadyTaken, validate_username
+from planner_core.ports.accounts import (
+    AccountNotFound,
+    AccountRecord,
+    AccountRepository,
+    NotAnAdmin,
+)
 from planner_core.ports.clock import Clock
 
 
@@ -79,3 +87,48 @@ def list_accounts(actor_role: Role, *, accounts: AccountRepository) -> tuple[Acc
     """R20."""
     require_admin(actor_role)
     return accounts.list_all()
+
+
+class BootstrapOutcome(Enum):
+    CREATED = "created"
+    UNCHANGED = "unchanged"
+
+
+def bootstrap_admin(
+    user_id: str,
+    username: str,
+    password_hash: str,
+    *,
+    accounts: AccountRepository,
+    clock: Clock,
+) -> BootstrapOutcome:
+    """Operator-only: authority is IAM, not an actor role (G-96, R2-R4, R8-R10)."""
+    existing = accounts.get_by_username(username)
+    if existing is not None:
+        if existing.role is Role.ADMIN:
+            return BootstrapOutcome.UNCHANGED
+        raise UsernameAlreadyTaken(username)
+    validate_username(username, ())
+    accounts.create(
+        AccountRecord(
+            user_id=user_id,
+            username=username,
+            role=Role.ADMIN,
+            password_hash=password_hash,
+            password_reset_required=True,
+            credentials_valid_since=clock.now(),
+        )
+    )
+    return BootstrapOutcome.CREATED
+
+
+def reset_admin_password(
+    username: str, new_password_hash: str, *, accounts: AccountRepository, clock: Clock
+) -> None:
+    """Operator-only (G-96, R20-R23); the adapter's condition closes the race."""
+    existing = accounts.get_by_username(username)
+    if existing is None:
+        raise AccountNotFound(username)
+    if existing.role is not Role.ADMIN:
+        raise NotAnAdmin(username)
+    accounts.reset_admin_credentials(existing.user_id, new_password_hash, clock.now())

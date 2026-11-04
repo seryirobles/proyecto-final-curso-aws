@@ -57,6 +57,9 @@ class _ExplodingAccounts:
     def update_credentials(self, *args: object, **kwargs: object) -> None:
         raise AssertionError("the gate must not read the account record")
 
+    def reset_admin_credentials(self, *args: object, **kwargs: object) -> None:
+        raise AssertionError("the gate must not read the account record")
+
     def delete(self, user_id: str) -> None:
         raise AssertionError("the gate must not read the account record")
 

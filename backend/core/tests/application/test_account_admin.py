@@ -11,18 +11,21 @@ from support.fakes import FakeAccountRepository, FakeClock, FakeRecipeRepository
 import planner_core.application.account_admin as account_admin
 import planner_core.application.authentication as authentication
 from planner_core.application.account_admin import (
+    BootstrapOutcome,
     admin_set_password,
+    bootstrap_admin,
     create_user,
     list_accounts,
     remove_user,
     rename_user,
+    reset_admin_password,
 )
 from planner_core.domain.authorization import Forbidden
 from planner_core.domain.ingredient_category import IngredientCategory
 from planner_core.domain.recipe import Recipe
 from planner_core.domain.role import Role
-from planner_core.domain.username_policy import UsernameAlreadyTaken
-from planner_core.ports.accounts import AccountRecord
+from planner_core.domain.username_policy import UsernameAlreadyTaken, UsernameReserved
+from planner_core.ports.accounts import AccountNotFound, AccountRecord, NotAnAdmin
 from planner_core.ports.recipes import LibraryRecipe
 
 CREATED_AT = datetime(2026, 1, 1, tzinfo=UTC)
@@ -73,6 +76,8 @@ def test_account_admin_exposes_no_self_registration_operation() -> None:
         "admin_set_password",
         "remove_user",
         "list_accounts",
+        "bootstrap_admin",  # operator-only, no actor role (G-96, R31)
+        "reset_admin_password",
     }
     assert "actor_role" in inspect.signature(create_user).parameters
 
@@ -255,3 +260,100 @@ def test_list_accounts_returns_username_role_and_pending_status() -> None:
         ("Ana", Role.USER, False),
         ("Beto", Role.ADMIN, False),
     }
+
+
+_NOW = "2026-05-01T08:00:00+00:00"
+
+
+def test_bootstrap_admin_creates_a_pending_admin_stamped_with_the_clock() -> None:
+    """R2, R3, R4."""
+    accounts = FakeAccountRepository()
+    clock = FakeClock.at(_NOW)
+
+    outcome = bootstrap_admin("a1", "root", "h", accounts=accounts, clock=clock)
+
+    created = accounts.get_by_id("a1")
+    assert outcome is BootstrapOutcome.CREATED
+    assert created is not None
+    assert created.role is Role.ADMIN
+    assert created.password_reset_required is True
+    assert created.credentials_valid_since == clock.instant
+
+
+def test_bootstrap_admin_on_an_existing_admin_is_unchanged() -> None:
+    """R8."""
+    accounts = FakeAccountRepository()
+    accounts.create(_account(user_id="a1", username="root", role=Role.ADMIN))
+
+    outcome = bootstrap_admin("a2", "ROOT", "new", accounts=accounts, clock=FakeClock.at(_NOW))
+
+    assert outcome is BootstrapOutcome.UNCHANGED
+    assert accounts.get_by_id("a2") is None
+    assert accounts.get_by_id("a1") == _account(user_id="a1", username="root", role=Role.ADMIN)
+
+
+def test_bootstrap_admin_refuses_a_non_admin_holder() -> None:
+    """R9."""
+    accounts = FakeAccountRepository()
+    accounts.create(_account(user_id="u1", username="Ana"))
+
+    with pytest.raises(UsernameAlreadyTaken):
+        bootstrap_admin("a1", "ana", "h", accounts=accounts, clock=FakeClock.at(_NOW))
+
+    assert accounts.get_by_id("a1") is None
+
+
+def test_bootstrap_admin_refuses_the_placeholder_name() -> None:
+    """R10."""
+    accounts = FakeAccountRepository()
+
+    with pytest.raises(UsernameReserved):
+        bootstrap_admin(
+            "a1", "Usuario Desconocido", "h", accounts=accounts, clock=FakeClock.at(_NOW)
+        )
+
+    assert accounts.list_all() == ()
+
+
+def test_reset_admin_password_sets_hash_pending_and_marker() -> None:
+    """R20."""
+    accounts = FakeAccountRepository()
+    accounts.create(_account(user_id="a1", username="root", role=Role.ADMIN))
+    clock = FakeClock.at(_NOW)
+
+    reset_admin_password("root", "new-hash", accounts=accounts, clock=clock)
+
+    after = accounts.get_by_id("a1")
+    assert after is not None
+    assert (after.password_hash, after.password_reset_required) == ("new-hash", True)
+    assert after.credentials_valid_since == clock.instant
+
+
+def test_reset_admin_password_refuses_a_non_admin_and_leaves_it_unchanged() -> None:
+    """R22."""
+    accounts = FakeAccountRepository()
+    ana = _account(user_id="u1", username="Ana")
+    accounts.create(ana)
+
+    with pytest.raises(NotAnAdmin):
+        reset_admin_password("Ana", "new", accounts=accounts, clock=FakeClock.at(_NOW))
+
+    assert accounts.get_by_id("u1") == ana
+
+
+def test_reset_admin_password_refuses_a_missing_username() -> None:
+    """R23."""
+    accounts = FakeAccountRepository()
+
+    with pytest.raises(AccountNotFound):
+        reset_admin_password("ghost", "new", accounts=accounts, clock=FakeClock.at(_NOW))
+
+
+def test_operator_use_cases_take_no_actor_role() -> None:
+    """R31 — and create_user (R32) still builds only Role.USER."""
+    for fn in (bootstrap_admin, reset_admin_password):
+        assert "actor_role" not in inspect.signature(fn).parameters
+        assert fn.__module__.startswith("planner_core.application")
+    accounts = FakeAccountRepository()
+    made = create_user(Role.ADMIN, "u9", "Zoe", "h", accounts=accounts, clock=FakeClock.at(_NOW))
+    assert made.role is Role.USER

@@ -23,7 +23,7 @@ def handle(
     """R34 - re-running for the same boundary repeats the same read-only
     archive snapshot and calls the already-idempotent `delete_checked_items`
     (feature 8), so a second invocation changes nothing further."""
-    resolved = deps or build_rollover_dependencies()
+    resolved = deps if deps is not None else build_rollover_dependencies()
     today = civil_date(resolved.clock.now())
     ending_week = current_week(today)
 
@@ -41,4 +41,6 @@ def handle(
     return {"status": "ok", "archivedWeekId": ending_week.week_id}
 
 
-lambda_handler = handle
+def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
+    """Lambda entry point; `context` is not the deps bundle (issue 22)."""
+    return handle(event)

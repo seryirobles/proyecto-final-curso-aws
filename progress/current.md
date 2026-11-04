@@ -192,3 +192,7 @@ Part AE / G-95 added (owner lift). `CategoryPrompt.avoid_names` + prompt v5 (sep
 ## Issue 19 ai-week-dishes-still-similar - implemented, reviewer APPROVED (2026-10-12)
 
 Owner chose option (w): prompt v6 only (avoid main ingredient + style, positive cuisine steer, no dangling needs line); v1-v5 byte-identical; new `PromptInstructions.needs_template`. 0 findings, 6 mutants killed, `./init.sh` green (1350). Report: `progress/impl_ai_week_dishes_still_similar.md`. Nits: v6 avoid line repeats "main ingredient"; test docstring lists only v1-v4. Owner: set `AI_PROMPT_VERSION_ID=v6` (local worker + every deployed config), re-run an AI-only week, mark 18 then 19 `done`, commit.
+
+- 2026-11-02: feature 37 `bootstrap_admin_cli` T1-T10 implemented (CLI `planner_api.provision_admin`, `bootstrap_admin`/`reset_admin_password`, create-only adapter `create`, `reset_admin_credentials`). Tests: `backend/tests/contract/test_provision_admin.py` + contract/unit additions. Reviewer APPROVED (23 mutants killed, 3 non-blocking findings fixed or noted). Awaiting the owner's `done`.
+
+- 2026-11-04: issue 22 `lambda-handler-receives-context-as-deps` implemented: 4 entry points now `lambda_handler(event, context)` wrappers + `deps if deps is not None`; staged tests moved verbatim; gates green. Awaiting reviewer.

@@ -719,6 +719,27 @@
       ],
       "sdd": true,
       "status": "done"
+    },
+    {
+      "id": 37,
+      "name": "bootstrap_admin_cli",
+      "tier": 5,
+      "title": "Operator CLI to seed and reset the first Admin account",
+      "description": "Owner request 2026-11-02. A deployed table has no accounts and the app has no path to create an Admin (create_user is User-only). Add an operator-run CLI (python -m planner_api.provision_admin create|reset --env <e> --username <u>) under the owner's AWS profile: create writes the ID# and NOMBRE# items in one create-only TransactWriteItems (attribute_not_exists), tipo=ADMIN, isPassReseteada=true; the temporary password is generated in memory (or --password-stdin), shown once, never logged or stored, only the PBKDF2 hash is written; re-running for an existing Admin is a no-op, a clash with a User fails. reset only rotates passHash, sets isPassReseteada and advances validoDesde, refusing non-Admin targets. A bootstrap_admin use case in planner_core.application (create_user stays User-only); DynamoAccountRepository.create must stop putting the ID# item unconditionally; seed_local_data.py may reuse the use case. No handler or route imports it. Supersedes FR-AUTH-07/-08/-18's 'IaC-managed secret' provisioning: lifted by the owner as Part AF / G-96 (2026-11-02). Terraform per-environment state keys are a separate human-owned prerequisite for stg/prod.",
+      "covers": [
+        "FR-AUTH-07",
+        "FR-AUTH-08",
+        "FR-AUTH-18"
+      ],
+      "depends_on": [],
+      "acceptance": [
+        "Second create for the same Admin changes nothing and exits 0",
+        "create never overwrites an existing ID# or NOMBRE# item",
+        "reset refuses a non-Admin target and ends existing sessions",
+        "The password never appears in argv, logs or any stored item"
+      ],
+      "sdd": true,
+      "status": "in_progress"
     }
   ]
 }

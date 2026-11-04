@@ -112,7 +112,7 @@ def _process_record(record: dict[str, Any], deps: Dependencies) -> None:
 
 def handle(event: dict[str, Any], deps: Dependencies | None = None) -> None:
     """`deps` is injected by tests; a deployed function resolves the real stack."""
-    resolved = deps or build_dependencies()
+    resolved = deps if deps is not None else build_dependencies()
     for record in event.get("Records", []):
         try:
             _process_record(record, resolved)
@@ -120,4 +120,6 @@ def handle(event: dict[str, Any], deps: Dependencies | None = None) -> None:
             logger.exception("Failed to process SQS record")
 
 
-lambda_handler = handle
+def lambda_handler(event: dict[str, Any], context: Any) -> None:
+    """Lambda entry point; `context` is not the deps bundle (issue 22)."""
+    handle(event)
