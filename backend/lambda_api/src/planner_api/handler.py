@@ -17,6 +17,7 @@ from planner_api import errors
 from planner_api import serialization as ser
 from planner_api.conditional_get import parse_if_none_match
 from planner_api.routing import ROUTES, AuthContext, quoted_etag
+from planner_api.sdk_logging import quiet_sdk_loggers
 from planner_api.serialization import RouteNotFound
 from planner_api.wiring import Dependencies, build_dependencies
 
@@ -112,4 +113,5 @@ def handle(event: dict[str, Any], deps: Dependencies | None = None) -> dict[str,
 
 def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Lambda entry point; `context` is not the deps bundle (issue 22)."""
+    quiet_sdk_loggers()
     return handle(event)

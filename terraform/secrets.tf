@@ -18,3 +18,17 @@ resource "aws_secretsmanager_secret_version" "session" {
   secret_id     = aws_secretsmanager_secret.session.id
   secret_string = random_password.session.result
 }
+
+# Grants the shared Lambda role read access, since the role itself has no Secrets Manager permission.
+resource "aws_secretsmanager_secret_policy" "session" {
+  secret_arn = aws_secretsmanager_secret.session.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { AWS = data.aws_iam_role.lambda_exec.arn }
+      Action    = "secretsmanager:GetSecretValue"
+      Resource  = "*"
+    }]
+  })
+}

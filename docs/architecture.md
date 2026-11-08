@@ -387,6 +387,34 @@ These are fixed by the requirements, not open to reinterpretation:
 - `Project` / `Environment` / `Owner` tags (`NFR-FIN-01`); AWS Budgets
   (`NFR-FIN-02`); €50/month AI sub-cap (`NFR-AI-01`).
 
+### 1.5 Lambda logging (owner ruling 2026-11-07, issue 24)
+
+Every Lambda logs in JSON through `logging_config` (`terraform/lambda.tf`). In
+plain text, Python Lambdas default to WARN and drop every INFO line, including
+the per-invocation record of `specs/rest_api_lambda` R22 (`NFR-OBS-01`).
+
+- **Level per environment:** `DEBUG` on `dev`, `INFO` everywhere else. It is
+  derived from the environment (`lambda_log_level`, `terraform/locals.tf`), not
+  a variable, so a copied `terraform.tfvars` cannot put `DEBUG` in production.
+- **The AWS SDK stays at WARNING:** at `DEBUG`, `botocore` logs full requests
+  and responses, which hold the session signing key, password hashes and the
+  Bedrock API token. So each deployed `lambda_handler` first calls
+  `quiet_sdk_loggers()` (`sdk_logging.py`, one byte-identical copy per Lambda
+  package), which sets `boto3`, `botocore`, `urllib3` and `s3transfer` to
+  WARNING. Do not remove it. A new dependency that logs below WARNING on a
+  tested path fails `test_no_third_party_record_below_warning_reaches_the_log`;
+  add its logger to the list.
+- **Code never sets the root level:** a level set in code overrides Terraform's.
+- **Code before Terraform:** the code with `quiet_sdk_loggers()` must be running
+  before `logging_config` is applied, and no build older than it may run on
+  `dev` while `dev` is at `DEBUG`. Either mistake can put those secrets in
+  CloudWatch.
+- **Not covered:** `logger.debug` lines in application code. The backend has
+  none today; any added later must not carry a secret.
+
+Local runs use `basicConfig(level=logging.INFO)` in `local_server.py` and
+`local_worker.py`, and do not call `quiet_sdk_loggers()`.
+
 ---
 
 ## 2. Pending — human-owned, agents must NOT decide

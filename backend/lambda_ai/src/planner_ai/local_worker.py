@@ -48,7 +48,7 @@ class _FixedGate:
 
 
 def build_local_dependencies() -> Dependencies:
-    """Local-only override of the SSM gate; the deployed path never reads it (NFR-AI-01)."""
+    """Local-only override of the deployed gate; the deployed path never reads it (NFR-AI-01)."""
     deps = build_dependencies()
     override = os.environ.get("AI_GENERATION_ENABLED")
     if override not in ("true", "false"):

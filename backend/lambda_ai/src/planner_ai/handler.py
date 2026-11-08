@@ -19,6 +19,7 @@ from planner_ai.message import (
     parse_recipe_message,
     parse_slot_retry_message,
 )
+from planner_ai.sdk_logging import quiet_sdk_loggers
 from planner_ai.serialization import encode_recipe
 from planner_ai.wiring import Dependencies, build_dependencies
 
@@ -122,4 +123,5 @@ def handle(event: dict[str, Any], deps: Dependencies | None = None) -> None:
 
 def lambda_handler(event: dict[str, Any], context: Any) -> None:
     """Lambda entry point; `context` is not the deps bundle (issue 22)."""
+    quiet_sdk_loggers()
     handle(event)

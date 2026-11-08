@@ -11,6 +11,7 @@ from typing import Any  # untyped JSON in/out is the wire boundary itself (conve
 from planner_core.application.authentication import authenticate
 from planner_core.domain.session_policy import SessionExpired
 
+from planner_api.sdk_logging import quiet_sdk_loggers
 from planner_api.wiring import (
     AuthorizerDependencies,
     Dependencies,
@@ -71,9 +72,11 @@ def handle(
         "role": account.role.value,
         "passwordResetRequired": "true" if account.password_reset_required else "false",
     }
+    logger.info("Allowing authorizer request")
     return policy
 
 
 def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Lambda entry point; `context` is not the deps bundle (issue 22)."""
+    quiet_sdk_loggers()
     return handle(event)

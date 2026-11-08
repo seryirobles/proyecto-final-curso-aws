@@ -136,3 +136,9 @@ variable "ai_budget_usd" {
   type        = number
   default     = 50
 }
+
+variable "ai_generation_enabled" {
+  description = "AI kill switch, set on the ai Lambda as AI_GENERATION_SWITCH. Flip it in terraform.tfvars and apply; a run already in flight keeps the old value."
+  type        = bool
+  default     = true
+}

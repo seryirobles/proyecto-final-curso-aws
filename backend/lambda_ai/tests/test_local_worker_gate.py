@@ -72,7 +72,7 @@ def test_anything_but_exact_true_or_false_leaves_the_ssm_switch_in_charge(
 def test_the_deployed_wiring_ignores_the_override(
     ssm_says: Callable[[str], None], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """E6 - NFR-AI-01: the Lambda's kill-switch cannot be bypassed by env."""
+    """E6 - NFR-AI-01: the local override cannot bypass the deployed switch (SSM or env)."""
     ssm_says("false")
     monkeypatch.setenv(_OVERRIDE, "true")
 

@@ -79,7 +79,7 @@ resource "aws_budgets_budget" "ai" {
   }
 }
 
-# At 100% the Budget action attaches this Deny to the API-key user; the friendly message still needs the manual SSM flip.
+# At 100% the Budget action attaches this Deny to the API-key user; the friendly message still needs the manual flip (var.ai_generation_enabled).
 resource "aws_iam_policy" "ai_kill_switch" {
   provider    = aws.bedrock
   name        = "${local.name}-ai-kill-switch"

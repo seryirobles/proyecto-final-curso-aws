@@ -12,6 +12,7 @@ from typing import Any  # untyped JSON in/out is the wire boundary itself (conve
 from planner_core.domain.calendar import civil_date, current_week, next_week
 from planner_core.domain.rollover import roll_over
 
+from planner_api.sdk_logging import quiet_sdk_loggers
 from planner_api.wiring import Dependencies, RolloverDependencies, build_rollover_dependencies
 
 logger = logging.getLogger("planner_api")
@@ -43,4 +44,5 @@ def handle(
 
 def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Lambda entry point; `context` is not the deps bundle (issue 22)."""
+    quiet_sdk_loggers()
     return handle(event)

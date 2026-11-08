@@ -34,6 +34,12 @@ resource "aws_lambda_function" "this" {
     variables = local.lambda_env[each.key]
   }
 
+  logging_config {
+    log_format            = "JSON"
+    application_log_level = local.lambda_log_level
+    system_log_level      = "INFO"
+  }
+
   # Code is deployed by CI; Terraform owns configuration only.
   lifecycle {
     ignore_changes = [filename, source_code_hash]

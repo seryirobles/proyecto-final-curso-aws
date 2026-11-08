@@ -33,8 +33,8 @@ output "lambda_function_names" {
   value       = { for k, f in aws_lambda_function.this : k => f.function_name }
 }
 
-# needs role permission: ssm:GetParameter (remove with aws_ssm_parameter.ai_generation_enabled)
+# Not read while the ai Lambda has AI_GENERATION_SWITCH. Kept for the swap back.
 output "ai_kill_switch_parameter" {
-  description = "Set to \"false\" to stop AI generation by hand."
+  description = "SSM kill switch, NOT in force while AI_GENERATION_SWITCH is set: flipping it stops nothing. Use var.ai_generation_enabled."
   value       = aws_ssm_parameter.ai_generation_enabled.name
 }

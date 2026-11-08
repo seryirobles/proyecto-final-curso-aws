@@ -1,7 +1,7 @@
 # The AI cap lives in bedrock.tf because Bedrock spend is billed to the Bedrock account.
 
-# needs role permission: ssm:GetParameter (to strip: delete this resource and the ai_kill_switch_parameter output)
-# Seeded "true" and manual flips are kept; set "false" on the AI budget email to get the friendly "unavailable" message.
+# Not read while the ai Lambda has AI_GENERATION_SWITCH: the shared role has no ssm:GetParameter. Kept for the swap back.
+# To stop AI today: ai_generation_enabled = false in terraform.tfvars, then terraform apply.
 resource "aws_ssm_parameter" "ai_generation_enabled" {
   name  = local.kill_switch_parameter
   type  = "String"

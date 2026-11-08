@@ -16,6 +16,9 @@ locals {
   # One Region for both accounts: a long-term Bedrock API key works only in its own Region.
   region = "eu-west-1"
 
+  # From the environment, not a variable: a copied tfvars cannot put DEBUG in production.
+  lambda_log_level = var.environment == "dev" ? "DEBUG" : "INFO"
+
   # Lambda maximum: a whole-week run calls Bedrock once per slot.
   ai_timeout = 900
 
@@ -50,6 +53,8 @@ locals {
     PLANNER_DATA_TABLE = aws_dynamodb_table.data.name
     PLANNER_ENV        = var.environment
     AI_MODEL_ID        = var.ai_model_id
+    # Temporary: the shared role has no ssm:GetParameter. Delete this line to go back to the SSM switch.
+    AI_GENERATION_SWITCH = tostring(var.ai_generation_enabled)
     # Cross-account Bedrock auth; only the bedrock-runtime client uses it.
     AWS_BEARER_TOKEN_BEDROCK = aws_iam_service_specific_credential.bedrock.service_credential_secret
   })
