@@ -459,7 +459,7 @@
         "Written by the human"
       ],
       "sdd": false,
-      "status": "blocked",
+      "status": "done",
       "blocked_reason": "HUMAN-OWNED. Agents never generate CI/CD files. init.sh fails if .github/workflows files appear while this feature is blocked."
     },
     {
@@ -739,7 +739,7 @@
         "The password never appears in argv, logs or any stored item"
       ],
       "sdd": true,
-      "status": "in_progress"
+      "status": "done"
     }
   ]
 }

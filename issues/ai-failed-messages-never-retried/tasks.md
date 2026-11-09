@@ -1,0 +1,15 @@
+# Issue 25 — tasks
+
+- [ ] T1 — Move the four staged files from `issues/ai-failed-messages-never-retried/tests/` to their destinations (`plan.md` § *Staged files*), verbatim. Confirm `test_a_throttled_claim_is_reported_for_redelivery`, `test_a_write_failure_mid_run_leaves_no_slot_in_flight` and `test_a_redelivery_settles_a_run_its_dead_attempt_left_running` are **red**, and record the count (49 failed, 42 passed at triage). Covers: E1–E17.
+- [ ] T2 — In `backend/core/src/planner_core/application/week_generation.py`, add `_always`, `_interrupted`, `settle_week_run` and `settle_slot_retry`. Covers: E1, E2, E4, E5, E6, E10.
+- [ ] T3 — In the same file, add `has_time` to `_Run`, to `run_week_generation` and to `run_slot_retry` (keyword, default `_always`), and the sticky `cut` check before every slot of both loops of `_fill_slots`. Covers: E16.
+- [ ] T4 — Add `settle_recipe_run` to `backend/core/src/planner_core/application/single_recipe_generation.py`. Covers: E2, E9.
+- [ ] T5 — In `backend/lambda_ai/src/planner_ai/adapters/bedrock.py`, build the client with `_CONFIG` (5 s connect, 60 s read, standard mode, 2 attempts) and expose `WORST_CASE_SECONDS`; in `wiring.py`, add `SLOT_RESERVE_SECONDS`. Covers: E17, E16.
+- [ ] T6 — In `backend/lambda_ai/src/planner_ai/handler.py`, split parsing from running so a parse failure is the only poison, and add `_occupancy`, `_settle`, `_unclaimed`, `_attempt` and `_receives`; a later delivery only settles. Covers: E5, E6, E7, E11, E12.
+- [ ] T7 — In the same file, make `handle` take `has_time` and return `{"batchItemFailures": [...]}`; keep `build_dependencies()` outside the loop; make `lambda_handler` build `has_time` from `context.get_remaining_time_in_millis()` and `SLOT_RESERVE_SECONDS` and return the response. Correct the module docstring and the comment citing `R4`. Covers: E3, E8, E14, E15, E16.
+- [ ] T8 — In `backend/lambda_ai/src/planner_ai/local_worker.py`, request `ApproximateReceiveCount`, forward `attributes`, delete only unreported messages, and replace the comment at `:135-137`. Covers: E13.
+- [ ] T9 — Update the two `handle` stubs that return `None` (`plan.md` § *Existing tests*): `test_local_worker.py::test_poll_once_forwards_deps_to_handle` and the `run_worker` fixture of `test_local_worker_transient_sqs_errors.py`. Change no assertion. Covers: E13.
+- [ ] T10 — Run the staged tests and the full suite; confirm the moved files are byte-identical to the staged ones and `./init.sh` is green. Covers: E1–E17.
+- [ ] T11 — Report for the reviewer: `plan.md` § *Results* lists 34 mutants; at least H2 (a later delivery runs the provider), H4 (no settle on the spot), W1 (deadline ignored) and B1 (client without limits) must each turn staged tests red. Covers: E4, E5, E16, E17.
+
+**Not agent work:** `terraform/monitoring.tf:11` goes stale (`analysis.md` §6). The `docs/` and `specs/` statements in that list are for the leader to raise after the fix. Issues 28 (general fix) and 29 are filed separately and out of scope.

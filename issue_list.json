@@ -24,73 +24,15 @@
   },
   "issues": [
     {
-      "id": 20,
-      "name": "login-timing-username-enumeration",
-      "title": "Login skips the password hash when the account does not exist, so response time reveals which usernames exist",
-      "severity": "medium",
-      "report": "From the 2026-11-02 auth architecture review: login() returns early without running PBKDF2 when the account is missing (OWASP Authentication Cheat Sheet: run the hash regardless of whether the user exists). Fix: verify against a dummy hash for an unknown username so both paths cost one PBKDF2. Touches planner_core (application/authentication.py).",
-      "reported": "2026-11-02",
-      "status": "done",
-      "covers": ["NFR-SEC-04"],
-      "classification": "defect",
-      "reviewed": true
-    },
-    {
-      "id": 21,
-      "name": "authorizer-builds-full-dependency-graph",
-      "title": "The authorizer Lambda builds the whole dependency graph (SQS, every repository) when it only needs accounts, signer and clock",
-      "severity": "low",
-      "report": "From the 2026-11-02 auth architecture review: planner_api authorizer calls build_dependencies(), which wires everything and needs GENERATION_QUEUE_URL, lengthening the serial cold start (authorizer then api). Fix: build only accounts, signer and clock for the authorizer, and drop GENERATION_QUEUE_URL from the authorizer's environment in terraform/locals.tf (terraform edit is done separately by the Terraform agent after approval).",
-      "reported": "2026-11-02",
-      "status": "done",
-      "covers": [],
-      "classification": "spec_gap",
-      "reviewed": true
-    },
-    {
-      "id": 22,
-      "name": "lambda-handler-receives-context-as-deps",
-      "title": "Every deployed Lambda entry point treats the Lambda context as its injected dependencies, so no deployed route works",
-      "severity": "critical",
-      "report": "Login on the deployed dev app returns the generic 'Se ha producido un error inesperado'. CloudWatch (api Lambda, 2026-11-04T22:09:32Z): handler.py line 90 handle -> routing.py line 122 _login accounts=deps.accounts -> AttributeError: 'LambdaContext' object has no attribute 'accounts'. Cause seen by the leader: lambda_handler = handle, AWS calls handle(event, context), so the context lands in the deps parameter and `deps or build_dependencies()` keeps it. The same shape exists in authorizer.py, scheduled.py and planner_ai/handler.py. Owner asked for a deeper triage and a better-thought solution than a one-line wrapper.",
-      "reported": "2026-11-04",
-      "status": "done",
-      "covers": ["FR-AUTH-02", "FR-AUTH-09", "FR-MENU-08", "FR-SHOP-09", "FR-AI-01", "FR-AI-03", "NFR-ARCH-01"],
-      "classification": "defect",
-      "reviewed": true
-    },
-    {
-      "id": 23,
-      "name": "ai-kill-switch-unreadable-under-shared-role",
-      "title": "AI generation is always off in the deployed app: the shared Lambda role cannot read the SSM kill switch",
-      "severity": "high",
-      "report": "Owner, 2026-11-06: \"I can't ask for it. So, for the future when this app runs in my own environment I control I will use SSM, because it aligns better, but for now let's just use Lambda env var to work around. I will explain in the docs\". CloudWatch (ai Lambda, 2026-11-06T19:47:52Z): SSM switch /planner/dev/ai-generation-enabled unreadable (AccessDeniedException AccessDeniedException); generation fails closed. studentLambdaExecutionRole has no ssm:GetParameter and the owner can neither edit the role nor have it edited.",
-      "reported": "2026-11-06",
-      "status": "done",
-      "covers": ["FR-AI-01", "FR-AI-02", "FR-AI-03", "FR-AI-12", "NFR-AI-01"],
-      "classification": "defect",
-      "reviewed": true
-    },
-    {
-      "id": 24,
-      "name": "deployed-lambdas-drop-info-logs",
-      "title": "Deployed Lambdas send no INFO log lines to CloudWatch, so successful requests leave no application log",
-      "severity": "medium",
-      "report": "From triaging issue 23, confirmed against invocations the owner pasted: 9882e790 (ai) shows START, [WARNING], END with no 'Processed ...' line, and 4f4e8a98 (api) shows START, [ERROR], END with no 'Handled request' line, which handler.py:104 logs in a finally. Nothing raises the level: basicConfig runs only in the local entry points and terraform/ has no logging_config, and AWS documents WARN as the plain-text default for Python runtimes. specs/rest_api_lambda R22 (NFR-OBS-01) requires one record per invocation. Owner, 2026-11-07: 'propose an approach for this, I would also enable debug level on dev env'. Tested locally with fake values: at root DEBUG, botocore writes the GetSecretValue session key, a DynamoDB passHash and the Bedrock bearer token to the log; setting the boto3, botocore, urllib3 and s3transfer loggers to WARNING stops all three and keeps app DEBUG lines. The backend has no logger.debug calls today. Owner rulings, 2026-11-07, on the leader's proposal: approach OK (JSON log format and a level per environment in Terraform, DEBUG on dev and INFO elsewhere; SDK loggers set to WARNING in code from each Lambda entry point; root level not set in code; the local fake-secret check becomes a regression test). No debug lines added now. The leader adds the Terraform once the fix is approved.",
-      "reported": "2026-11-07",
-      "status": "done",
-      "covers": ["NFR-OBS-01", "NFR-SEC-02"],
-      "classification": "defect",
-      "reviewed": true
-    },
-    {
       "id": 25,
       "name": "ai-failed-messages-never-retried",
       "title": "Suspected: failed AI queue messages are never retried and never reach the dead-letter queue",
       "severity": "medium",
       "report": "Suspected from reading the code, not observed on AWS. terraform/lambda.tf sets function_response_types = [\"ReportBatchItemFailures\"] on the ai queue mapping, but planner_ai/handler.py handle() catches every exception per record, logs it and returns None, and lambda_handler returns None too. If the empty response counts as success, a failed message is deleted, so there is no retry and the generation_dlq alarm in terraform/monitoring.tf cannot fire for it. The catch is commented as per-record isolation (R4), so whether this is intended needs checking. Owner, 2026-11-07: 'log but do not start triaging or doing anything with them yet'.",
       "reported": "2026-11-07",
-      "status": "reported"
+      "status": "pending",
+      "covers": ["FR-AI-08", "FR-AI-09", "FR-AI-12", "FR-UX-03", "NFR-OBS-01"],
+      "classification": "defect"
     },
     {
       "id": 26,
@@ -108,6 +50,24 @@
       "severity": "low",
       "report": "Suspected from reading the code, not measured. boto3.client or boto3.resource is called inside helper functions rather than held for reuse: adapters/ssm.py:37 and adapters/bedrock.py:154 in planner_ai, adapters/sqs.py:174 and adapters/secrets.py:18 in planner_api, and adapters/dynamo/_table.py in both packages. How often each runs per invocation, and what it costs, has not been checked. Owner, 2026-11-07: 'log but do not start triaging or doing anything with them yet'.",
       "reported": "2026-11-07",
+      "status": "reported"
+    },
+    {
+      "id": 28,
+      "name": "week-generation-write-failure-abandons-remaining-slots",
+      "title": "A non-provider failure on one slot of a whole-week run abandons every later slot instead of letting them continue",
+      "severity": "medium",
+      "report": "Split out of issue 25's triage (analysis.md, Q1). week_generation.py:122 catches only AiProviderError, so a save_slot or record_slot failure on slot 3 stops slots 4 to 14 unattempted, against FR-AI-09 'the failure of one shall not abort the others'. Issue 25 settles the run with the unfinished slots as error and leaves per-slot retry to the user. Owner, 2026-11-08, chose the specific fix for 25 ('Stop'); this is the general half, filed separately. Needs a port-level error type or a docs/conventions.md exception for the per-slot catch in core, and a decision on paying Bedrock for results that cannot be written during an outage. Not triaged.",
+      "reported": "2026-11-08",
+      "status": "reported"
+    },
+    {
+      "id": 29,
+      "name": "generation-polling-has-no-deadline",
+      "title": "The SPA polls a generation every 2 s with no limit, so a run that never finishes leaves the spinner forever",
+      "severity": "low",
+      "report": "Split out of issue 25's triage (analysis.md, Q4). useWeekGeneration.js and useAiGeneration.js stop polling only on a terminal status. Any cause that leaves a record non-terminal (a dead worker, a run parked in the dead-letter queue, a bug) leaves the spinner until the record's TTL, 7 days. A client-side poll deadline with its own es-ES wording would cover all causes. Frontend change. Owner, 2026-11-08: 'yes' to filing it as a separate issue. Not triaged.",
+      "reported": "2026-11-08",
       "status": "reported"
     }
   ]
