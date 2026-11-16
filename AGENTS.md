@@ -25,7 +25,7 @@ produces confident, wrong findings.
 3. **Read `docs/data_model.md` §2 before flagging anything about keys or
    persistence.** Four key formats carry traps and exist nowhere else.
 4. **Check `docs/gaps_and_resolutions.md` before flagging a missing feature.**
-   Roughly 80 gaps are resolved there, many by *deliberate removal*. Absence is
+   96 gaps are resolved there, many by *deliberate removal*. Absence is
    usually a decision, not an oversight.
 5. **`prototypes/` is read-only reference material and is excluded from review.**
    If a file from it ever reaches you, the correct finding is that the exclusion
@@ -40,13 +40,13 @@ to a question.** Do not phrase a guess as a violation.
 
 A collaborative weekly meal planner (web app, Castilian Spanish UI) built as the
 final project of an AWS course. The **product requirements are already complete
-and frozen**: 27 user stories, ~90 numbered requirements, 67 resolved gaps,
+and frozen**: 27 user stories, ~100 numbered requirements, 96 resolved gaps,
 zero open questions. You are not here to invent product scope — you are here to
 implement what `docs/requirements.md` already specifies.
 
-**The architecture is owned by the human.** It is partially decided. See
-`docs/architecture.md` §1 (decided) and §2 (pending). When a task depends on a
-pending decision, you **stop** — you do not choose for them.
+**The architecture is owned by the human.** See `docs/architecture.md` §1
+(decided) and §2 (pending — empty today). When a task depends on a decision §1
+does not record, you **stop** — you do not choose for them.
 
 ---
 
@@ -82,6 +82,8 @@ pending decision, you **stop** — you do not choose for them.
 | `.claude/agents/` | Subagent definitions (`leader`, `spec_author`, `issue_triager`, `implementer`, `reviewer`) | If you orchestrate work |
 | `prototypes/wireframe/` | The **Claude design prototype**. **Read-only reference material, outside every toolchain root**: never edit it, never lint it, never port it, and never let a build reach it | Only through `docs/frontend_prototype.md` |
 | `docs/frontend_prototype.md` | Analysis of the prototype in `prototypes/wireframe/`. Executable wireframe: read it, mine it, **do not port it**. **§4 lists eleven places where it contradicts the frozen requirements** | Before writing any spec or code for a UI-facing feature |
+| `docs/local_development.md` | Running the whole stack locally (DynamoDB Local, ElasticMQ, local `api` server and `ai` worker, SPA), the seed script and the `provision_admin` operator CLI. A test parses its §2/§3 `export` lines | Before running anything locally, or editing that doc |
+| `terraform/`, `.github/` | The owner's IaC and CI/CD (features 21, 22). **Human-owned: never edit** (§3) | When code must match a deployed setting (env vars, handlers, routes) |
 
 The source tree — `backend/core`, the two Lambda packages, `backend/tests/contract`,
 `frontend/` — and its rules are in `docs/architecture.md` §3. Read it there.
@@ -90,10 +92,10 @@ The source tree — `backend/core`, the two Lambda packages, `backend/tests/cont
 
 | File | What it holds |
 |---|---|
-| `docs/requirements.md` | The ~90 numbered requirements (`FR-*`, `NFR-*`). **The contract.** |
+| `docs/requirements.md` | The ~100 numbered requirements (`FR-*`, `NFR-*`). **The contract.** |
 | `docs/app_user_stories.md` | The 27 original user stories (`US1`–`US27`) |
 | `docs/coverage_analysis.md` | Story→requirement coverage audit |
-| `docs/gaps_and_resolutions.md` | `G-01`–`G-89`, Parts A–Y: every ambiguity and *why* it was resolved that way |
+| `docs/gaps_and_resolutions.md` | `G-01`–`G-96`, Parts A–AF: every ambiguity and *why* it was resolved that way |
 | `docs/gaps_pending_stakeholders.md` | `PEND-01`–`PEND-15`, all closed — historical record |
 
 These five files are the frozen output of a completed requirements phase.
@@ -116,8 +118,9 @@ rejected there, with reasons.
   `spec_author` and gets human approval before any code is written.
 - **Never skip the human approval gate.** The leader stops at `spec_ready` and waits.
 - **Never write Terraform or CI/CD code.** Infrastructure and pipelines are
-  human-owned (see `docs/architecture.md` §5). `init.sh` fails if generated
-  CI files appear (Terraform files are no longer checked, owner 2026-10-15).
+  human-owned (see `docs/architecture.md` §5). `init.sh` no longer trips on
+  them — features 21 and 22 are `done` and the files are the owner's — but the
+  rule stands, and the reviewer rejects any agent-written one.
 - **Never make an architecture decision.** If a task needs an undecided one
   (`docs/architecture.md` §2), mark the feature `blocked` and stop.
 - **Never invent requirements.** Every `R<n>` in a spec must trace to an
@@ -219,8 +222,8 @@ reported → [issue_triager] → pending → ⏸ HUMAN go/no-go → approved →
 
 Bugs in built code follow the same machinery with a different front end;
 `docs/issues.md` owns the detail. The go/no-go can be all, some or none of the
-triaged issues. **One `in_progress` across `feature_list.json` and
-`issue_list.json` combined.** `done` and `wontfix` are the human's alone.
+triaged issues. **A feature and an issue are never `in_progress` together**;
+an approved issue batch may be. `done` and `wontfix` are the human's alone.
 
 ### The traceability chain
 

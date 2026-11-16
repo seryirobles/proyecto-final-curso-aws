@@ -1,6 +1,6 @@
 """Every prompt asks for one dish named after itself, not a "menu" the model
 echoes as the title; the change is a new version (FR-AI-01, FR-AI-02, FR-AI-06,
-FR-AI-14) (issues/generated-recipe-title-is-the-instruction)."""
+FR-AI-14)."""
 
 from __future__ import annotations
 

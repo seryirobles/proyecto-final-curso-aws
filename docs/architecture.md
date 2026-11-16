@@ -61,12 +61,22 @@ messages module, no business logic in the client, and fluid-first layout with
 
 ### 1.2 Backend
 
-Exactly **two Lambdas**, no more:
+Two Lambda **packages**, deployed by Terraform as **four functions** (one
+handler per function; `terraform/locals.tf` `lambdas`):
 
-| Lambda | Responsibility |
-|---|---|
-| `api` | Regular backend operations, exposed as a **REST API** |
-| `ai`  | AI generation only (single recipe + whole week) |
+| Function | Package | Responsibility |
+|---|---|---|
+| `api` | `api` | Regular backend operations, exposed as a **REST API** |
+| `authorizer` | `api` | API Gateway Lambda authorizer (session cookie, `planner_api.authorizer`) |
+| `rollover` | `api` | Scheduled week rollover (`planner_api.scheduled`), triggered by an EventBridge rule |
+| `ai` | `ai` | AI generation only (single recipe + whole week), queue-driven |
+
+> *Aligned to deployed reality by owner ruling, 2026-11-10.* This section
+> formerly read "Exactly **two Lambdas**, no more" with the rollover as an
+> entry point of `api`, "not a third Lambda". The limit that still holds is
+> **two packages / two dependency closures** (`api`, `ai`); a Lambda has one
+> handler, so the three `api`-package entry points are separate functions
+> over the same zip.
 
 - Language: **Python**.
 - **`api` hands AI work to `ai` over a standard SQS queue** (decided
@@ -76,14 +86,16 @@ Exactly **two Lambdas**, no more:
   is the one queue the design has — a further one still needs an approved
   `design.md` (§6).
 - Also on the `api` package: a **non-HTTP entry point for scheduled week
-  rollover** (`FR-MENU-06`/`-08`), invoked by EventBridge Scheduler
-  (`docs/rest_api_contract.md` Q8) — not a third Lambda.
+  rollover** (`FR-MENU-06`/`-08`), deployed as its own function (`rollover`)
+  and invoked by a scheduled EventBridge rule
+  (`docs/rest_api_contract.md` Q8) — same package as `api`, separate function.
 - Splitting AI generation into its own Lambda is deliberate: AI calls are slow
   (seconds to a minute-plus, `G-19`), cost-capped (`NFR-AI-01`) and need their
   own concurrency and idempotency behaviour (`FR-AI-08`, `FR-AI-09`). Do not
-  merge it into `api`, and do not add a third Lambda without human approval.
-- The split is **real, not nominal**: each Lambda is its own package with its
-  own dependency closure, so the `api` artifact never ships the AI provider SDK
+  merge it into `api`, and do not add a third **package** without human
+  approval.
+- The split is **real, not nominal**: each package has its own dependency
+  closure, so the `api` artifact never ships the AI provider SDK
   and never pays its cold-start cost. Packaging is covered in §3.2.
 
 ### 1.2.1 Datastore — DynamoDB, single table (was P1)
@@ -305,13 +317,25 @@ model is now **Amazon Nova 2 Lite**.
   it (constrained decoding), reading the result from the `toolUse` block's
   `input`. The schema is built in `core` from the frozen enums and carries the
   field descriptions; the domain validators remain the backstop (issue 15).
-- **Region: `eu-south-2` (Spain). Model id: `eu.amazon.nova-2-lite-v1:0`.**
+- **Region: `eu-west-1` (Ireland). Model id: `eu.amazon.nova-2-lite-v1:0`.**
   The `bedrock-runtime` endpoint takes an inference-profile id, not the bare
-  model id. The `eu.` prefix is the EU **Geo** profile, which lists
-  `eu-south-2` as a source region, so the call is made from the account's
-  home region. The `us.`/`in.` prefixes in AWS's examples do not work from
-  here. IAM needs `bedrock:InvokeModel` on the inference profile and on the
-  foundation models it routes to.
+  model id. The `eu.` prefix is the EU **Geo** profile; the call is made in
+  `eu-west-1` (`terraform/locals.tf` `region`). The `us.`/`in.` prefixes in
+  AWS's examples do not work from here.
+- **Separate Bedrock account, API key.** As Terraform deploys it
+  (`terraform/bedrock.tf`), Bedrock lives in a **different AWS account** (the
+  `aws.bedrock` provider). There, an IAM user `<name>-bedrock-invoker` holds
+  only `bedrock:CallWithBearerToken` plus `bedrock:InvokeModel` on the
+  configured inference profile and on the EU foundation models routed through
+  it; a service-specific credential (long-term Bedrock API key, rotated by
+  `bedrock_api_key_age_days`) is injected into the `ai` function as
+  `AWS_BEARER_TOKEN_BEDROCK`, which `boto3` reads natively. No cross-account
+  role is assumed. The same account carries the monthly AI budget: at 80% an
+  e-mail, at 100% a Budget action attaches a Deny policy to the invoker user.
+  The friendly kill switch remains the `ai` function's env var (see below).
+  *Aligned to deployed reality by owner ruling, 2026-11-10; this bullet
+  replaces the earlier "`eu-south-2`, call from the account's home region,
+  IAM on the Lambda role" wording.*
 - **EU data residency.** The Geo profile routes inference only between EU
   regions, so the earlier accepted tradeoff (the Global GPT-5.6 Terra
   profile could leave the EU) no longer applies. The profile, not the region
@@ -319,10 +343,10 @@ model is now **Amazon Nova 2 Lite**.
 - The `ai` Lambda's provider client is a Bedrock adapter — the Bedrock
   path is **its** dependency closure, never `api`'s (§1.2 rule).
 - **Cost cap: a real kill-switch**, resolving `G-81` / `NFR-AI-01` — an
-  alert alone is not acceptable. The mechanism (reserved concurrency 0,
-  event-source-mapping disable, or a flag the `ai` worker reads before
-  invoking the provider) is a feature 17 spec-gate detail, unaffected by
-  the model change.
+  alert alone is not acceptable. Mechanism decided at feature 17's spec gate
+  (owner, 2026-09-06): a flag the `ai` worker reads through the
+  `GenerationGate` port before invoking the provider
+  (`specs/ai_lambda/design.md` §5). Unaffected by the model change.
 - The `ai` worker consumes from the `api` → `ai` SQS queue (§1.2.5). It
   writes whole-week results through `WeekRepository` — never a separate
   write path (`G-88`, recorded on feature 17).
@@ -347,14 +371,16 @@ model is now **Amazon Nova 2 Lite**.
 **Decided by the human 2026-08-30.** Formerly P6. Decided only as far as
 application code depends on it:
 
-- **API Gateway → Lambda**, reachable from the SPA. The Lambdas sit in a
-  **VPC**, but that is transparent to application code — no handler
-  touches networking.
+- **API Gateway → Lambda**, reachable from the SPA. The Lambdas are **not in
+  a VPC** — Terraform deploys none (no subnets, security groups, NAT or VPC
+  endpoints); they reach DynamoDB, SQS and Bedrock over the public AWS
+  endpoints. No handler touches networking.
+  *Aligned to deployed reality by owner ruling, 2026-11-10; this bullet
+  formerly said the Lambdas sit in a VPC.*
 - **`/v1/*` routes through the same CloudFront distribution** that serves
   the SPA, making them same-origin (required by §1.2.5's cookie auth, and
   it removes the CORS preflight on every poll).
-- **Detailed network configuration** (subnets, security groups, VPC
-  endpoints), the API Gateway stage/throttling config, and all IaC remain
+- The API Gateway stage/throttling config and all IaC remain
   **human-owned, feature 21** — not a blocker for feature 16.
 - **Cold storage / archive lifecycle stays parked** (`data_model.md` §9),
   MVP scope. No endpoint, no `restoring` state.
@@ -367,7 +393,6 @@ application code depends on it:
 | Tests | **pytest** |
 | Lint + format | **ruff** |
 | Type checking | **mypy** |
-| Static analysis / quality gate | **SonarQube** |
 | Pre-commit enforcement | **pre-commit** hooks |
 
 No dependency outside this list enters the project without being justified in an
@@ -427,7 +452,7 @@ Hitting any of these means: mark the feature `blocked`, write the reason in
 | ~~P1~~ | ~~**Datastore**~~ — **DECIDED 2026-08-16: DynamoDB, single table. See §1.2.1.** | — |
 | ~~P2~~ | ~~**Auth mechanism**~~ — **DECIDED 2026-08-27: application-managed. See §1.2.3.** | — |
 | ~~P3~~ | ~~**Real-time transport**~~ — **DECIDED 2026-08-27: adaptive polling with conditional GET. See §1.2.4.** | — |
-| ~~P4~~ | ~~**AI provider and model**~~ — **DECIDED 2026-08-30: AWS Bedrock + Anthropic Claude, real cost kill-switch. See §1.2.6.** | — |
+| ~~P4~~ | ~~**AI provider and model**~~ — **DECIDED 2026-08-30: AWS Bedrock, real cost kill-switch; model since changed to Amazon Nova 2 Lite. See §1.2.6.** | — |
 | ~~P5~~ | ~~**REST API contract**~~ — **DECIDED 2026-08-30: see §1.2.5 and `docs/rest_api_contract.md`.** | — |
 | ~~P6~~ | ~~**Deployment topology**~~ — **DECIDED 2026-08-30 to the level application code needs (§1.2.7); detailed network config and IaC remain feature 21, cold storage stays parked (`data_model.md` §9).** | — |
 | ~~P7~~ | ~~**Frontend framework identity, bootstrap idiom and test runner**~~ — **DECIDED 2026-08-17: idiomatic React (function components, hooks, JSX), Vite, Vitest. See §1.1.** | — |
@@ -445,7 +470,7 @@ These read like open questions but the requirements explicitly classify them as
 - The literal **unit list** for ingredients/shopping (`G-39`, `FR-SHOP-03`).
 - The literal **ingredient-category list** for the rules (`G-69`, supersedes `G-63`; `FR-RULE-04`). It is the same set stored per recipe as `tipoAlimento` (`FR-LIB-03`).
 - The configured **servings count** for AI prompts (`G-64`, `FR-AI-13`).
-- ~~The **per-user daily generation cap** figure, once P4 is decided (`G-38`).~~ **Removed** by `G-70`: the cap is **global** for the whole deployment, enforced through AWS cost tooling. The application stores and enforces **no per-user quota**. The *enforcing path* — `G-81`'s open question — was **decided 2026-08-30: a real kill-switch, not an alert alone** (§1.2.6). Its mechanism (reserved concurrency, event-source disable, or a flag the `ai` worker reads) is a feature 17 spec-gate detail, not an access pattern.
+- ~~The **per-user daily generation cap** figure, once P4 is decided (`G-38`).~~ **Removed** by `G-70`: the cap is **global** for the whole deployment, enforced through AWS cost tooling. The application stores and enforces **no per-user quota**. The *enforcing path* — `G-81`'s open question — was **decided 2026-08-30: a real kill-switch, not an alert alone** (§1.2.6). Its mechanism — a flag the `ai` worker reads, settled at feature 17's spec gate — is not an access pattern.
 
 ---
 
@@ -468,25 +493,34 @@ backend/                     uv workspace root; shared ruff/mypy/pytest config
                              library (e.g. SystemClock). See §1.2.2.
     tests/                   Tier 1 lives here (features 2–13).
       support/               Fakes implementing the ports. Never mocks of our own code.
-  lambda_api/                Distribution: planner-api. Depends: planner-core (+ AWS deps at P1).
+  lambda_api/                Distribution: planner-api. Depends: planner-core + boto3 (DynamoDB, SQS, Secrets Manager).
     pyproject.toml
     src/planner_api/
       handler.py             AWS entry point. Thin: parse event, call a use case, map result.
+      authorizer.py          The REQUEST authorizer's entry point (§1.2.5).
+      scheduled.py           The week-rollover entry point (§1.2).
       wiring.py              Composition root: picks adapters by environment.
-      adapters/              Real port implementations this Lambda owns (DynamoDB; §1.2.5/§1.2.7 decided).
+      adapters/              Real port implementations this Lambda owns (DynamoDB, SQS, secrets).
+      local_server.py, seed_local_data.py, provision_admin.py
+                             Dev/operator tools, never deployed entry points (docs/local_development.md).
     tests/
-  lambda_ai/                 Distribution: planner-ai. Depends: planner-core (+ Bedrock SDK, §1.2.6).
+  lambda_ai/                 Distribution: planner-ai. Depends: planner-core + boto3 (Bedrock runtime, DynamoDB, SSM).
     pyproject.toml
     src/planner_ai/
       handler.py
       wiring.py
       adapters/
+      local_worker.py        Dev-only SQS poller (docs/local_development.md).
     tests/
   tests/
     contract/                One suite per port, run against BOTH the fake and the real adapter.
+    test_*.py                Cross-package guards: Terraform drift (handlers, logging, AI switch) and log levels.
 frontend/                    Own toolchain root (see docs/conventions.md § Frontend).
   src/
   tests/
+terraform/                   Human-owned IaC (feature 21, §5).
+.github/                     Human-owned CI/CD (feature 22, §5).
+scripts/                     The owner's operator scripts.
 prototypes/                  Read-only reference material. NOT a toolchain root; no
                              linter, bundler or test runner may reach it, and nothing
                              here ships.
@@ -555,9 +589,9 @@ uv export --package planner-ai  --no-dev   # exactly the ai closure
   suite, the local fake is a faithful stand-in. Without this, local mocking is a
   story you tell yourself until production disagrees.
 - **Whether `core` ships vendored into each zip or as a shared Lambda layer is
-  an IaC choice — feature 21, human-owned.** This layout supports both
-  unchanged; the choice only changes how the (human-written) CI pipeline
-  assembles the final artifact.
+  an IaC choice — feature 21, human-owned.** The owner's pipeline vendors it as
+  source into each zip, one closure per package (`.github/workflows/build.yml`).
+  This layout supports either choice unchanged.
 
 ---
 
@@ -612,8 +646,8 @@ review rejection, regardless of whether a test catches it.
    agree on which week is current. (`FR-MENU-02`, `G-02`)
 
 8. **Admin-assigned passwords are always temporary** — creation, change, reset
-   or IaC re-seed alike. They only ever reach the mandatory set-password step.
-   (`FR-AUTH-11`, `G-10`, `G-51`, `G-65`)
+   or the operator CLI's bootstrap/reset alike. They only ever reach the
+   mandatory set-password step. (`FR-AUTH-11`, `G-10`, `G-51`, `G-65`, `G-96`)
 
 9. **Removed users leave their content behind**, reattributed to a reserved
    "unknown user" placeholder. Never cascade-delete authored content.
@@ -639,9 +673,11 @@ review rejection, regardless of whether a test catches it.
 | `.github/workflows/**`, any CI/CD pipeline | Same. |
 | Architecture decisions listed in §2 | Same. |
 
-`init.sh` fails if these files appear while their `feature_list.json` entry is
-still `blocked`. That tripwire is intentional — do not work around it, and do
-not "helpfully" scaffold a `main.tf`.
+`init.sh` used to fail if these files appeared while their `feature_list.json`
+entry was `blocked`. Features 21 and 22 are now `done` and the owner's files
+exist, so it no longer trips; it runs static Terraform gates (`fmt`,
+`validate`, `tflint`) over them instead. The rule stands without the tripwire —
+do not "helpfully" edit or scaffold these files.
 
 ---
 
@@ -656,7 +692,7 @@ not "helpfully" scaffold a `main.tf`.
   default implementation (§1.2.2, §3.1 rule 6) — do not add a second.
 - ❌ Do not mix IO with domain logic.
 - ❌ Do not add a runtime dependency to `core`. It stays stdlib-only.
-- ❌ Do not add a third Lambda, a **second** queue, a cache, or any service
+- ❌ Do not add a third Lambda **package**, a **second** queue, a cache, or any service
   without an approved `design.md` and human sign-off. (The `api` → `ai` SQS
   queue is signed off — §1.2, decided 2026-08-30.)
 - ❌ Do not build a configuration framework. Configuration is explicit values

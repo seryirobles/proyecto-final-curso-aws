@@ -1,5 +1,4 @@
-"""An allowed authorizer request leaves one fixed INFO record, with no identity
-(issues/deployed-lambdas-drop-info-logs E11)."""
+"""An allowed authorizer request leaves one fixed INFO record, with no identity."""
 
 from __future__ import annotations
 

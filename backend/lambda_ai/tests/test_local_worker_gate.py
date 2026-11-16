@@ -1,5 +1,5 @@
 """The local worker's AI_GENERATION_ENABLED override of the SSM kill-switch, and
-the deployed path that must ignore it (issues/ai-generation-422-unavailable E5-E6)."""
+the deployed path that must ignore it."""
 
 from __future__ import annotations
 

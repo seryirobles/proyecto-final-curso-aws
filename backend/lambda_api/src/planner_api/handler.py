@@ -76,7 +76,7 @@ def handle(event: dict[str, Any], deps: Dependencies | None = None) -> dict[str,
             if auth.password_reset_required and not spec.allow_during_password_reset:
                 raise PasswordResetPending
         resolved_deps = deps if deps is not None else build_dependencies()
-        # Rule ids hold `#` (issues/rule-creation-400-invalid-request); decode
+        # Rule ids hold `#`; decode
         # once here so PUT, DELETE and the local server all see the real id.
         path_params = {k: unquote(v) for k, v in (event.get("pathParameters") or {}).items()}
         query_params = event.get("queryStringParameters") or {}

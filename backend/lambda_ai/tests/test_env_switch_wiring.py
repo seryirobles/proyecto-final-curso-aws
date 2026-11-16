@@ -1,6 +1,5 @@
 """AI_GENERATION_SWITCH picks the kill-switch adapter in the real wiring: set, it
-alone decides and fails closed; unset, SSM as designed
-(issues/ai-kill-switch-unreadable-under-shared-role E1-E5, E8)."""
+alone decides and fails closed; unset, SSM as designed."""
 
 from __future__ import annotations
 

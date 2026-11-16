@@ -12,16 +12,20 @@ workspace root so every member is covered:
 uv run ruff format --check .
 uv run ruff check .
 uv run mypy .
-uv run pytest -q          # default: unit + contract tiers, no AWS marker
+uv run pytest -q          # addopts deselects the aws and docker tiers
 ```
 
-`./init.sh` runs all of them. SonarQube runs in the project's quality pipeline
-and is not an agent's responsibility to invoke.
+`./init.sh` runs all of them, and so does CI (`.github/workflows/test.yml`).
 
 The frontend has its **own** gate, over `frontend/` only — `prettier --check`,
 `eslint` and `vitest run`, added by feature 1 `project_scaffold`. It has no
 type-checking step: the SPA is plain JavaScript, so there is no `mypy`
 counterpart by design (`docs/conventions.md` § *Frontend conventions*).
+
+`init.sh` also runs static Terraform gates over the owner's `terraform/`:
+`terraform fmt -check`, `terraform validate` (once `terraform init
+-backend=false` has been run there) and `tflint` (optional, skipped if absent).
+None needs AWS credentials.
 
 ## Test tiers
 
@@ -30,8 +34,8 @@ The suite is tiered so "mock locally, real in AWS" is verifiable, not hopeful:
 | Tier | Location | Touches AWS? | Runs in `init.sh`? |
 |---|---|---|---|
 | **Unit** | each member's `tests/` | No | Yes (default) |
-| **Contract** | `backend/tests/contract/` | No — runs the port suite against the **fake** | Yes (default) |
-| **Contract (live)** | same suite, marked `@pytest.mark.aws` | Yes — runs it against the **real adapter** | No — opt-in |
+| **Contract** | `backend/tests/contract/` | No — runs the port suite against the **fake** and the **real adapter** on moto (a stubbed client for Bedrock) | Yes (default) |
+| **Contract (live)** | same suite, marked `@pytest.mark.aws` | Yes — runs it against the **real adapter** on real AWS | No — opt-in. No test carries the marker yet |
 | **Docker (local)** | `backend/lambda_api/tests/`, marked `@pytest.mark.docker` | No — hits DynamoDB Local via Docker, not real AWS | No — opt-in |
 
 - Live-AWS tests are marked `@pytest.mark.aws` and excluded from the default
@@ -42,11 +46,12 @@ The suite is tiered so "mock locally, real in AWS" is verifiable, not hopeful:
   against actual DynamoDB Local wire behaviour, which moto can diverge from
   subtly. Run `docker compose up -d` then `uv run pytest -m docker`; they skip
   cleanly if the container isn't running.
-- CI runs the AWS tier explicitly (`uv run pytest -m aws`) against real
-  components, with credentials CI provides — never an agent, never `init.sh`.
+- CI runs the same default tiers as `init.sh`, not the AWS tier; nothing runs
+  `uv run pytest -m aws` automatically today. Never an agent, never `init.sh`.
 - **The contract suite is one suite, two backends.** It is parametrized over
-  every implementation of a port — the in-memory fake and the real adapter — so
-  a green fake tier actually means the local stand-in is faithful. A port that
+  every implementation of a port — the in-memory fake and the real adapter
+  (on a fresh moto AWS per test; Bedrock through a stubbed client) — so a green
+  default tier actually means the local stand-in is faithful. A port that
   has a fake but no live-contract run is only half-verified.
 
 ## Level 2 — Unit tests (mandatory)

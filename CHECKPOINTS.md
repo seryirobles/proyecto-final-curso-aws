@@ -6,10 +6,10 @@
 
 ## C1 — The harness is complete
 
-- [ ] The base files exist: `AGENTS.md`, `CLAUDE.md`, `init.sh`,
-      `feature_list.json`, `progress/current.md`.
-- [ ] The four docs exist: `docs/architecture.md`, `docs/conventions.md`,
-      `docs/specs.md`, `docs/verification.md`.
+- [ ] The base files exist: `AGENTS.md`, `CLAUDE.md`, `CHECKPOINTS.md`,
+      `init.sh`, `feature_list.json`, `issue_list.json`, `progress/current.md`.
+- [ ] The five docs exist: `docs/architecture.md`, `docs/conventions.md`,
+      `docs/specs.md`, `docs/issues.md`, `docs/verification.md`.
 - [ ] The five frozen requirement docs are **unmodified**: `docs/requirements.md`,
       `docs/app_user_stories.md`, `docs/coverage_analysis.md`,
       `docs/gaps_and_resolutions.md`, `docs/gaps_pending_stakeholders.md`.
@@ -71,6 +71,13 @@
       > a contract suite parametrized over them adds little beyond
       > `test_fake_clock_satisfies_the_clock_port`, and the real value arrives
       > when feature 14 brings implementations that genuinely differ.
+      >
+      > *Amended 2026-11-09.* Feature 14 landed `backend/tests/contract/`, one
+      > suite per port with an external-dependency adapter. The four ports
+      > whose only real implementation is a stdlib default in `ports/` —
+      > `Clock`, `ConfigPort`, `PasswordHasher`, `TokenSigner` — still have
+      > none, so this box stays unticked for them. The review file cited above
+      > no longer exists (review files are banned, `AGENTS.md` §3.1).
 
 ## C5 — The session closed properly
 

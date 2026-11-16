@@ -45,7 +45,7 @@ _serializer = TypeSerializer()
 
 def _local_credentials() -> dict[str, str]:
     """Placeholder credentials for local-emulator traffic only, when an endpoint
-    override is set (E2/E3, issues/debug-requires-aws-credentials/analysis.md).
+    override is set.
     Read at call time, like `_ENDPOINT_URL`, so tests patching it take effect."""
     if not _ENDPOINT_URL:
         return {}

@@ -1,5 +1,4 @@
-"""Shared set-up for the AI_GENERATION_SWITCH tests
-(issues/ai-kill-switch-unreadable-under-shared-role)."""
+"""Shared set-up for the AI_GENERATION_SWITCH tests."""
 
 from __future__ import annotations
 

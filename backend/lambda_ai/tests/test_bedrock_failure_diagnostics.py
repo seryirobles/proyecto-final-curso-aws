@@ -1,5 +1,5 @@
 """An unusable model response raises an AiProviderError that says why: the
-stop reason and a bounded snippet of the text (issues/silent-failures-not-logged E4).
+stop reason and a bounded snippet of the text.
 The use case logs that error (issue 13), so this text is what reaches the log."""
 
 from __future__ import annotations

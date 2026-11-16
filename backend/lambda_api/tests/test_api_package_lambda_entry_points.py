@@ -1,5 +1,5 @@
 """The api-package Lambda entry points under AWS's real calling convention,
-`lambda_handler(event, context)` (issues/lambda-handler-receives-context-as-deps)."""
+`lambda_handler(event, context)`."""
 
 from __future__ import annotations
 

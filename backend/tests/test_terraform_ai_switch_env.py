@@ -1,6 +1,5 @@
 """Terraform hands the ai Lambda the variable the wiring reads; without it the
-deployed gate stays the SSM one the shared role cannot read
-(issues/ai-kill-switch-unreadable-under-shared-role E10)."""
+deployed gate stays the SSM one the shared role cannot read."""
 
 from __future__ import annotations
 

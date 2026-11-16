@@ -1,6 +1,5 @@
 """A worker run through the real wiring's gate: switch off gives what the SSM off
-path gives, switch on reaches the provider under the shared role
-(issues/ai-kill-switch-unreadable-under-shared-role E1, E7)."""
+path gives, switch on reaches the provider under the shared role."""
 
 from __future__ import annotations
 

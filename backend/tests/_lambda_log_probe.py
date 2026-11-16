@@ -1,6 +1,6 @@
 """One deployed entry point in a fresh process, ordered as the Lambda runtime is:
 root level and handler, module import, invocation. Moto and fake values only;
-prints what reached the log as JSON (issues/deployed-lambdas-drop-info-logs)."""
+prints what reached the log as JSON."""
 
 from __future__ import annotations
 

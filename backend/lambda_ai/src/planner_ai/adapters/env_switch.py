@@ -1,5 +1,5 @@
 """`GenerationGate` read from the `AI_GENERATION_SWITCH` env var; used while the
-shared role cannot read SSM (issues/ai-kill-switch-unreadable-under-shared-role)."""
+shared role cannot read SSM."""
 
 from __future__ import annotations
 

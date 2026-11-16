@@ -1,6 +1,5 @@
 """Contract suite for the env-var GenerationGate: real adapter and in-memory fake
-agree (architecture.md section 3.2 contract rule; NFR-AI-01;
-issues/ai-kill-switch-unreadable-under-shared-role E2, E9)."""
+agree (architecture.md section 3.2 contract rule; NFR-AI-01)."""
 
 from __future__ import annotations
 

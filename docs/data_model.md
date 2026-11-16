@@ -420,16 +420,23 @@ TOCTOU, and two admins racing would both see a name free. Write
 `attribute_not_exists(SK)` on the reservation. The condition *is* the check, so
 there is no window.
 
-The "unknown user" placeholder name is reserved by seeding its reservation item
-at deploy time, which makes it permanently uncreatable (`FR-AUTH-17`).
+The "unknown user" placeholder name is reserved by the domain, not by a stored
+item: `validate_username` (`planner_core.domain.username_policy`) rejects the
+folded `usuario desconocido` with `UsernameReserved`, which makes it permanently
+uncreatable (`FR-AUTH-17`). **Nothing seeds a reservation item or an account for
+it at deploy time** (Terraform and CI create no such item).
 
-**The seeded account's `idUsuario` is exactly `unknown-user`.** Decided at
+> *Aligned to deployed reality by owner ruling, 2026-11-10.* This paragraph
+> formerly said the placeholder name was reserved by seeding its reservation
+> item at deploy time, and spoke of a "seeded account".
+
+**The placeholder's `idUsuario` is exactly `unknown-user`.** Decided at
 feature 5's spec gate on 2026-08-24 (`specs/week_plan_model/design.md` §9, gate
 question 1). `planner_core.domain.candidate.UNKNOWN_USER_ID` carries the same
-literal, and `resolve_author` compares against it: if the seeded account and the
-domain constant disagree, a removed author resolves to nothing instead of to the
-placeholder and `FR-SUM-03` silently breaks. **Feature 15 does not get to pick
-this value** — it is fixed here. Note the two are different things: the reserved
+literal, and `resolve_author` returns it for a removed author, so it is a
+constant, not a stored account: if a consumer used any other literal, a removed
+author would not resolve to the placeholder and `FR-SUM-03` would silently
+break. **Feature 15 does not get to pick this value** — it is fixed here. Note the two are different things: the reserved
 *name* is the es-ES `usuario desconocido`; the *id* is the ASCII `unknown-user`.
 
 ### 5.2 A rename must release its old reservation — by lookup, never by re-folding

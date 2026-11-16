@@ -1,5 +1,5 @@
 """No `extra=` key collides with what the JSON log format writes itself, or with a
-LogRecord attribute, which raises at the log call (issues/deployed-lambdas-drop-info-logs E8)."""
+LogRecord attribute, which raises at the log call."""
 
 from __future__ import annotations
 

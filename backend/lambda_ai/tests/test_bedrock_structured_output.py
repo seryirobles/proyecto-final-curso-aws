@@ -1,7 +1,6 @@
 """The Bedrock adapter constrains the model's recipe to a JSON schema through a
 forced tool (Nova 2 Lite has no outputConfig support), with category and unit
-as enums of the domain vocabularies (FR-LIB-03, FR-LIB-05, G-69, G-48)
-(issues/single-recipe-unknown-ingredient-category)."""
+as enums of the domain vocabularies (FR-LIB-03, FR-LIB-05, G-69, G-48)."""
 
 from __future__ import annotations
 

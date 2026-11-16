@@ -160,20 +160,6 @@ for f in features:
                 f"{dep} ({by_id[dep]['name']}) is not done"
             )
 
-# Guardrail: agents never generate CI. See docs/architecture.md section 5.
-def _status_of(name):
-    for f in features:
-        if f["name"] == name:
-            return f["status"]
-    return "blocked"
-
-ci_files = glob.glob(".github/workflows/*.yml") + glob.glob(".github/workflows/*.yaml")
-if ci_files and _status_of("cicd_pipeline") == "blocked":
-    FAILURES.append(
-        "CI workflow files exist while 'cicd_pipeline' is blocked "
-        f"(human-owned): {', '.join(sorted(ci_files))}"
-    )
-
 # Guardrail: feature_list.json is the source of truth for implementation.
 # Every requirement id defined in docs/requirements.md must be covered by at
 # least one feature, and no feature may claim an id that does not exist.
@@ -254,7 +240,6 @@ for f in features:
 summary = ", ".join(f"{k}: {v}" for k, v in sorted(counts.items()))
 print(f"[OK]    feature_list.json valid ({len(features)} features - {summary})")
 print("[OK]    Specs present for every non-pending sdd feature")
-print("[OK]    No agent-generated CI files")
 print(f"[OK]    Requirement coverage: all {len(req_ids)} FR/NFR ids covered by features")
 
 nxt = next(

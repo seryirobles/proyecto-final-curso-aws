@@ -14,7 +14,8 @@
 > patterns are named by title, with `AP<n>` as a secondary reference only
 > (`data_model.md` § *Working with the access-pattern workbook*).
 >
-> **P4 did not block this.** P4 is decided — AWS Bedrock + Claude — and the AI
+> **P4 did not block this.** P4 is decided — AWS Bedrock, model now Amazon Nova
+> 2 Lite (`architecture.md` §1.2.6) — and the AI
 > HTTP surface below is unchanged: submit a generation request, poll for the
 > result. The `api`→`ai` hop is a standard SQS queue (§7 Q12, recorded in
 > `architecture.md` §1.2 / §1.2.6), so the REST surface stays provider-agnostic.
@@ -803,6 +804,12 @@ context; the ruling is the **Decided** line.
    sign-off. **Decided: (a).** A scheduled EventBridge rule triggers the `api`
    Lambda directly via a non-HTTP entry point. The *decision* is architectural;
    the *wiring* is deployment.
+   *Aligned to deployed reality by owner ruling, 2026-11-10:* Terraform deploys
+   the rollover as its own function (`rollover`, handler
+   `planner_api.scheduled.lambda_handler`) built from the `api` package and
+   triggered by the EventBridge rule; Terraform deploys four functions (`api`,
+   `authorizer`, `rollover`, `ai`) from two packages (`architecture.md` §1.2).
+   The rejected alternatives above stand as recorded.
 9. **Server-side copy for `library` and `generation` candidate sources (§3.1).**
    Options: (a) the client sends only the source id and the server copies the
    snapshot (one round-trip, non-tamperable, `FR-CAND-07` enforced in one
@@ -827,7 +834,7 @@ context; the ruling is the **Decided** line.
 12. **The `api`→`ai` hop.** **Decided: a standard SQS queue** (owner, definitive
     decision). Recorded in `architecture.md` §1.2 / §1.2.6. The earlier concern
     was only a documentation gap — `architecture.md` §1.2 described the two
-    Lambdas without the queue and §6 forbids adding one without an approved
+    Lambda packages without the queue and §6 forbids adding one without an approved
     `design.md`; that is now reconciled.
 13. **Does the summary need ingredients?** `FR-SUM-01` specifies a read-only
     view of a week's definitive meals without saying whether ingredients are

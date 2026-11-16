@@ -5,7 +5,8 @@
 
 - **Issue in progress:** none. 25 `ai-failed-messages-never-retried` is `pending`,
   awaiting the owner's go/no-go
-- **Feature in progress:** 37 `bootstrap_admin_cli` — awaiting the owner's `done`
+- **Feature in progress:** none. The owner marked 37 `bootstrap_admin_cli` and
+  22 `cicd_pipeline` `done` in `1b6d4dd`
 - **Started:** 2026-11-02
 - **Agent:** leader
 
@@ -52,11 +53,15 @@
 - 2026-11-09: Owner said no-go on 25 for now ("let's leave it for now"). It stays
   `pending`; not `wontfix`. Nothing was implemented. Issues 26 to 29 stay on hold.
 
+- 2026-11-09: Doc-drift sweep against the code, Terraform and CI. Fixed `AGENTS.md`,
+  `CHECKPOINTS.md`, `docs/{architecture,conventions,verification,local_development,
+  rest_api_contract,frontend_prototype}.md` and the `implementer`, `spec_author` and
+  `leader` agent files. Owner-level contradictions were listed, not resolved.
+
 ## Next step
 
 None queued. When the owner picks 25 back up, the triage in
-`issues/ai-failed-messages-never-retried/` is current (E1 to E17, T1 to T11). Feature
-37 must be `done` first, or `init.sh` fails on two things `in_progress` at once.
+`issues/ai-failed-messages-never-retried/` is current (E1 to E17, T1 to T11).
 
 Owner, for issues 23 and 24: deploy the code, **then** run `terraform apply`, never
 the reverse (neither confirmed yet). Then check on dev:

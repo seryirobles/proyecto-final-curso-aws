@@ -1,5 +1,4 @@
-"""The worker's per-record log lines name the generation in the message text
-(issues/silent-failures-not-logged E8)."""
+"""The worker's per-record log lines name the generation in the message text."""
 
 from __future__ import annotations
 

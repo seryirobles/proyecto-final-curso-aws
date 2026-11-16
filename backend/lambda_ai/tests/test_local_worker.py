@@ -1,7 +1,6 @@
 """local_worker.py's credential requirements: the clients it builds for the
 local emulators must sign without generic AWS credentials, since Bedrock — the
-only call that leaves the machine — is authenticated by an API key
-(issues/debug-requires-aws-credentials/analysis.md)."""
+only call that leaves the machine — is authenticated by an API key."""
 
 from __future__ import annotations
 

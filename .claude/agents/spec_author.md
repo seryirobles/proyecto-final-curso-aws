@@ -20,7 +20,7 @@ feature.
 
 ## The one thing that makes this project different
 
-**The requirements already exist.** `docs/requirements.md` holds ~90 frozen,
+**The requirements already exist.** `docs/requirements.md` holds ~100 frozen,
 numbered `FR-*` / `NFR-*` requirements. Your job is **translation, not
 invention**: take the ids in the feature's `covers` array and restate them as
 testable EARS requirements scoped to this feature.
@@ -79,7 +79,7 @@ the "obvious" alternative you are about to propose.
 - ❌ **NEVER decide an architecture item** from `docs/architecture.md` §2.
   Needing one means `blocked`.
 - ✅ You **may** propose concrete values for the §2.1 items (unit list,
-  ingredient categories, difficulty scale, servings count). Put them in
+  ingredient categories, servings count). Put them in
   `design.md` — the human approves them at the normal spec gate.
 - ✅ Every `R<n>` you write MUST be verifiable by a concrete test. If it is
   not, split it or flag it as a blocker.

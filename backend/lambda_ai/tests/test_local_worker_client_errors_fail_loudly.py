@@ -1,5 +1,5 @@
 """An SQS ClientError is a misconfiguration, not a transient fault: it must stop
-the local worker (issues/local-worker-sqs-read-timeout-crash E4)."""
+the local worker."""
 
 from __future__ import annotations
 

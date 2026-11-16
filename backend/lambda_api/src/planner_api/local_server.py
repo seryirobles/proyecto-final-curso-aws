@@ -1,8 +1,7 @@
 """Dev-only entry point: runs the `api` Lambda as a local HTTP server (stdlib
 only, `uv run python -m planner_api.local_server`). Mirrors what API Gateway
 does in production - invoke the authorizer, then the handler - by hand, so
-`handler.py` and `routing.py` stay untouched (docs/rest_api_contract.md
-section 8.1)."""
+`handler.py` and `routing.py` stay untouched."""
 
 from __future__ import annotations
 

@@ -1,5 +1,5 @@
 """A server-side configuration fault answered as 4xx is logged; ordinary client
-errors are not (issues/silent-failures-not-logged E5-E6)."""
+errors are not."""
 
 from __future__ import annotations
 

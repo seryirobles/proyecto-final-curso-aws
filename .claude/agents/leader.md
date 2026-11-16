@@ -151,7 +151,7 @@ When you launch subagents, instruct them to **write their results to files**
 | `progress/current.md` | leader | Live session plan |
 | `progress/impl_<feature>.md` | implementer | Files touched + `R<n> → test` map + test output. **Short** — no narrative |
 | *(no file)* | reviewer | Verdict + surviving findings, returned inline. `progress/review_*.md` is banned — the leader folds anything durable into `progress/current.md` |
-| `feature_list.json` | leader/implementer | `pending` → `spec_ready` → `in_progress` → `done` |
+| `feature_list.json` | spec_author / leader | `pending` → `spec_ready` → `in_progress`; `done` is the human's |
 | `issues/<name>/{analysis,plan,tasks}.md` | issue_triager | Root cause, `E<n>` expected behaviour + test plan, `T<n>` checklist |
 | `issues/<name>/tests/` | issue_triager | The staged tests that define "solved"; the implementer moves them verbatim |
 | `issue_list.json` | leader / issue_triager / implementer | `reported` → `pending` → `approved` → `in_progress` → `done` (`wontfix`, `blocked`) |

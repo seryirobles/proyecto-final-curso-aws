@@ -1,6 +1,6 @@
 """Issue ai-week-dishes-repeat: each AI slot's prompt names the dishes already
 in the week and those produced earlier in the same run, so the model can avoid
-them. Run, retry and mix paths; issues/ai-week-dishes-repeat/plan.md E1-E4."""
+them. Run, retry and mix paths."""
 
 from __future__ import annotations
 

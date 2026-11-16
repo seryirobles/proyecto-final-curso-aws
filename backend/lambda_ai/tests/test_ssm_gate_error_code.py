@@ -1,5 +1,4 @@
-"""The fail-closed warning also carries the ClientError code, never a secret
-(issues/ai-generation-422-unavailable E7)."""
+"""The fail-closed warning also carries the ClientError code, never a secret."""
 
 from __future__ import annotations
 

@@ -1,5 +1,5 @@
 """A transient SQS transport error must not kill the local worker's poll loop
-(issues/local-worker-sqs-read-timeout-crash; docs/local_development.md section 3)."""
+(docs/local_development.md section 3)."""
 
 from __future__ import annotations
 

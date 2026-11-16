@@ -42,7 +42,7 @@ inline styles with no components, no modules, no build step and no tests.
 > separately by the human on 2026-08-17** (idiomatic React: function components,
 > hooks, JSX; Vite; Vitest — `docs/architecture.md` §1.1). The "DC" half was
 > never obtainable: it is Claude Design's internal runtime, not a framework.
-> Feature 20 `frontend_spa` stays `blocked`, now on feature 16 alone.
+> Feature 20 `frontend_spa` has since been built and is `done`.
 
 ---
 
@@ -262,10 +262,9 @@ counter**. There is nothing to display.
 5. **Keep it as reference material.** It is the only artifact showing the whole
    product working end to end.
 
-**P7 is decided (2026-08-17)**, so the prototype should be re-expressed as React
-components with a real toolchain. That is feature 20 `frontend_spa`, which waits
-only on its dependencies — features 16 and 26. The REST contract is decided
-(`docs/rest_api_contract.md`); no architecture item blocks it.
+**P7 is decided (2026-08-17)**, and the prototype has been re-expressed as React
+components with a real toolchain: feature 20 `frontend_spa`, `done`, in
+`frontend/`.
 
 ---
 
@@ -279,10 +278,12 @@ Not blocking; recorded so they are not lost.
    **type and spacing scales must not be copied** — 24 distinct `font-size`
    values with half-pixel steps and 91 distinct `padding` values are drift, not
    a system, and lifting them would defeat the tokens module.
-2. **The unit list needs a decision** on `al gusto`, `lomos` and `hoja` (§2.2).
-3. **The category list can be adopted as-is** if you are happy with the five
-   values — it matches `FR-RULE-04`'s own example set.
-4. **These two files are untracked and outside every quality gate.** `init.sh`
+2. ~~**The unit list needs a decision** on `al gusto`, `lomos` and `hoja` (§2.2).~~
+   **Settled** — the code ships `g`, `ml`, `unit` (`planner_core.domain.units`).
+3. ~~**The category list can be adopted as-is** if you are happy with the five
+   values — it matches `FR-RULE-04`'s own example set.~~ **Settled** — six
+   categories (`planner_core.domain.ingredient_category`).
+4. **These two files are outside every quality gate.** `init.sh`
    ignores them and will keep ignoring them; they carry no lint, type or test
    obligation. That is correct for reference material — noted so their absence
    from the gates is not later read as a hole.

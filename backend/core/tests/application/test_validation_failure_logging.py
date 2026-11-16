@@ -1,6 +1,5 @@
 """An AI recipe the domain validator rejects is logged with the rejecting
-validator, the value and a bounded model-output snippet
-(issues/silent-failures-not-logged E1-E3)."""
+validator, the value and a bounded model-output snippet."""
 
 from __future__ import annotations
 

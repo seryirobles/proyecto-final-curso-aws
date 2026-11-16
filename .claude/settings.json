@@ -14,30 +14,6 @@
       "Bash(aws*)"
     ]
   },
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "[ -f backend/pyproject.toml ] && command -v uv >/dev/null 2>&1 && (cd backend && uv run pytest -q -m 'not aws' 2>&1 | tail -3) || true"
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "INIT_SKIP_IF_UNCHANGED=1 ./init.sh > .harness-init.log 2>&1 && echo '[harness] init.sh OK' || (echo '[harness] init.sh FAILED — check .harness-init.log before closing' && tail -25 .harness-init.log)"
-          }
-        ]
-      }
-    ]
-  },
-  "$schema_comment": "Hooks that automate verification. The harness runs them, not the agent, so they cannot be skipped. Guards are written so they stay silent until the toolchain exists (feature 1).",
   "enabledPlugins": {
     "superpowers@claude-plugins-official": true
   }

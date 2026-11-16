@@ -1,6 +1,5 @@
 """A cleanly read 'disabled' switch is logged at INFO once per transition into
-the disabled state, distinct from the fail-closed WARNING
-(issues/silent-failures-not-logged E7)."""
+the disabled state, distinct from the fail-closed WARNING."""
 
 from __future__ import annotations
 

@@ -1,6 +1,5 @@
 """Login costs one real PBKDF2 whether or not the username exists (NFR-SEC-04).
-Counts calls to hashlib.pbkdf2_hmac under the real hasher; see
-issues/login-timing-username-enumeration/plan.md."""
+Counts calls to hashlib.pbkdf2_hmac under the real hasher."""
 
 from __future__ import annotations
 

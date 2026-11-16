@@ -1,6 +1,5 @@
 """The env-var gate logs the off transition like the SSM gate does (issue 14 E7):
-one INFO per transition into disabled, naming the variable; on stays silent
-(issues/ai-kill-switch-unreadable-under-shared-role E6)."""
+one INFO per transition into disabled, naming the variable; on stays silent."""
 
 from __future__ import annotations
 

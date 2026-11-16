@@ -57,11 +57,11 @@ The automated flow stops **once**: when every `reported` issue has been triaged
 and sits at `pending`. The human reads `issues/<name>/` and answers per issue —
 **all, some, or none**. The `leader` maps the answer: `go` → `approved`,
 `no` → `wontfix`, anything else stays `pending`. From there the flow is the
-feature flow: one issue `in_progress` at a time, `implementer`, then `reviewer`
-without asking.
+feature flow: the approved batch goes `in_progress`, one `implementer`, then
+one batched `reviewer` without asking.
 
-**One `in_progress` across both lists.** An issue and a feature are never
-in progress together. While any issue is `approved`, the `leader` does not start
+**A feature and an issue never run together.** An issue and a feature are never
+in progress together (`init.sh` fails on it). While any issue is `approved`, the `leader` does not start
 a `pending` feature unless the human says to.
 
 ## Blast radius wider than the report — ask, don't assume (owner directive, 2026-09-22)

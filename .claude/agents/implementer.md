@@ -58,14 +58,14 @@ substitutions:
    test, and that every `FR-*` in the feature's `covers` array is reachable
    through some `R<n>`. Record the map in `progress/impl_<name>.md`.
 7. **Do not mark `done` yourself.** Wait for the reviewer.
-8. If the reviewer approves (the leader will tell you on a second invocation):
-   set the status to `done` and move the summary to `progress/history.md`.
+8. If the reviewer approves, you are finished: `done` is the human's mark
+   (`AGENTS.md` §4), and the leader writes `progress/history.md` at session close.
 
 ## Hard rules
 
 - ❌ If the feature is not `in_progress` with an approved spec, stop.
 - ❌ One feature per session.
-- ❌ **Never write Terraform, IaC or CI/CD files.** `init.sh` fails on CI files; it no longer checks Terraform, but the rule stands.
+- ❌ **Never write Terraform, IaC or CI/CD files.** `init.sh` no longer trips on them (features 21 and 22 are `done`), but the rule stands.
 - ❌ **Never make an architecture decision** from `docs/architecture.md` §2.
   If a task cannot proceed without one, stop and set `blocked`.
 - ❌ **Never edit the frozen requirement docs.**

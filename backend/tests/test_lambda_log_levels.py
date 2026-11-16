@@ -1,5 +1,5 @@
-"""What reaches the log from each deployed entry point, one fresh process per case
-(issues/deployed-lambdas-drop-info-logs). Moto and fake values; see _lambda_log_probe.py."""
+"""What reaches the log from each deployed entry point, one fresh process per case.
+Moto and fake values; see _lambda_log_probe.py."""
 
 from __future__ import annotations
 

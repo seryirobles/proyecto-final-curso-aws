@@ -1,5 +1,4 @@
-"""The AI switch variable defaults to on, so a plain apply never silently stops AI
-(issues/ai-kill-switch-unreadable-under-shared-role E10)."""
+"""The AI switch variable defaults to on, so a plain apply never silently stops AI."""
 
 from __future__ import annotations
 

@@ -1,5 +1,5 @@
 """Every Lambda handler string Terraform deploys resolves to a callable with
-AWS's `(event, context)` shape (issues/lambda-handler-receives-context-as-deps)."""
+AWS's `(event, context)` shape."""
 
 from __future__ import annotations
 

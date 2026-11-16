@@ -1,7 +1,7 @@
 """A non-positive ingredient quantity is rejected wherever one is admitted.
 
 Issue 7 (negative-ingredient-quantity): E2, E3, plus the shopping-arithmetic
-regression named in issues/negative-ingredient-quantity/analysis.md.
+regression.
 """
 
 from __future__ import annotations

@@ -31,8 +31,8 @@ raise ValueError("quantity must be positive")
   `pyproject.toml`, with the interpreter pinned by `backend/.python-version` so
   uv provisions it rather than reusing whatever is installed locally. The upper
   bound is deliberate: it is a **bounded range, not a floor**, so a new minor
-  release cannot silently change the interpreter under the gates. Confirm
-  against the Lambda runtime chosen in IaC (feature 21).
+  release cannot silently change the interpreter under the gates. It matches
+  the Lambda runtime in IaC (`python3.13`, `terraform/lambda.tf`).
 - **Formatting and linting:** `ruff format` + `ruff check`. Line length 100.
 - **Typing:** `mypy` in strict mode. Every public function is fully annotated.
   No bare `Any` without an inline justification comment.
@@ -330,6 +330,5 @@ frontend code.~~
 §1.1): React with function components and hooks, bootstrapped by Vite, tested
 with Vitest. There is no base class to extend — a component is a plain function.
 
-`frontend_spa` (feature 20) waits only on its dependencies — **features 16 and
-26**. No architecture decision blocks it: the REST contract is decided
+`frontend_spa` (feature 20) is built and `done`, on the REST contract
 (`architecture.md` §1.2.5, `docs/rest_api_contract.md`).

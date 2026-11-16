@@ -52,7 +52,7 @@ Session scope would leave that state bleeding across tests.
 `backend/lambda_api/src/planner_api/local_server.py` wraps the real
 `handler.py`/`authorizer.py` in a stdlib HTTP server — same routing, same
 auth gate, same responses a real deployment would give, just without API
-Gateway/a VPC in front.
+Gateway in front.
 
 ```bash
 cd backend/lambda_api
@@ -134,7 +134,8 @@ uv run python -m planner_ai.local_worker
 ```
 
 `AI_GENERATION_ENABLED` (exactly `true` or `false`) is a local-only override of
-the SSM kill-switch, which is then not read; unset, SSM decides as deployed.
+the deployed kill-switch gate, which is then not read; unset, that gate
+decides as deployed (`planner_ai.wiring`).
 
 | Variable | Accepted values | Default |
 |---|---|---|
@@ -154,10 +155,10 @@ sent (Bedrock rejects it) and `AI_TEMPERATURE`/`AI_TOP_P` must stay unset.
 model, not an AWS Marketplace one, so there is no one-time subscription step.
 If a real invocation still fails with `AccessDeniedException`, check that the
 credentials can invoke the `eu.` inference profile (the `us.`/`in.` prefixes
-in AWS's examples do not work from `eu-south-2`).
+in AWS's examples do not work from `eu-west-1`, the deployed region).
 
 See `docs/architecture.md` §1.2.6 for the full provider decision (why
-`Converse`/`eu-south-2`/the EU Geo profile).
+`Converse`/`eu-west-1`/the EU Geo profile).
 
 Fails with one clear log line (not a raw traceback) if **neither**
 `AWS_BEARER_TOKEN_BEDROCK` **nor** a resolvable AWS credential chain is
@@ -178,7 +179,8 @@ app keeps working regardless.
 `backend/lambda_api/src/planner_api/seed_local_data.py` seeds 4 accounts for
 manual testing — one of each role with a real password already set, one of
 each with password-reset still pending (to exercise the mandatory
-set-password prompt):
+set-password prompt) — plus a varied set of library recipes, upserted by id
+on every run:
 
 ```bash
 cd backend/lambda_api
@@ -203,8 +205,8 @@ was interrupted before completing it). Since DynamoDB Local is in-memory
 
 **Real AWS table mode is more restricted here than for the API server above.**
 `DYNAMODB_ENDPOINT_URL` unset means "real AWS" — `--force`/`SEED_FORCE=1`
-lets the two *User* accounts seed there (for testing that flow against a
-real table), but the two *Admin* accounts are **always skipped** in that
+lets the two *User* accounts and the recipes seed there (for testing that flow
+against a real table), but the two *Admin* accounts are **always skipped** in that
 mode, no override exists. Nobody should be able to one-flag their way into
 creating a real Admin account with a password printed in this file.
 

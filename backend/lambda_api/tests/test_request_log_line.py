@@ -1,6 +1,5 @@
 """The per-invocation log lines carry their facts in the message text, so any
-log format shows them, not only one that prints `extra`
-(issues/silent-failures-not-logged E8)."""
+log format shows them, not only one that prints `extra`."""
 
 from __future__ import annotations
 

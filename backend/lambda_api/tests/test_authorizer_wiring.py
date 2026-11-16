@@ -1,5 +1,4 @@
-"""The authorizer wires only accounts, signer and clock; see
-issues/authorizer-builds-full-dependency-graph/plan.md."""
+"""The authorizer wires only accounts, signer and clock."""
 
 from __future__ import annotations
 

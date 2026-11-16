@@ -1,5 +1,4 @@
-"""The env-var gate never logs the variable's value
-(issues/ai-kill-switch-unreadable-under-shared-role plan.md, Fix design)."""
+"""The env-var gate never logs the variable's value."""
 
 from __future__ import annotations
 

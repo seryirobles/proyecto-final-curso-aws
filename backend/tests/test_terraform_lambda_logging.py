@@ -1,5 +1,5 @@
 """Terraform sets the JSON log format and an environment-derived application level
-on every function (issues/deployed-lambdas-drop-info-logs E1, E2, E9)."""
+on every function."""
 
 from __future__ import annotations
 

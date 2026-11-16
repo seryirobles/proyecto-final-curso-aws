@@ -1,5 +1,4 @@
-"""`quiet_sdk_loggers()` pins the four SDK loggers and nothing else
-(issues/deployed-lambdas-drop-info-logs E4, E7, E10)."""
+"""`quiet_sdk_loggers()` pins the four SDK loggers and nothing else."""
 
 from __future__ import annotations
 

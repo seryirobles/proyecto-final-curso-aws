@@ -1,5 +1,5 @@
 """A provider error the worker turns into a `failed` result is logged, not
-swallowed silently (issues/ai-generation-422-unavailable E8)."""
+swallowed silently."""
 
 from __future__ import annotations
 

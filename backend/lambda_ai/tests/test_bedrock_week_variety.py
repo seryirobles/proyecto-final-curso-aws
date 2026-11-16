@@ -1,6 +1,5 @@
 """Issue ai-week-dishes-repeat: the text Bedrock receives for a later slot of a
-whole-week run names the dishes the earlier slots produced
-(issues/ai-week-dishes-repeat/plan.md E1, E5). No live call."""
+whole-week run names the dishes the earlier slots produced. No live call."""
 
 from __future__ import annotations
 

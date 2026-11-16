@@ -1,5 +1,4 @@
-"""A kill-switch read that fails closed says so in the log
-(issues/ai-generation-422-unavailable E7)."""
+"""A kill-switch read that fails closed says so in the log."""
 
 from __future__ import annotations
 

@@ -1,5 +1,5 @@
 """The documented local environment (docs/local_development.md sections 2-3)
-must reach AI generation (issues/ai-generation-422-unavailable E1-E4)."""
+must reach AI generation."""
 
 from __future__ import annotations
 

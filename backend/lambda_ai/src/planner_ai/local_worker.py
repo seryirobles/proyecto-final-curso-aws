@@ -74,8 +74,7 @@ def _require_local_env() -> None:
 
 def _require_bedrock_auth() -> None:
     """Bedrock is the one call that leaves this machine; it needs a bearer API
-    key or the AWS credential chain, checked before either client is built
-    (E4, issues/debug-requires-aws-credentials/analysis.md)."""
+    key or the AWS credential chain, checked before either client is built."""
     if os.environ.get("AWS_BEARER_TOKEN_BEDROCK"):
         return
     if boto3.Session().get_credentials() is not None:
@@ -91,7 +90,7 @@ def _require_bedrock_auth() -> None:
 
 def _local_credentials() -> dict[str, str]:
     """Placeholder credentials for local-emulator traffic only, when an endpoint
-    override is set (E1, issues/debug-requires-aws-credentials/analysis.md).
+    override is set.
     Read at call time, like `_ENDPOINT_URL`, so tests patching it take effect."""
     if not _ENDPOINT_URL:
         return {}
